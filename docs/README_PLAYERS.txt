@@ -6,7 +6,8 @@ CC2X is one file: dinput8.dll. You install it once.
 
 INSTALL
 
-1. Download dinput8.dll.
+1. Download dinput8.dll:
+   https://github.com/Dioramawhois/cc2x/releases/latest/download/dinput8.dll
 2. Steam: right-click Carrier Command 2 > Manage > Browse local files.
 3. Put dinput8.dll into that folder (next to carrier_command.exe).
 

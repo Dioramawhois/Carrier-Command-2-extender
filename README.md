@@ -8,7 +8,8 @@ One file, `dinput8.dll`, put once next to `carrier_command.exe`. It gives
   [docs/PLUGINS.md](docs/PLUGINS.md). A plugin ships inside its mod (`<mod>\cc2x\*.dll`); CC2X loads
   the plugins of the mods enabled in the game's mod menu, Steam Workshop items included.
 
-Players: [docs/README_PLAYERS.txt](docs/README_PLAYERS.txt).
+**Players:** download [dinput8.dll](https://github.com/Dioramawhois/cc2x/releases/latest/download/dinput8.dll) and put it into the game folder - details in
+[docs/README_PLAYERS.txt](docs/README_PLAYERS.txt).
 
 ## Layout
 
