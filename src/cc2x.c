@@ -11,7 +11,7 @@
 #include <wchar.h>
 #include "cc2x.h"
 
-#define CC2X_VERSION "0.3.0"
+#define CC2X_VERSION "0.3.1"
 
 /* ============================================================================ game profile */
 
