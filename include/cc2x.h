@@ -153,7 +153,7 @@ typedef struct cc2x_api {
 
     /* ---- since API 2 (CC2X 0.3): plugins ship inside their mod ----------------------------------
      * A mod that is enabled in the game's mod menu (a local mod or a Steam Workshop item) has its
-     * plugins loaded from <mod folder>\cc2x\*.dll. Paths are in the system ANSI code page. */
+     * plugins loaded from <mod folder>\content\cc2x\*.dll. Paths are in the system ANSI code page. */
     /* folder of the plugin while cc2x_plugin_load runs (copy it; empty afterwards) */
     const char *(*plugin_dir)(void);
     /* %APPDATA%\Carrier Command 2\cc2x: settings that survive mod updates (Steam replaces the mod

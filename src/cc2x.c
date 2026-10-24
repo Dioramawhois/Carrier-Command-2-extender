@@ -917,8 +917,10 @@ static int xml_attr(const char *from, const char *attr, wchar_t *out, int size, 
     return 1;
 }
 
-/* Plugins of the mods enabled in the game's mod menu: <mod folder>\cc2x\*.dll. The game keeps the
- * enabled mods (local folders and Steam Workshop items alike) in %APPDATA%\Carrier Command 2\mods.xml. */
+/* Plugins of the mods enabled in the game's mod menu: <mod folder>\content\cc2x\*.dll (inside content
+ * because the game's Workshop upload takes only mod.xml, thumbnail.png and content), or
+ * <mod folder>\cc2x\*.dll for local development. The game keeps the enabled mods (local folders and
+ * Steam Workshop items alike) in %APPDATA%\Carrier Command 2\mods.xml. */
 static void load_mod_plugins(void) {
     wchar_t appdata[MAX_PATH], list[MAX_PATH * 2];
     if (!GetEnvironmentVariableW(L"APPDATA", appdata, MAX_PATH)) return;
@@ -935,9 +937,13 @@ static void load_mod_plugins(void) {
         while (len && dir[len - 1] == L'\\') dir[--len] = 0;
         if (GetFileAttributesW(dir) == INVALID_FILE_ATTRIBUTES) continue;   /* stale entry */
         ++mods;
-        _snwprintf(plugins, MAX_PATH * 2, L"%ls\\cc2x", dir);
+        _snwprintf(plugins, MAX_PATH * 2, L"%ls\\content\\cc2x", dir);
         plugins[MAX_PATH * 2 - 1] = 0;
-        if (GetFileAttributesW(plugins) == INVALID_FILE_ATTRIBUTES) continue;
+        if (GetFileAttributesW(plugins) == INVALID_FILE_ATTRIBUTES) {
+            _snwprintf(plugins, MAX_PATH * 2, L"%ls\\cc2x", dir);
+            plugins[MAX_PATH * 2 - 1] = 0;
+            if (GetFileAttributesW(plugins) == INVALID_FILE_ATTRIBUTES) continue;
+        }
         _snwprintf(modxml, MAX_PATH * 2, L"%ls\\mod.xml", dir);
         modxml[MAX_PATH * 2 - 1] = 0;
         char *mx = read_file(modxml), from[300], tname[128];

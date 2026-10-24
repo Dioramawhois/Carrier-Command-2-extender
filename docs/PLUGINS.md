@@ -23,18 +23,21 @@ the Island Airfields repository.
 
 ## Shipping a plugin: inside your mod
 
-Put the DLL into your mod folder, in a `cc2x` subfolder, and publish the mod as usual (Steam
-Workshop or a local mod):
+Put the DLL into your mod's `content` folder, in a `cc2x` subfolder, and publish the mod as usual
+(Steam Workshop or a local mod). It has to be inside `content`: the game's Workshop upload takes
+only `mod.xml`, `thumbnail.png` and the `content` folder.
 
 ```
 My Mod/
     mod.xml
+    thumbnail.png
     content/...              your Lua, models, ... (whatever the game loads)
-    cc2x/cc2x_mymod.dll      your plugin
+    content/cc2x/cc2x_mymod.dll   your plugin
 ```
 
 CC2X 0.3+ reads the game's list of enabled mods (`%APPDATA%\Carrier Command 2\mods.xml`) at start
-and loads `cc2x\*.dll` of every enabled mod. Players install nothing but CC2X itself; disabling the
+and loads `content\cc2x\*.dll` of every enabled mod (`<mod>\cc2x\*.dll` works too, for local
+development). Players install nothing but CC2X itself; disabling the
 mod in the game's mod menu disables the plugin (after a restart). Plugins with the same file name are
 loaded once: an enabled mod wins over a copy in the game folder (the game folder and
 `<game>\cc2x\plugins` still work, for development).

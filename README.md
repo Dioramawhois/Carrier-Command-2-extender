@@ -5,7 +5,7 @@ One file, `dinput8.dll`, put once next to `carrier_command.exe`. It gives
 - **Lua (Workshop) mods** a global `cc2x` table in the game's own Lua: world data from the server
   and functions added by plugins - see [docs/LUA_API.md](docs/LUA_API.md);
 - **native plugins** a small C API: safe patching, server events, registering Lua functions - see
-  [docs/PLUGINS.md](docs/PLUGINS.md). A plugin ships inside its mod (`<mod>\cc2x\*.dll`); CC2X loads
+  [docs/PLUGINS.md](docs/PLUGINS.md). A plugin ships inside its mod (`<mod>\content\cc2x\*.dll`); CC2X loads
   the plugins of the mods enabled in the game's mod menu, Steam Workshop items included.
 
 **Players:** download [dinput8.dll](https://github.com/Dioramawhois/cc2x/releases/latest/download/dinput8.dll) and put it into the game folder - details in
