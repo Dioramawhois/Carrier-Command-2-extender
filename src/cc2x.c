@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
 /*
  * CC2X core: dinput8 proxy, game build check, patch engine, server events, game Lua bridge,
  * world snapshots and plugin loader. One DLL, dropped next to carrier_command.exe.

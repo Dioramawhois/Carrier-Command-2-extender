@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Build CC2X (dinput8.dll) and the example plugin with the bundled Zig toolchain.
 
     python build.py            -> dist/dinput8.dll, dist/cc2x_hello.dll

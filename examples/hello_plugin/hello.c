@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
 /*
  * Minimal CC2X plugin. Build: python sdk/build.py (-> sdk/dist/cc2x_hello.dll).
  * Install: put cc2x_hello.dll next to carrier_command.exe.

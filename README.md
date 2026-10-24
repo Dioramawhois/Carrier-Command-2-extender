@@ -45,3 +45,10 @@ Players: [docs/README_PLAYERS.txt](docs/README_PLAYERS.txt).
 - Plugins cannot be unloaded; patches stay for the process lifetime.
 - Possible additions when a mod needs them: more world data (teams, inventories), commands
   executed on the server, events for vehicle spawn/destroy and island capture.
+
+## License
+
+CC2X is free software under the GNU General Public License v3.0 or later ([LICENSE](LICENSE)).
+`include/cc2x.h` is part of it: a plugin built against this API is a work based on CC2X, so a plugin
+you distribute must be released under GPL-3.0-or-later (or a GPL-compatible licence) with its
+source code. Carrier Command 2 itself is not part of this project and keeps its own licence.

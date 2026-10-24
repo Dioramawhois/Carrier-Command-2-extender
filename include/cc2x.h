@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
 /*
  * CC2X - Carrier Command 2 extender. Public plugin API.
  *
