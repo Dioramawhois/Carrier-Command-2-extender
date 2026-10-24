@@ -27,7 +27,7 @@
 extern "C" {
 #endif
 
-#define CC2X_API_VERSION 1
+#define CC2X_API_VERSION 2
 
 #ifdef _WIN32
 #define CC2X_EXPORT __declspec(dllexport)
@@ -150,6 +150,15 @@ typedef struct cc2x_api {
     int (*vehicle)(uint32_t id, cc2x_vehicle_info *out);   /* 1 if found */
     int (*tiles)(cc2x_tile_info *out, int max);
     int (*tile)(uint32_t id, cc2x_tile_info *out);
+
+    /* ---- since API 2 (CC2X 0.3): plugins ship inside their mod ----------------------------------
+     * A mod that is enabled in the game's mod menu (a local mod or a Steam Workshop item) has its
+     * plugins loaded from <mod folder>\cc2x\*.dll. Paths are in the system ANSI code page. */
+    /* folder of the plugin while cc2x_plugin_load runs (copy it; empty afterwards) */
+    const char *(*plugin_dir)(void);
+    /* %APPDATA%\Carrier Command 2\cc2x: settings that survive mod updates (Steam replaces the mod
+     * folder on every update) */
+    const char *config_dir;
 } cc2x_api;
 
 typedef int (*cc2x_plugin_load_fn)(const cc2x_api *api);

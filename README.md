@@ -1,11 +1,12 @@
 # CC2X - Carrier Command 2 extender
 
-One file, `dinput8.dll`, dropped next to `carrier_command.exe`. It gives
+One file, `dinput8.dll`, put once next to `carrier_command.exe`. It gives
 
 - **Lua (Workshop) mods** a global `cc2x` table in the game's own Lua: world data from the server
   and functions added by plugins - see [docs/LUA_API.md](docs/LUA_API.md);
-- **native plugins** (`cc2x_<name>.dll` next to it, or in `<game>\cc2x\plugins\`) a small C API:
-  safe patching, server events, registering Lua functions - see [docs/PLUGINS.md](docs/PLUGINS.md).
+- **native plugins** a small C API: safe patching, server events, registering Lua functions - see
+  [docs/PLUGINS.md](docs/PLUGINS.md). A plugin ships inside its mod (`<mod>\cc2x\*.dll`); CC2X loads
+  the plugins of the mods enabled in the game's mod menu, Steam Workshop items included.
 
 Players: [docs/README_PLAYERS.txt](docs/README_PLAYERS.txt).
 

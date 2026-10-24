@@ -15,11 +15,38 @@ CC2X_EXPORT int cc2x_plugin_load(const cc2x_api *api)
 
 It is called once at game start **inside the loader lock** (from `DllMain` of `dinput8.dll`):
 no threads, no waiting, no `LoadLibrary`. Do the real work in the event callbacks.
-Build: `sdk/build.py` exposes `plugin(source, out)`; `native/build.py` of Island Airfields is a
-complete example of a plugin project outside the SDK folder. Any 32-bit C compiler works.
+Build: `build.py` exposes `plugin(source, out)`; `native/build.py` of Island Airfields is a
+complete example of a plugin project in its own repository. Any 32-bit C compiler works.
 
 Complete reference: `include/cc2x.h`. Working examples: `examples/hello_plugin/hello.c`,
-`../native/plugin/island_airfields.c`.
+the Island Airfields repository.
+
+## Shipping a plugin: inside your mod
+
+Put the DLL into your mod folder, in a `cc2x` subfolder, and publish the mod as usual (Steam
+Workshop or a local mod):
+
+```
+My Mod/
+    mod.xml
+    content/...              your Lua, models, ... (whatever the game loads)
+    cc2x/cc2x_mymod.dll      your plugin
+```
+
+CC2X 0.3+ reads the game's list of enabled mods (`%APPDATA%\Carrier Command 2\mods.xml`) at start
+and loads `cc2x\*.dll` of every enabled mod. Players install nothing but CC2X itself; disabling the
+mod in the game's mod menu disables the plugin (after a restart). Plugins with the same file name are
+loaded once: an enabled mod wins over a copy in the game folder (the game folder and
+`<game>\cc2x\plugins` still work, for development).
+
+Settings belong into `api->config_dir` (`%APPDATA%\Carrier Command 2\cc2x`): Steam replaces the mod
+folder on every update. `api->plugin_dir()` is the plugin's own folder during `cc2x_plugin_load`
+(for data files next to it). Both are API 2: check `api->api_version >= 2`.
+
+## Licence
+
+CC2X is GPL-3.0-or-later and `cc2x.h` is part of it: publish your plugin's source code under a
+GPL-compatible licence.
 
 ## Addresses
 

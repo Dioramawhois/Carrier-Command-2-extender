@@ -1,18 +1,30 @@
-CC2X - extender for Carrier Command 2 (Windows, game version 1.5.18)
-=====================================================================
+CC2X - mod loader for Carrier Command 2 (Windows, game version 1.5.18)
+=======================================================================
 
-Install:   copy dinput8.dll into the game folder (the one with carrier_command.exe).
-           Steam: right click the game > Manage > Browse local files.
-Uninstall: delete dinput8.dll (and any cc2x_*.dll files) from that folder.
+Some mods need CC2X to do more than the game allows (for example Island Airfields).
+CC2X is one file: dinput8.dll. You install it once.
 
-CC2X does nothing on its own. It lets mods do more: Steam Workshop mods that support it get extra
-functions, and plugin files named cc2x_<something>.dll placed next to it are loaded automatically.
+INSTALL
 
-Log: cc2x.log in the game folder (written fresh at every start).
+1. Download dinput8.dll.
+2. Steam: right-click Carrier Command 2 > Manage > Browse local files.
+3. Put dinput8.dll into that folder (next to carrier_command.exe).
 
-Safety: CC2X only patches the game in memory. Game files are never changed. If the game version is
-not supported (for example after a game update), CC2X writes this into cc2x.log and stays inactive:
-the game runs normally, mods just lose their extra features.
+That's all. Mods that use CC2X come from the Steam Workshop like any other mod: subscribe,
+enable them in the game's Mods menu, restart the game.
 
-Not supported: VR version, dedicated server, macOS. Multiplayer: only the host matters.
-Other mods that also use a dinput8.dll (e.g. ASI loaders) cannot be installed at the same time.
+If that folder already has a dinput8.dll, it belongs to another mod: keep a copy of it,
+the two cannot be used together.
+
+REMOVE
+
+Delete dinput8.dll from the game folder.
+
+GOOD TO KNOW
+
+- CC2X changes nothing on disk: it only patches the running game in memory.
+- After a game update CC2X switches itself off until it is updated; the game runs normally.
+- cc2x.log in the game folder lists what was loaded. Attach it when reporting a problem.
+- Mods with CC2X plugins run their own code on your PC, like any mod loader. Use mods you trust;
+  all CC2X mods have to publish their source code (GPL).
+- Not supported: VR, dedicated server, macOS.

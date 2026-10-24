@@ -11,7 +11,7 @@
 #include <wchar.h>
 #include "cc2x.h"
 
-#define CC2X_VERSION "0.2.0"
+#define CC2X_VERSION "0.3.0"
 
 /* ============================================================================ game profile */
 
@@ -830,37 +830,137 @@ static void h_lua_state(cc2x_cpu *cpu, void *user) {
 /* ============================================================================ plugins */
 
 static cc2x_api g_api;
+static char g_loading_dir[MAX_PATH * 2];             /* folder of the plugin being loaded (ANSI) */
+static char g_config_dir[MAX_PATH * 2];
+#define MAX_PLUGINS 64
+static wchar_t g_loaded[MAX_PLUGINS][MAX_PATH];      /* file names: one copy of each plugin */
+static int g_nloaded;
 
-static void load_plugin(const char *path, const char *name) {
-    HMODULE m = LoadLibraryA(path);
-    if (!m) { LOG(CC2X_LOG_ERROR, "cannot load plugin %s (error %lu)", name, GetLastError()); return; }
+static const char *api_plugin_dir(void) { return g_loading_dir; }
+
+static void to_ansi(const wchar_t *w, char *out, int size) {
+    if (!WideCharToMultiByte(CP_ACP, 0, w, -1, out, size, NULL, NULL)) out[0] = 0;
+}
+
+/* dir: the plugin's folder, file: its file name, from: where it came from (for the log) */
+static void load_plugin(const wchar_t *dir, const wchar_t *file, const char *from) {
+    char name[MAX_PATH];
+    to_ansi(file, name, sizeof(name));
+    for (int i = 0; i < g_nloaded; ++i)
+        if (!_wcsicmp(g_loaded[i], file)) {
+            LOG(CC2X_LOG_WARN, "plugin %s in %s ignored: already loaded from an enabled mod (an old copy? it can be deleted)", name, from);
+            return;
+        }
+    wchar_t path[MAX_PATH * 2];
+    _snwprintf(path, MAX_PATH * 2, L"%ls\\%ls", dir, file);
+    path[MAX_PATH * 2 - 1] = 0;
+    HMODULE m = LoadLibraryExW(path, NULL, LOAD_WITH_ALTERED_SEARCH_PATH);
+    if (!m) { LOG(CC2X_LOG_ERROR, "cannot load plugin %s from %s (error %lu)", name, from, GetLastError()); return; }
     cc2x_plugin_load_fn load = (cc2x_plugin_load_fn)(uintptr_t)GetProcAddress(m, "cc2x_plugin_load");
     if (!load) { LOG(CC2X_LOG_ERROR, "%s: no cc2x_plugin_load export", name); return; }
+    if (g_nloaded < MAX_PLUGINS) wcsncpy(g_loaded[g_nloaded++], file, MAX_PATH - 1);
+    to_ansi(dir, g_loading_dir, sizeof(g_loading_dir));
     patch_abort();
     int ok = load(&g_api);
     if (g_npending) {                 /* plugin forgot to commit */
         patch_abort();
         ok = 0;
     }
-    LOG(ok ? CC2X_LOG_INFO : CC2X_LOG_WARN, "plugin %s %s", name, ok ? "loaded" : "inactive");
+    g_loading_dir[0] = 0;
+    LOG(ok ? CC2X_LOG_INFO : CC2X_LOG_WARN, "plugin %s %s (%s)", name, ok ? "loaded" : "inactive", from);
+}
+
+static void load_dir(const wchar_t *dir, const wchar_t *mask, const char *from) {
+    wchar_t pattern[MAX_PATH * 2];
+    _snwprintf(pattern, MAX_PATH * 2, L"%ls\\%ls", dir, mask);
+    pattern[MAX_PATH * 2 - 1] = 0;
+    WIN32_FIND_DATAW fd;
+    HANDLE h = FindFirstFileW(pattern, &fd);
+    if (h == INVALID_HANDLE_VALUE) return;
+    do {
+        if (!(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) load_plugin(dir, fd.cFileName, from);
+    } while (FindNextFileW(h, &fd));
+    FindClose(h);
+}
+
+/* the whole file as a NUL-terminated buffer (caller frees), NULL if missing */
+static char *read_file(const wchar_t *path) {
+    HANDLE f = CreateFileW(path, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
+    if (f == INVALID_HANDLE_VALUE) return NULL;
+    DWORD size = GetFileSize(f, NULL), got = 0;
+    char *buf = size < (1u << 20) ? HeapAlloc(GetProcessHeap(), 0, size + 1) : NULL;
+    if (buf && ReadFile(f, buf, size, &got, NULL)) buf[got] = 0;
+    else if (buf) { HeapFree(GetProcessHeap(), 0, buf); buf = NULL; }
+    CloseHandle(f);
+    return buf;
+}
+
+/* value of the first attr="..." after `from` (XML entities for & " ' < >), as UTF-16 */
+static int xml_attr(const char *from, const char *attr, wchar_t *out, int size, const char **end) {
+    char key[32], val[MAX_PATH * 3];
+    snprintf(key, sizeof(key), "%s=\"", attr);
+    const char *p = strstr(from, key);
+    if (!p) return 0;
+    p += strlen(key);
+    int n = 0;
+    while (*p && *p != '"' && n < (int)sizeof(val) - 1) {
+        static const struct { const char *ent; char ch; } E[] = {{"&amp;", '&'}, {"&quot;", '"'}, {"&apos;", '\''}, {"&lt;", '<'}, {"&gt;", '>'}};
+        int hit = 0;
+        for (size_t i = 0; i < sizeof(E) / sizeof(E[0]) && !hit; ++i)
+            if (!strncmp(p, E[i].ent, strlen(E[i].ent))) { val[n++] = E[i].ch; p += strlen(E[i].ent); hit = 1; }
+        if (!hit) val[n++] = *p++;
+    }
+    val[n] = 0;
+    if (end) *end = p;
+    if (!MultiByteToWideChar(CP_UTF8, 0, val, -1, out, size)) return 0;
+    for (wchar_t *c = out; *c; ++c) if (*c == L'/') *c = L'\\';
+    return 1;
+}
+
+/* Plugins of the mods enabled in the game's mod menu: <mod folder>\cc2x\*.dll. The game keeps the
+ * enabled mods (local folders and Steam Workshop items alike) in %APPDATA%\Carrier Command 2\mods.xml. */
+static void load_mod_plugins(void) {
+    wchar_t appdata[MAX_PATH], list[MAX_PATH * 2];
+    if (!GetEnvironmentVariableW(L"APPDATA", appdata, MAX_PATH)) return;
+    _snwprintf(list, MAX_PATH * 2, L"%ls\\Carrier Command 2\\mods.xml", appdata);
+    list[MAX_PATH * 2 - 1] = 0;
+    char *xml = read_file(list);
+    if (!xml) { LOG(CC2X_LOG_INFO, "no mods.xml yet: no mods enabled"); return; }
+    const char *p = strstr(xml, "<active_mod_folders");
+    int mods = 0;
+    wchar_t dir[MAX_PATH * 2], plugins[MAX_PATH * 2], modxml[MAX_PATH * 2], title[128];
+    while (p && (p = strstr(p, "<path ")) != NULL) {
+        if (!xml_attr(p, "value", dir, MAX_PATH * 2, &p)) break;
+        size_t len = wcslen(dir);
+        while (len && dir[len - 1] == L'\\') dir[--len] = 0;
+        if (GetFileAttributesW(dir) == INVALID_FILE_ATTRIBUTES) continue;   /* stale entry */
+        ++mods;
+        _snwprintf(plugins, MAX_PATH * 2, L"%ls\\cc2x", dir);
+        plugins[MAX_PATH * 2 - 1] = 0;
+        if (GetFileAttributesW(plugins) == INVALID_FILE_ATTRIBUTES) continue;
+        _snwprintf(modxml, MAX_PATH * 2, L"%ls\\mod.xml", dir);
+        modxml[MAX_PATH * 2 - 1] = 0;
+        char *mx = read_file(modxml), from[300], tname[128];
+        if (!mx || !xml_attr(mx, "name", title, 128, NULL)) wcscpy(title, wcsrchr(dir, L'\\') ? wcsrchr(dir, L'\\') + 1 : dir);
+        if (mx) HeapFree(GetProcessHeap(), 0, mx);
+        if (!WideCharToMultiByte(CP_UTF8, 0, title, -1, tname, sizeof(tname), NULL, NULL)) strcpy(tname, "?");
+        snprintf(from, sizeof(from), "mod \"%s\"", tname);
+        load_dir(plugins, L"*.dll", from);
+    }
+    HeapFree(GetProcessHeap(), 0, xml);
+    LOG(CC2X_LOG_INFO, "%d enabled mod folder(s) checked for plugins", mods);
 }
 
 static void load_plugins(void) {
-    char pattern[MAX_PATH * 2], path[MAX_PATH * 2];
-    const char *dirs[2] = {"", "\\cc2x\\plugins"};
-    const char *masks[2] = {"cc2x_*.dll", "*.dll"};
-    for (int d = 0; d < 2; ++d) {
-        snprintf(pattern, sizeof(pattern), "%s%s\\%s", g_dir, dirs[d], masks[d]);
-        WIN32_FIND_DATAA fd;
-        HANDLE h = FindFirstFileA(pattern, &fd);
-        if (h == INVALID_HANDLE_VALUE) continue;
-        do {
-            if (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) continue;
-            snprintf(path, sizeof(path), "%s%s\\%s", g_dir, dirs[d], fd.cFileName);
-            load_plugin(path, fd.cFileName);
-        } while (FindNextFileA(h, &fd));
-        FindClose(h);
-    }
+    load_mod_plugins();                                  /* first: they win over old manual copies */
+    wchar_t game[MAX_PATH], sub[MAX_PATH * 2];
+    if (!GetModuleFileNameW(NULL, game, MAX_PATH)) return;
+    wchar_t *slash = wcsrchr(game, L'\\');
+    if (slash) *slash = 0;
+    load_dir(game, L"cc2x_*.dll", "the game folder");   /* manual installs, development */
+    _snwprintf(sub, MAX_PATH * 2, L"%ls\\cc2x\\plugins", game);
+    sub[MAX_PATH * 2 - 1] = 0;
+    load_dir(sub, L"*.dll", "cc2x\\plugins");
 }
 
 /* ============================================================================ startup */
@@ -913,7 +1013,15 @@ static void startup(void) {
         l_gettop, l_type, l_tointeger, l_tonumber, l_toboolean, l_tostring,
         l_pushnil, l_pushboolean, l_pushinteger, l_pushnumber, l_pushstring, l_newtable, l_setfield, l_appendi,
         api_vehicles, api_vehicle, api_tiles, api_tile,
+        api_plugin_dir, g_config_dir,
     };
+    wchar_t appdata[MAX_PATH], cfg[MAX_PATH * 2];
+    if (GetEnvironmentVariableW(L"APPDATA", appdata, MAX_PATH)) {
+        _snwprintf(cfg, MAX_PATH * 2, L"%ls\\Carrier Command 2\\cc2x", appdata);
+        cfg[MAX_PATH * 2 - 1] = 0;
+        CreateDirectoryW(cfg, NULL);
+        to_ansi(cfg, g_config_dir, sizeof(g_config_dir));
+    }
     char ini[MAX_PATH + 16];
     snprintf(ini, sizeof(ini), "%s\\cc2x.ini", g_dir);
     g_time_scale = (int)GetPrivateProfileIntA("cc2x", "time_scale", 1, ini);

@@ -2,7 +2,7 @@
 """Build CC2X (dinput8.dll) and the example plugin with the bundled Zig toolchain.
 
     python build.py            -> dist/dinput8.dll, dist/cc2x_hello.dll
-    python build.py --release  -> also release/CC2X-<version>.zip
+    python build.py --release  -> also release/<version>/: dinput8.dll, CC2X-README.txt, SHA256SUMS.txt
 
 The toolchain (Zig 0.15.2, used as a C compiler for 32-bit Windows) lives in .deps.
 If it is missing, download https://ziglang.org/download/0.15.2/zig-x86_64-windows-0.15.2.zip
@@ -14,7 +14,7 @@ import re
 import shutil
 import subprocess
 import sys
-import zipfile
+import hashlib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
@@ -63,15 +63,14 @@ def main():
     for junk in list(DIST.glob('*.lib')) + list(DIST.glob('*.pdb')):
         junk.unlink()
     if args.release:
-        rel = ROOT / 'release'
-        rel.mkdir(exist_ok=True)
-        z = rel / ('CC2X-%s.zip' % version())
-        with zipfile.ZipFile(z, 'w', zipfile.ZIP_DEFLATED) as f:
-            f.write(DIST / 'dinput8.dll', 'dinput8.dll')
-            f.write(ROOT / 'docs/README_PLAYERS.txt', 'CC2X-README.txt')
-            for notice in sorted((ROOT / 'licenses').glob('*.txt')):
-                f.write(notice, 'licenses/' + notice.name)
-        print('wrote', z)
+        # players download the DLL itself (no archive, nothing to run) plus the readme
+        rel = ROOT / 'release' / version()
+        rel.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(DIST / 'dinput8.dll', rel / 'dinput8.dll')
+        shutil.copy2(ROOT / 'docs/README_PLAYERS.txt', rel / 'CC2X-README.txt')
+        sha = hashlib.sha256((rel / 'dinput8.dll').read_bytes()).hexdigest()
+        (rel / 'SHA256SUMS.txt').write_text('%s  dinput8.dll\n' % sha, encoding='ascii')
+        print('release files in', rel)
 
 
 if __name__ == '__main__':
