@@ -18,6 +18,10 @@ no threads, no waiting, no `LoadLibrary`. Do the real work in the event callback
 Build: `build.py` exposes `plugin(source, out)`; `native/build.py` of Island Airfields is a
 complete example of a plugin project in its own repository. Any 32-bit C compiler works.
 
+The game world - vehicles, islands, airfields, physics, game events - without a single game
+address: [WORLD_API.md](WORLD_API.md). Patch the game yourself (below) only for what it does not
+cover yet, and tell us: features are added to the SDK when a mod needs them.
+
 Complete reference: `include/cc2x.h`. Working examples: `examples/hello_plugin/hello.c`,
 the Island Airfields repository.
 

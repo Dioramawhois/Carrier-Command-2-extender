@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Build CC2X (dinput8.dll) and the example plugin with the bundled Zig toolchain.
 
-    python build.py            -> dist/dinput8.dll, dist/cc2x_hello.dll
+    python build.py            -> dist/dinput8.dll, dist/cc2x_hello.dll, dist/cc2x_selftest.dll
     python build.py --release  -> also release/<version>/: dinput8.dll, CC2X-README.txt, SHA256SUMS.txt
 
 The toolchain (Zig 0.15.2, used as a C compiler for 32-bit Windows) lives in .deps.
@@ -58,8 +58,9 @@ def main():
     if args.zig:
         ZIG = args.zig.resolve()
     DIST.mkdir(exist_ok=True)
-    zig('-shared', '-I', ROOT / 'include', ROOT / 'src/cc2x.c', ROOT / 'src/dinput8.def', '-o', DIST / 'dinput8.dll')
+    zig('-shared', '-I', ROOT / 'include', ROOT / 'src/cc2x.c', ROOT / 'src/world.c', ROOT / 'src/dinput8.def', '-o', DIST / 'dinput8.dll')
     plugin(ROOT / 'examples/hello_plugin/hello.c', DIST / 'cc2x_hello.dll')
+    plugin(ROOT / 'tests/selftest/selftest.c', DIST / 'cc2x_selftest.dll')
     for junk in list(DIST.glob('*.lib')) + list(DIST.glob('*.pdb')):
         junk.unlink()
     if args.release:

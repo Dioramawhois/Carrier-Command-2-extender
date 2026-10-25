@@ -4,8 +4,9 @@ One file, `dinput8.dll`, put once next to `carrier_command.exe`. It gives
 
 - **Lua (Workshop) mods** a global `cc2x` table in the game's own Lua: world data from the server
   and functions added by plugins - see [docs/LUA_API.md](docs/LUA_API.md);
-- **native plugins** a small C API: safe patching, server events, registering Lua functions - see
-  [docs/PLUGINS.md](docs/PLUGINS.md). A plugin ships inside its mod (`<mod>\content\cc2x\*.dll`); CC2X loads
+- **native plugins** a C API: the live game world (vehicles, islands, airfields, physics, game
+  events) without game addresses - see [docs/WORLD_API.md](docs/WORLD_API.md) - plus safe patching,
+  server events and registering Lua functions - see [docs/PLUGINS.md](docs/PLUGINS.md). A plugin ships inside its mod (`<mod>\content\cc2x\*.dll`); CC2X loads
   the plugins of the mods enabled in the game's mod menu, Steam Workshop items included.
 
 **Players:** download [dinput8.dll](https://github.com/Dioramawhois/cc2x/releases/latest/download/dinput8.dll) and put it into the game folder - details in
@@ -17,6 +18,8 @@ One file, `dinput8.dll`, put once next to `carrier_command.exe`. It gives
 |---|---|
 | `include/cc2x.h` | the whole plugin API (one header) |
 | `src/cc2x.c` | the extender: dinput8 proxy, build check, patch engine, events, Lua bridge, snapshots, plugin loader |
+| `src/world.c` | the world API: where the game keeps its objects in each supported build, physics, game events |
+| `tests/selftest` | plugin that checks the world API in a running game (PASS / FAIL in `cc2x.log`) |
 | `examples/hello_plugin` | minimal plugin |
 | `build.py` | build with the bundled Zig toolchain (`.deps`, a C compiler for 32-bit Windows) |
 

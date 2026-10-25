@@ -1,7 +1,8 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 /*
  * CC2X core: dinput8 proxy, game build check, patch engine, server events, game Lua bridge,
- * world snapshots and plugin loader. One DLL, dropped next to carrier_command.exe.
+ * world snapshots and plugin loader (the live world API is in world.c). One DLL, dropped next to
+ * carrier_command.exe.
  */
 #include <windows.h>
 #include <tlhelp32.h>
@@ -9,9 +10,9 @@
 #include <stdio.h>
 #include <string.h>
 #include <wchar.h>
-#include "cc2x.h"
+#include "internal.h"
 
-#define CC2X_VERSION "0.3.1"
+#define CC2X_VERSION "0.4.0"
 
 /* ============================================================================ game profile */
 
@@ -49,7 +50,7 @@ static char g_dir[MAX_PATH];
 static char g_log_path[MAX_PATH];
 static CRITICAL_SECTION g_log_cs;
 
-static uintptr_t va(uint32_t image_va) { return image_va - 0x400000u + g_base; }
+uintptr_t va(uint32_t image_va) { return image_va - 0x400000u + g_base; }
 
 /* ============================================================================ log */
 
@@ -69,7 +70,7 @@ static void logv(const char *who, int level, const char *fmt, va_list ap) {
     LeaveCriticalSection(&g_log_cs);
 }
 
-static void api_log(const char *who, int level, const char *fmt, ...) {
+void api_log(const char *who, int level, const char *fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
     logv(who, level, fmt, ap);
@@ -192,7 +193,7 @@ static PatchRec *pending_add(uintptr_t addr, uint32_t len, const uint8_t *expect
     return r;
 }
 
-static int patch_call(uint32_t site, uint32_t len, const uint8_t *expected, void *fn, void **original) {
+int patch_call(uint32_t site, uint32_t len, const uint8_t *expected, void *fn, void **original) {
     uintptr_t a = va(site);
     if (len < 5) { g_pending_failed = 1; return 0; }
     PatchRec *r = pending_add(a, len, expected);
@@ -221,7 +222,7 @@ static void __cdecl mid_dispatch(cc2x_cpu *cpu, MidHook *h) {
     if (!cpu->jump_to) cpu->jump_to = h->thunk;
 }
 
-static int patch_mid(uint32_t site, uint32_t len, const uint8_t *expected, cc2x_mid_fn fn, void *user) {
+int patch_mid(uint32_t site, uint32_t len, const uint8_t *expected, cc2x_mid_fn fn, void *user) {
     uintptr_t a = va(site);
     if (len < 5 || !fn) { g_pending_failed = 1; return 0; }
     PatchRec *r = pending_add(a, len, expected);
@@ -322,6 +323,20 @@ static int patch_commit(void) {
 }
 
 static void patch_abort(void) { g_npending = 0; g_pending_failed = 0; }
+
+int core_patch(int (*add)(void)) {
+    static PatchRec saved[MAX_PATCHES];
+    int n = g_npending, failed = g_pending_failed;
+    const char *owner = g_owner;
+    memcpy(saved, g_pending, sizeof(PatchRec) * n);
+    patch_begin("cc2x");
+    int ok = add() && patch_commit();
+    memcpy(g_pending, saved, sizeof(PatchRec) * n);
+    g_npending = n;
+    g_pending_failed = failed;
+    g_owner = owner;
+    return ok;
+}
 
 /* ============================================================================ events */
 
@@ -480,6 +495,7 @@ static void *volatile g_server;
 static uint32_t g_tickno;
 
 static void session_change(void *server, int started) {
+    world_session();
     for (int i = 0; i < g_nsess; ++i) g_sess_cb[i].fn(server, started, g_sess_cb[i].user);
     LOG(CC2X_LOG_INFO, "session %s", started ? "started" : "ended");
 }
@@ -509,6 +525,7 @@ static void tick_once(void *self) {
         g_tickno = 0;
         session_change(self, 1);
     }
+    world_tick();
     for (;;) {
         Post p = {0};
         EnterCriticalSection(&g_post_cs);
@@ -534,7 +551,7 @@ static void __attribute__((thiscall)) h_end(void *self) {
     o_end(self);
 }
 
-static void *api_server(void) { return g_server; }
+void *api_server(void) { return g_server; }
 
 /* ============================================================================ game Lua bridge */
 
@@ -1019,8 +1036,10 @@ static void startup(void) {
         l_gettop, l_type, l_tointeger, l_tonumber, l_toboolean, l_tostring,
         l_pushnil, l_pushboolean, l_pushinteger, l_pushnumber, l_pushstring, l_newtable, l_setfield, l_appendi,
         api_vehicles, api_vehicle, api_tiles, api_tile,
-        api_plugin_dir, g_config_dir,
+        api_plugin_dir, .config_dir = g_config_dir,
     };
+    if (!world_init(P->build)) LOG(CC2X_LOG_WARN, "no world layout for this build: API 3 functions do nothing");
+    world_fill(&g_api);
     wchar_t appdata[MAX_PATH], cfg[MAX_PATH * 2];
     if (GetEnvironmentVariableW(L"APPDATA", appdata, MAX_PATH)) {
         _snwprintf(cfg, MAX_PATH * 2, L"%ls\\Carrier Command 2\\cc2x", appdata);

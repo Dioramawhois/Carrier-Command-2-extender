@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.4.0
+
+- API 3, the world API ([docs/WORLD_API.md](docs/WORLD_API.md)): vehicles, tiles, island
+  controllers, airfields and waypoints through named fields and lists; vehicle physics (body
+  position, orientation, velocity) and the game's ray casts; game functions (brakes, gear, landing
+  request, waypoint sync, airfield coordinates); game events (new waypoints, airfield tick, hangar
+  choice, island controller for a team, island defence spawn) whose hooks are installed by their
+  first subscriber. Plugins need no game addresses: Island Airfields uses only this API.
+- `tests/selftest`: plugin that checks the world API in a running game.
+
 ## 0.3.1 (2026-10-25)
 
 - Plugins of a mod live in `<mod>\content\cc2x\*.dll`: the game's Workshop upload takes only
