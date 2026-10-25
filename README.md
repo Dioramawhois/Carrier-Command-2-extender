@@ -2,8 +2,9 @@
 
 One file, `dinput8.dll`, put once next to `carrier_command.exe`. It gives
 
-- **Lua (Workshop) mods** a global `cc2x` table in the game's own Lua: world data from the server
-  and functions added by plugins - see [docs/LUA_API.md](docs/LUA_API.md);
+- **Lua (Workshop) mods** a global `cc2x` table in the game's own Lua: the live world (vehicles,
+  islands, airfields), game events, commands and functions added by plugins - no C needed - see
+  [docs/LUA_API.md](docs/LUA_API.md);
 - **native plugins** a C API: the live game world (vehicles, islands, airfields, physics, game
   events) without game addresses - see [docs/WORLD_API.md](docs/WORLD_API.md) - plus safe patching,
   server events and registering Lua functions - see [docs/PLUGINS.md](docs/PLUGINS.md). A plugin ships inside its mod (`<mod>\content\cc2x\*.dll`); CC2X loads
@@ -18,7 +19,9 @@ One file, `dinput8.dll`, put once next to `carrier_command.exe`. It gives
 |---|---|
 | `include/cc2x.h` | the whole plugin API (one header) |
 | `src/cc2x.c` | the extender: dinput8 proxy, build check, patch engine, events, Lua bridge, snapshots, plugin loader |
+| `src/lua_world.c` | the world for Lua: per-tick copy, events, command queue, rules |
 | `src/world.c` | the world API: where the game keeps its objects in each supported build, physics, game events |
+| `tests/lua_mod` | Lua mod that checks the Lua world API (`library_custom_9.lua`) |
 | `tests/selftest` | plugin that checks the world API in a running game (PASS / FAIL in `cc2x.log`) |
 | `examples/hello_plugin` | minimal plugin |
 | `build.py` | build with the bundled Zig toolchain (`.deps`, a C compiler for 32-bit Windows) |

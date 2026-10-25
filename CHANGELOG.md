@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.5.0
+
+- Lua mods get the whole world API (`docs/LUA_API.md`, `cc2x.api` 4): vehicles (type, position,
+  orientation, velocity, docking, autopilot, waypoints), tiles and island airfields (runway,
+  hangars, queues, parking bays), copied every server tick; `cc2x.events()` (session, vehicles
+  added / removed, new waypoints, island spawns, answers to requests); commands for the next server
+  tick (fields, waypoints, physics, brakes, gear, landing request, airfield queues, ray casts);
+  rules for the game's own decisions (island controller per team, defence spawns, hangar slot).
+  Game hooks are installed when a Lua mod first asks for them.
+- `library_custom_0..9.lua`: documented as the way to add code to every screen without replacing
+  one; example and test in `tests/lua_mod`.
+- The snapshots of API 1 (`api->vehicles`, `api->tiles`) come from the same world copy, every
+  tick; the core keeps no game offsets of its own any more.
+
 ## 0.4.0 (2026-10-25)
 
 - API 3, the world API ([docs/WORLD_API.md](docs/WORLD_API.md)): vehicles, tiles, island
