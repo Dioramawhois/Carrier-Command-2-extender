@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.4.0
+## 0.4.0 (2026-10-25)
 
 - API 3, the world API ([docs/WORLD_API.md](docs/WORLD_API.md)): vehicles, tiles, island
   controllers, airfields and waypoints through named fields and lists; vehicle physics (body
