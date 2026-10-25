@@ -58,7 +58,7 @@ def main():
     if args.zig:
         ZIG = args.zig.resolve()
     DIST.mkdir(exist_ok=True)
-    zig('-shared', '-I', ROOT / 'include', ROOT / 'src/cc2x.c', ROOT / 'src/world.c', ROOT / 'src/dinput8.def', '-o', DIST / 'dinput8.dll')
+    zig('-shared', '-I', ROOT / 'include', ROOT / 'src/cc2x.c', ROOT / 'src/world.c', ROOT / 'src/lua_world.c', ROOT / 'src/dinput8.def', '-o', DIST / 'dinput8.dll')
     plugin(ROOT / 'examples/hello_plugin/hello.c', DIST / 'cc2x_hello.dll')
     plugin(ROOT / 'tests/selftest/selftest.c', DIST / 'cc2x_selftest.dll')
     for junk in list(DIST.glob('*.lib')) + list(DIST.glob('*.pdb')):

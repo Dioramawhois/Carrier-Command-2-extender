@@ -29,7 +29,7 @@
 extern "C" {
 #endif
 
-#define CC2X_API_VERSION 3
+#define CC2X_API_VERSION 4
 
 #ifdef _WIN32
 #define CC2X_EXPORT __declspec(dllexport)
@@ -256,7 +256,7 @@ typedef struct cc2x_api {
     /* t[i] = top for a *new* key (append to a table you built); pops the value */
     void (*lua_appendi)(cc2x_lua *L, int64_t i);
 
-    /* ---- world snapshots (any thread; refreshed every few server ticks) ---------------------- */
+    /* ---- world snapshots (any thread; refreshed every server tick) --------------------------- */
     /* copy up to max records, returns the total count (0 outside a session) */
     int (*vehicles)(cc2x_vehicle_info *out, int max);
     int (*vehicle)(uint32_t id, cc2x_vehicle_info *out);   /* 1 if found */

@@ -1,0 +1,3 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<data name="CC2X Lua Test" author="cc2x" description="Checks the CC2X world API for Lua; writes PASS / FAIL to cc2x.log. Development only.">
+</data>
