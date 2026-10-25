@@ -22,6 +22,8 @@ The game world - vehicles, islands, airfields, physics, game events - without a 
 address: [WORLD_API.md](WORLD_API.md). Patch the game yourself (below) only for what it does not
 cover yet, and tell us: features are added to the SDK when a mod needs them.
 
+Step by step, with Lua and C examples and publishing: [GUIDE.md](GUIDE.md).
+
 Complete reference: `include/cc2x.h`. Working examples: `examples/hello_plugin/hello.c`,
 the Island Airfields repository.
 

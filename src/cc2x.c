@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 /*
  * CC2X core: dinput8 proxy, game build check, patch engine, server events, game Lua bridge,
- * world snapshots and plugin loader (the live world API is in world.c). One DLL, dropped next to
+ * and plugin loader (the live world API is in world.c, its Lua side in lua_world.c). One DLL, dropped next to
  * carrier_command.exe.
  */
 #include <windows.h>
@@ -12,7 +12,7 @@
 #include <wchar.h>
 #include "internal.h"
 
-#define CC2X_VERSION "0.4.0"
+#define CC2X_VERSION "0.5.0"
 
 /* ============================================================================ game profile */
 
@@ -23,7 +23,6 @@ typedef struct {
     uint32_t server_init, server_tick, server_end;
     uint32_t lua_site; uint8_t lua_site_bytes[8];
     uint32_t f_index2addr, f_auxsetstr, f_finishset, f_luaS_new, f_luaH_new, f_luaC_step, nilobject;
-    uint32_t off_vehicles, off_tiles;
 } Profile;
 
 static const Profile PROFILES[] = {{
@@ -31,7 +30,6 @@ static const Profile PROFILES[] = {{
     0x00d34bc4, 0x00772fd0, 0x0077ee10, 0x0077eea0,
     0x004465ec, {0x6a, 0x20, 0x89, 0x85, 0x64, 0xff, 0xff, 0xff},
     0x008cda70, 0x008ce200, 0x008ff6b0, 0x00908220, 0x00904a50, 0x00904050, 0x00d03518,
-    0x37c, 0x440,
 }};
 
 static const struct { int field; uint8_t bytes[8]; } LUA_SIGS[] = {
@@ -377,116 +375,6 @@ static int server_post(void (*fn)(void *, void *), void *user) {
     return ok;
 }
 
-/* ============================================================================ snapshots */
-
-#define MAX_VEH 2048
-#define MAX_TILES 512
-static cc2x_vehicle_info g_veh[MAX_VEH]; static int g_nveh;
-static cc2x_tile_info g_tiles[MAX_TILES]; static int g_ntiles;
-static CRITICAL_SECTION g_snap_cs;
-
-typedef struct { uint32_t data, cap, head, count; } Deque;
-
-static uint32_t deque_at(const Deque *q, uint32_t i) {
-    uint32_t idx = q->head + i;
-    if (idx >= q->cap) idx -= q->cap;
-    return ((uint32_t *)(uintptr_t)q->data)[idx];
-}
-
-static int deque_ok(const Deque *q, uint32_t max) {
-    return q->cap && q->data && q->head < q->cap && q->count <= q->cap && q->count <= max;
-}
-
-static void snapshot(void *server) {
-    static cc2x_vehicle_info veh[MAX_VEH];
-    static cc2x_tile_info tiles[MAX_TILES];
-    int nv = 0, nt = 0;
-    Deque q;
-    memcpy(&q, (char *)server + P->off_vehicles, sizeof(q));
-    if (deque_ok(&q, MAX_VEH)) {
-        for (uint32_t i = 0; i < q.count; ++i) {
-            char *v = (char *)(uintptr_t)deque_at(&q, i);
-            if (!v) continue;
-            cc2x_vehicle_info *o = &veh[nv++];
-            o->id = *(uint32_t *)(v + 0x80);
-            o->definition = *(uint32_t *)(v + 0x84);
-            o->team = *(uint32_t *)(v + 0x108);
-            o->attached_to = *(uint32_t *)(v + 0x10c);
-            o->fuel = *(float *)(v + 0x120);
-            o->dock_state = *(uint32_t *)(v + 0x174);
-            o->hp = *(uint32_t *)(v + 0x180);
-            o->x = o->y = o->z = 0;
-            Deque b;
-            memcpy(&b, v + 0x8c, sizeof(b));
-            if (b.cap && b.data && b.count && b.head < b.cap) {
-                char *body = (char *)(uintptr_t)deque_at(&b, 0);
-                if (body) {
-                    o->x = *(double *)(body + 0x48);
-                    o->y = *(double *)(body + 0x50);
-                    o->z = *(double *)(body + 0x58);
-                }
-            }
-        }
-    }
-    memcpy(&q, (char *)server + P->off_tiles, sizeof(q));
-    if (deque_ok(&q, MAX_TILES)) {
-        for (uint32_t i = 0; i < q.count; ++i) {
-            char *t = (char *)(uintptr_t)deque_at(&q, i);
-            if (!t) continue;
-            cc2x_tile_info *o = &tiles[nt++];
-            o->id = *(uint32_t *)t;
-            o->team = *(uint32_t *)(t + 0x60);
-            o->x = *(double *)(t + 0x48);
-            o->z = *(double *)(t + 0x58);
-            char *island = *(char **)(t + 0x100);
-            o->airfields = island ? (int32_t)*(uint32_t *)(island + 0x154 + 0xc) : -1;
-        }
-    }
-    EnterCriticalSection(&g_snap_cs);
-    memcpy(g_veh, veh, sizeof(veh[0]) * nv);
-    g_nveh = nv;
-    memcpy(g_tiles, tiles, sizeof(tiles[0]) * nt);
-    g_ntiles = nt;
-    LeaveCriticalSection(&g_snap_cs);
-}
-
-static void snapshot_clear(void) {
-    EnterCriticalSection(&g_snap_cs);
-    g_nveh = g_ntiles = 0;
-    LeaveCriticalSection(&g_snap_cs);
-}
-
-static int api_vehicles(cc2x_vehicle_info *out, int max) {
-    EnterCriticalSection(&g_snap_cs);
-    int n = g_nveh;
-    if (out && max > 0) memcpy(out, g_veh, sizeof(*out) * (n < max ? n : max));
-    LeaveCriticalSection(&g_snap_cs);
-    return n;
-}
-static int api_vehicle(uint32_t id, cc2x_vehicle_info *out) {
-    int found = 0;
-    EnterCriticalSection(&g_snap_cs);
-    for (int i = 0; i < g_nveh; ++i)
-        if (g_veh[i].id == id) { if (out) *out = g_veh[i]; found = 1; break; }
-    LeaveCriticalSection(&g_snap_cs);
-    return found;
-}
-static int api_tiles(cc2x_tile_info *out, int max) {
-    EnterCriticalSection(&g_snap_cs);
-    int n = g_ntiles;
-    if (out && max > 0) memcpy(out, g_tiles, sizeof(*out) * (n < max ? n : max));
-    LeaveCriticalSection(&g_snap_cs);
-    return n;
-}
-static int api_tile(uint32_t id, cc2x_tile_info *out) {
-    int found = 0;
-    EnterCriticalSection(&g_snap_cs);
-    for (int i = 0; i < g_ntiles; ++i)
-        if (g_tiles[i].id == id) { if (out) *out = g_tiles[i]; found = 1; break; }
-    LeaveCriticalSection(&g_snap_cs);
-    return found;
-}
-
 /* ============================================================================ server lifecycle */
 
 typedef void (__attribute__((thiscall)) *ServerFn)(void *);
@@ -539,14 +427,13 @@ static void tick_once(void *self) {
         p.fn(self, p.user);
     }
     for (int i = 0; i < g_ntick; ++i) g_tick_cb[i].fn(self, g_tick_cb[i].user);
-    if (g_tickno++ % 10 == 0) snapshot(self);
+    g_tickno++;
 }
 
 static void __attribute__((thiscall)) h_end(void *self) {
     if (g_server == self) {
         session_change(self, 0);
         g_server = NULL;
-        snapshot_clear();
     }
     o_end(self);
 }
@@ -678,6 +565,8 @@ static void l_newtable(cc2x_lua *L) {
 static void l_setfield(cc2x_lua *L, const char *k) {
     x_auxsetstr(L, x_index2addr(L, -2), k);
 }
+uintptr_t lua_state_key(cc2x_lua *L) { return (uintptr_t)L_G(L); }
+
 static void l_appendi(cc2x_lua *L, int64_t i) {
     TValue *t = x_index2addr(L, -2);
     l_pushinteger(L, i);
@@ -737,58 +626,6 @@ static int lf_log(cc2x_lua *L) {
     api_log("lua", CC2X_LOG_INFO, "%s", buf);
     return 0;
 }
-static void push_vehicle(cc2x_lua *L, const cc2x_vehicle_info *v) {
-    l_newtable(L);
-    l_pushinteger(L, v->id); l_setfield(L, "id");
-    l_pushinteger(L, v->definition); l_setfield(L, "definition");
-    l_pushinteger(L, v->team); l_setfield(L, "team");
-    l_pushinteger(L, v->dock_state); l_setfield(L, "dock_state");
-    l_pushinteger(L, v->attached_to); l_setfield(L, "attached_to");
-    l_pushinteger(L, v->hp); l_setfield(L, "hp");
-    l_pushnumber(L, v->fuel); l_setfield(L, "fuel");
-    l_pushnumber(L, v->x); l_setfield(L, "x");
-    l_pushnumber(L, v->y); l_setfield(L, "y");
-    l_pushnumber(L, v->z); l_setfield(L, "z");
-}
-static void push_tile(cc2x_lua *L, const cc2x_tile_info *t) {
-    l_newtable(L);
-    l_pushinteger(L, t->id); l_setfield(L, "id");
-    l_pushinteger(L, t->team); l_setfield(L, "team");
-    l_pushnumber(L, t->x); l_setfield(L, "x");
-    l_pushnumber(L, t->z); l_setfield(L, "z");
-    if (t->airfields >= 0) { l_pushinteger(L, t->airfields); l_setfield(L, "airfields"); }
-}
-static int lf_vehicles(cc2x_lua *L) {
-    static cc2x_vehicle_info buf[MAX_VEH];
-    int n = api_vehicles(buf, MAX_VEH);
-    if (n > MAX_VEH) n = MAX_VEH;
-    l_newtable(L);
-    for (int i = 0; i < n; ++i) { push_vehicle(L, &buf[i]); l_appendi(L, i + 1); }
-    return 1;
-}
-static int lf_vehicle(cc2x_lua *L) {
-    int64_t id;
-    cc2x_vehicle_info v;
-    if (!l_tointeger(L, 1, &id) || !api_vehicle((uint32_t)id, &v)) { l_pushnil(L); return 1; }
-    push_vehicle(L, &v);
-    return 1;
-}
-static int lf_tiles(cc2x_lua *L) {
-    static cc2x_tile_info buf[MAX_TILES];
-    int n = api_tiles(buf, MAX_TILES);
-    if (n > MAX_TILES) n = MAX_TILES;
-    l_newtable(L);
-    for (int i = 0; i < n; ++i) { push_tile(L, &buf[i]); l_appendi(L, i + 1); }
-    return 1;
-}
-static int lf_tile(cc2x_lua *L) {
-    int64_t id;
-    cc2x_tile_info t;
-    if (!l_tointeger(L, 1, &id) || !api_tile((uint32_t)id, &t)) { l_pushnil(L); return 1; }
-    push_tile(L, &t);
-    return 1;
-}
-
 static void register_cc2x(cc2x_lua *L) {
     l_newtable(L);
     l_pushstring(L, CC2X_VERSION); l_setfield(L, "version");
@@ -796,10 +633,6 @@ static void register_cc2x(cc2x_lua *L) {
     l_pushstring(L, P->build); l_setfield(L, "game_build");
     l_pushcfunction(L, lf_has); l_setfield(L, "has");
     l_pushcfunction(L, lf_log); l_setfield(L, "log");
-    l_pushcfunction(L, lf_vehicles); l_setfield(L, "vehicles");
-    l_pushcfunction(L, lf_vehicle); l_setfield(L, "vehicle");
-    l_pushcfunction(L, lf_tiles); l_setfield(L, "tiles");
-    l_pushcfunction(L, lf_tile); l_setfield(L, "tile");
     for (int i = 0; i < g_nluafn; ++i) {            /* plugin functions without namespace */
         if (g_luafn[i].ns[0]) continue;
         l_pushcfunction(L, g_luafn[i].fn);
@@ -1035,11 +868,12 @@ static void startup(void) {
         lua_add, lua_feature,
         l_gettop, l_type, l_tointeger, l_tonumber, l_toboolean, l_tostring,
         l_pushnil, l_pushboolean, l_pushinteger, l_pushnumber, l_pushstring, l_newtable, l_setfield, l_appendi,
-        api_vehicles, api_vehicle, api_tiles, api_tile,
+        snap_vehicles, snap_vehicle, snap_tiles, snap_tile,
         api_plugin_dir, .config_dir = g_config_dir,
     };
     if (!world_init(P->build)) LOG(CC2X_LOG_WARN, "no world layout for this build: API 3 functions do nothing");
     world_fill(&g_api);
+    lua_world_init(&g_api);          /* before the plugins: the core Lua functions come first */
     wchar_t appdata[MAX_PATH], cfg[MAX_PATH * 2];
     if (GetEnvironmentVariableW(L"APPDATA", appdata, MAX_PATH)) {
         _snwprintf(cfg, MAX_PATH * 2, L"%ls\\Carrier Command 2\\cc2x", appdata);
@@ -1064,7 +898,6 @@ BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID reserved) {
     g_self = module;
     InitializeCriticalSection(&g_log_cs);
     InitializeCriticalSection(&g_post_cs);
-    InitializeCriticalSection(&g_snap_cs);
     HMODULE pinned;
     GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_PIN | GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,
                        (LPCWSTR)(uintptr_t)DllMain, &pinned);

@@ -26,7 +26,7 @@ CFLAGS = ['cc', '-target', 'x86-windows-gnu', '-std=c11', '-O2', '-Wall', '-Wext
 
 def zig(*args):
     if not ZIG.is_file():
-        sys.exit('Zig toolchain missing: see docs/BUILD.md or pass --zig PATH')
+        sys.exit('Zig toolchain missing: see docs/GUIDE.md section 11.1 or pass --zig PATH')
     os.environ.setdefault('ZIG_GLOBAL_CACHE_DIR', str(ROOT / '.cache' / 'zig'))
     cmd = [str(ZIG), *CFLAGS, *[str(a) for a in args]]
     print(' '.join(Path(a).name if ('/' in a or chr(92) in a) else a for a in cmd[1:]), flush=True)
@@ -58,7 +58,7 @@ def main():
     if args.zig:
         ZIG = args.zig.resolve()
     DIST.mkdir(exist_ok=True)
-    zig('-shared', '-I', ROOT / 'include', ROOT / 'src/cc2x.c', ROOT / 'src/world.c', ROOT / 'src/dinput8.def', '-o', DIST / 'dinput8.dll')
+    zig('-shared', '-I', ROOT / 'include', ROOT / 'src/cc2x.c', ROOT / 'src/world.c', ROOT / 'src/lua_world.c', ROOT / 'src/dinput8.def', '-o', DIST / 'dinput8.dll')
     plugin(ROOT / 'examples/hello_plugin/hello.c', DIST / 'cc2x_hello.dll')
     plugin(ROOT / 'tests/selftest/selftest.c', DIST / 'cc2x_selftest.dll')
     for junk in list(DIST.glob('*.lib')) + list(DIST.glob('*.pdb')):
