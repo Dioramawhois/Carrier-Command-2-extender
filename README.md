@@ -10,6 +10,9 @@ One file, `dinput8.dll`, put once next to `carrier_command.exe`. It gives
   server events and registering Lua functions - see [docs/PLUGINS.md](docs/PLUGINS.md). A plugin ships inside its mod (`<mod>\content\cc2x\*.dll`); CC2X loads
   the plugins of the mods enabled in the game's mod menu, Steam Workshop items included.
 
+**Mod makers:** start with [docs/GUIDE.md](docs/GUIDE.md) - the complete guide from the first Lua
+mod to a published Workshop item.
+
 **Players:** download [dinput8.dll](https://github.com/Dioramawhois/cc2x/releases/latest/download/dinput8.dll) and put it into the game folder - details in
 [docs/README_PLAYERS.txt](docs/README_PLAYERS.txt).
 
@@ -26,8 +29,11 @@ One file, `dinput8.dll`, put once next to `carrier_command.exe`. It gives
 | `examples/hello_plugin` | minimal plugin |
 | `build.py` | build with the bundled Zig toolchain (`.deps`, a C compiler for 32-bit Windows) |
 
-`python sdk/build.py` -> `sdk/dist/dinput8.dll`, `sdk/dist/cc2x_hello.dll`;
-`--release` also packs `sdk/release/CC2X-<version>.zip`.
+| `examples/lua_air_traffic` | example Lua mod (`library_custom_7.lua`) |
+
+`python build.py` -> `dist/dinput8.dll`, `dist/cc2x_hello.dll`, `dist/cc2x_selftest.dll`;
+`--release` also writes `release/<version>/` (`dinput8.dll`, readme, SHA-256). The compiler setup is in
+[docs/GUIDE.md](docs/GUIDE.md#111-tools).
 
 ## How it works (short)
 
@@ -51,8 +57,8 @@ One file, `dinput8.dll`, put once next to `carrier_command.exe`. It gives
 - One game build (1.5.18 Windows). A new build needs a new `PROFILES` entry (addresses + checks).
 - No multiplayer transport: Lua functions see the local server only.
 - Plugins cannot be unloaded; patches stay for the process lifetime.
-- Possible additions when a mod needs them: more world data (teams, inventories), commands
-  executed on the server, events for vehicle spawn/destroy and island capture.
+- Possible additions when a mod needs them: more world data (teams, inventories, island capture),
+  more game events, a multiplayer transport.
 
 ## License
 

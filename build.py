@@ -26,7 +26,7 @@ CFLAGS = ['cc', '-target', 'x86-windows-gnu', '-std=c11', '-O2', '-Wall', '-Wext
 
 def zig(*args):
     if not ZIG.is_file():
-        sys.exit('Zig toolchain missing: see docs/BUILD.md or pass --zig PATH')
+        sys.exit('Zig toolchain missing: see docs/GUIDE.md section 11.1 or pass --zig PATH')
     os.environ.setdefault('ZIG_GLOBAL_CACHE_DIR', str(ROOT / '.cache' / 'zig'))
     cmd = [str(ZIG), *CFLAGS, *[str(a) for a in args]]
     print(' '.join(Path(a).name if ('/' in a or chr(92) in a) else a for a in cmd[1:]), flush=True)

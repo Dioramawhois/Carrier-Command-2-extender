@@ -1,0 +1,3 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<data name="Air Traffic (CC2X example)" author="cc2x" description="Example Lua mod for CC2X 0.5: a box on the vehicle control screen with your aircraft in the air and on the ground, the one with the least fuel, and the last takeoffs and landings. Uses library_custom_7.lua.">
+</data>

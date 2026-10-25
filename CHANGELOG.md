@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.5.0
+## 0.5.0 (2026-10-25)
 
 - Lua mods get the whole world API (`docs/LUA_API.md`, `cc2x.api` 4): vehicles (type, position,
   orientation, velocity, docking, autopilot, waypoints), tiles and island airfields (runway,

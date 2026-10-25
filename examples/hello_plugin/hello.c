@@ -1,10 +1,10 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 /*
- * Minimal CC2X plugin. Build: python sdk/build.py (-> sdk/dist/cc2x_hello.dll).
- * Install: put cc2x_hello.dll next to carrier_command.exe.
+ * Minimal CC2X plugin. Build: python build.py (-> dist/cc2x_hello.dll).
+ * Install: inside a mod as content\cc2x\cc2x_hello.dll, or next to carrier_command.exe for testing.
  *
  *   Lua (any screen script, e.g. a Workshop mod):
- *       if cc2x and cc2x.has("hello") then print(cc2x.hello.greet("pilot")) end
+ *       if cc2x and cc2x.has("hello") then cc2x.log(cc2x.hello.greet("pilot")) end
  */
 #include <stdio.h>
 #include "cc2x.h"
