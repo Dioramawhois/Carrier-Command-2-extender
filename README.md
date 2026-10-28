@@ -54,7 +54,8 @@ mod to a published Workshop item.
 
 ## Limits / next steps
 
-- One game build (1.5.18 Windows). A new build needs a new `PROFILES` entry (addresses + checks).
+- Known game builds only (1.5.18 Windows: the original exe and the Steam rebuild of 2026-10-28). A new
+  build needs a new `PROFILES` entry (core addresses) and a `LAYOUTS` entry in `src/world.c`.
 - No multiplayer transport: Lua functions see the local server only.
 - Plugins cannot be unloaded; patches stay for the process lifetime.
 - Possible additions when a mod needs them: more world data (teams, inventories, island capture),
