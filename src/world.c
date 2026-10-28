@@ -42,6 +42,24 @@ typedef struct {
         a_start_node, a_path, a_dock_queue, a_undock_queue, a_tile, env_nodes, node_size, node_pos;
 } Layout;
 
+/* object layout: the same in both 1.5.18 builds */
+#define LAYOUT_1_5_18 \
+    .vt_rules_is_ai = 0x10, \
+    .s_vehicle_map = 0x344, .s_vehicles = 0x37c, .s_tile_map = 0x42c, .s_tiles = 0x440, .s_broadcast = 0x514, \
+    .v_id = 0x80, .v_definition = 0x84, .v_bodies = 0x8c, .v_wheels = 0xac, .v_team = 0x108, .v_attached = 0x10c, \
+    .v_dock_vehicle = 0x114, .v_dock_tile = 0x118, .v_dock_airfield = 0x11c, .v_fuel = 0x120, .v_waypoints = 0x140, \
+    .v_sync_count = 0x150, .v_attachments = 0x15c, .v_flight_state = 0x170, .v_dock_state = 0x174, .v_hp = 0x180, \
+    .v_team_object = 0x1a8, .v_control_mode = 0x1d0, .v_control_target = 0x1d8, .v_control_speed = 0x1f8, \
+    .v_control_power = 0x1fc, .v_control_taxi = 0x200, .v_sync_data = 0x230, \
+    .vt_is_air = 0x44, .vt_is_wing = 0x48, .vt_is_rotor = 0x4c, .vt_brakes = 0x94, .vt_gear = 0x98, \
+    .body_actor = 0xf0, .body_pos = 0x48, .team_is_ai = 0x19, .wheel_size = 0x70, .attachment_flying = 0xc0, \
+    .waypoint_size = 0x40, .wp_type = 0x04, .wp_param = 0x20, \
+    .t_id = 0x00, .t_pos = 0x48, .t_team = 0x60, .t_saved_count = 0xcc, .t_saved_set = 0xd0, .t_island = 0x100, \
+    .i_airfields = 0x154, \
+    .a_env = 0x00, .a_xform = 0x08, .a_hangars = 0x68, .a_hangar_count = 0x6c, .a_mode = 0x74, .a_state = 0x78, \
+    .a_runway_vehicle = 0x7c, .a_end_node = 0xb4, .a_start_node = 0xb8, .a_path = 0xbc, .a_dock_queue = 0xcc, \
+    .a_undock_queue = 0xdc, .a_tile = 0xf0, .env_nodes = 0x180, .node_size = 0x40, .node_pos = 0x34,
+
 static const Layout LAYOUTS[] = {{
     .build = "1.5.18-win32",
     .f_vehicle_by_id = 0x005ee6a0, .f_tile_by_id = 0x00631240, .f_tile_at = 0x00631040,
@@ -53,21 +71,19 @@ static const Layout LAYOUTS[] = {{
     .h_controller = {0x0063014f, 0x00634981},
     .h_controller_bytes = {{0x8b, 0x01, 0x8b, 0x40, 0x10, 0xff, 0xd0}, {0x8b, 0x07, 0x8b, 0x40, 0x10, 0xff, 0xd0}},
     .h_spawn = 0x00634f3d, .f_spawn = 0x0062ca30, .h_af_tick = 0x0062b8f3, .f_af_tick = 0x00628600,
-    .vt_rules_is_ai = 0x10,
-    .s_vehicle_map = 0x344, .s_vehicles = 0x37c, .s_tile_map = 0x42c, .s_tiles = 0x440, .s_broadcast = 0x514,
-    .v_id = 0x80, .v_definition = 0x84, .v_bodies = 0x8c, .v_wheels = 0xac, .v_team = 0x108, .v_attached = 0x10c,
-    .v_dock_vehicle = 0x114, .v_dock_tile = 0x118, .v_dock_airfield = 0x11c, .v_fuel = 0x120, .v_waypoints = 0x140,
-    .v_sync_count = 0x150, .v_attachments = 0x15c, .v_flight_state = 0x170, .v_dock_state = 0x174, .v_hp = 0x180,
-    .v_team_object = 0x1a8, .v_control_mode = 0x1d0, .v_control_target = 0x1d8, .v_control_speed = 0x1f8,
-    .v_control_power = 0x1fc, .v_control_taxi = 0x200, .v_sync_data = 0x230,
-    .vt_is_air = 0x44, .vt_is_wing = 0x48, .vt_is_rotor = 0x4c, .vt_brakes = 0x94, .vt_gear = 0x98,
-    .body_actor = 0xf0, .body_pos = 0x48, .team_is_ai = 0x19, .wheel_size = 0x70, .attachment_flying = 0xc0,
-    .waypoint_size = 0x40, .wp_type = 0x04, .wp_param = 0x20,
-    .t_id = 0x00, .t_pos = 0x48, .t_team = 0x60, .t_saved_count = 0xcc, .t_saved_set = 0xd0, .t_island = 0x100,
-    .i_airfields = 0x154,
-    .a_env = 0x00, .a_xform = 0x08, .a_hangars = 0x68, .a_hangar_count = 0x6c, .a_mode = 0x74, .a_state = 0x78,
-    .a_runway_vehicle = 0x7c, .a_end_node = 0xb4, .a_start_node = 0xb8, .a_path = 0xbc, .a_dock_queue = 0xcc,
-    .a_undock_queue = 0xdc, .a_tile = 0xf0, .env_nodes = 0x180, .node_size = 0x40, .node_pos = 0x34,
+    LAYOUT_1_5_18
+}, {
+    .build = "1.5.18-win32-r2",
+    .f_vehicle_by_id = 0x005ee7e0, .f_tile_by_id = 0x00631350, .f_tile_at = 0x00631150,
+    .f_request_landing = 0x0062b5b0, .f_waypoints_clear = 0x008549a0, .f_deque_grow = 0x00860dc0,
+    .vt_rigid_dynamic = 0x00cdd478,
+    .h_waypoints = 0x007782c4, .h_waypoints_bytes = {0xff, 0xb0, 0x50, 0x01, 0x00, 0x00},
+    .h_hangar = 0x0062af9d, .h_hangar_found = 0x0062b00c, .h_hangar_none = 0x0062afbd,
+    .h_hangar_bytes = {0x8b, 0x57, 0x6c, 0x33, 0xc0},
+    .h_controller = {0x0063025f, 0x00634a91},
+    .h_controller_bytes = {{0x8b, 0x01, 0x8b, 0x40, 0x10, 0xff, 0xd0}, {0x8b, 0x07, 0x8b, 0x40, 0x10, 0xff, 0xd0}},
+    .h_spawn = 0x0063504d, .f_spawn = 0x0062cb40, .h_af_tick = 0x0062ba03, .f_af_tick = 0x00628710,
+    LAYOUT_1_5_18
 }};
 static const Layout *W;
 

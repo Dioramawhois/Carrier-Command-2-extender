@@ -52,7 +52,8 @@ by itself at start. From then on:
   Your mod contains no game addresses, so it keeps working when CC2X is updated for a new game
   version.
 
-Supported: Carrier Command 2 **1.5.18, Windows**. On an unknown game version CC2X does nothing and
+Supported: Carrier Command 2 **1.5.18, Windows** (the original exe and the Steam rebuild of 2026-10-28;
+CC2X 0.5.1 or newer for the rebuild). On an unknown game version CC2X does nothing and
 says so in `cc2x.log`; the game runs normally. Multiplayer: the world data and commands exist on the
 machine that runs the game server (single player or the host).
 

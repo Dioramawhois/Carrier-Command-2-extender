@@ -12,7 +12,7 @@
 #include <wchar.h>
 #include "internal.h"
 
-#define CC2X_VERSION "0.5.0"
+#define CC2X_VERSION "0.5.1"
 
 /* ============================================================================ game profile */
 
@@ -30,6 +30,11 @@ static const Profile PROFILES[] = {{
     0x00d34bc4, 0x00772fd0, 0x0077ee10, 0x0077eea0,
     0x004465ec, {0x6a, 0x20, 0x89, 0x85, 0x64, 0xff, 0xff, 0xff},
     0x008cda70, 0x008ce200, 0x008ff6b0, 0x00908220, 0x00904a50, 0x00904050, 0x00d03518,
+}, {   /* Steam update of 2026-10-28: still called 1.5.18, rebuilt (code moved by 0x110..0x180) */
+    "1.5.18-win32-r2", 0x6ae228f3, 0x00af7000,
+    0x00d34bfc, 0x007730c0, 0x0077ef00, 0x0077ef90,
+    0x004465ec, {0x6a, 0x20, 0x89, 0x85, 0x64, 0xff, 0xff, 0xff},
+    0x008cdbc0, 0x008ce350, 0x008ff820, 0x009083a0, 0x00904bc0, 0x009041c0, 0x00d03530,
 }};
 
 static const struct { int field; uint8_t bytes[8]; } LUA_SIGS[] = {

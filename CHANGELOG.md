@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.1 (2026-10-29)
+
+- Supports the Steam update of Carrier Command 2 from 2026-10-28. The game still says 1.5.18, but
+  the exe was rebuilt and the game's code moved; CC2X 0.5.0 stayed inactive on it ("unsupported
+  game build"). New build id `1.5.18-win32-r2`; the previous 1.5.18 exe keeps working too.
+  Mods need no update.
+
 ## 0.5.0 (2026-10-25)
 
 - Lua mods get the whole world API (`docs/LUA_API.md`, `cc2x.api` 4): vehicles (type, position,
