@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:cc2x:module-bundle:1",
+  "title": "CC2X ordered independent module containers",
+  "type": "object",
+  "required": ["schema", "packages"],
+  "additionalProperties": false,
+  "properties": {
+    "schema": {"const": 1},
+    "packages": {
+      "type": "array",
+      "maxItems": 256,
+      "uniqueItems": true,
+      "description": "Ordered child container keys. Runtime also rejects case-insensitive duplicates, unsafe filesystem paths, nested indexes and missing/invalid manifests atomically. Entire index is limited to 64 KiB UTF-8.",
+      "items": {
+        "type": "string",
+        "maxLength": 64,
+        "pattern": "^[A-Za-z0-9_-]+(?:\\.[A-Za-z0-9_-]+)*$"
+      }
+    }
+  }
+}

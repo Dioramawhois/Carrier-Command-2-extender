@@ -7,9 +7,9 @@
 
 /* The stable API 4 ends here. Fork-specific tail slots must never be treated
  * as session function pointers just because their numeric version is >= 5. */
-_Static_assert(CC2X_API_VERSION == 4, "Preserve the common API 4 prefix");
-_Static_assert(sizeof(cc2x_api) == offsetof(cc2x_api, on_island_spawn)
-               + sizeof(((cc2x_api *)0)->on_island_spawn), "No ambiguous API tail");
+_Static_assert(CC2X_API_VERSION == 8, "Canonical integrated team API");
+_Static_assert(offsetof(cc2x_api, active_mod_count) == CC2X_API_V4_SIZE,
+               "Preserve the common API 4 prefix; session extension uses no tail slot");
 
 static uint64_t generation(void) { return 42; }
 static int post(uint64_t epoch, void (*fn)(void *, void *), void *user) {

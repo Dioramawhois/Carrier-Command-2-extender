@@ -5,13 +5,14 @@ parallel dinput8 provider. Keep runtime identity cc2x.runtime and gameplay out
 of the core. The full Russian integration map is in CC2 ModLoader
 docs/22-UNIFIED-SDK-AND-MOD-SPLIT.md (companion MR).
 
-Native Bridge's per-mod Lua host, generic vehicle registry and UI/resource
-capabilities are candidates for this SDK after exact license terms are recorded.
-The owner reports permission and will clarify terms. No proprietary/unspecified
-Bridge code or aircraft assets are copied here. Do not vendor a second CC2X core.
-Preserve the API 4 prefix and use checked named capabilities; do not reinterpret
-the incompatible API 5-8 tails. Source adapters will be needed, not an untested
-binary compatibility promise.
+The owner confirmed all team permissions for integration and publication under
+the project's GPL-3.0-or-later license. See NOTICE.md and the archived snapshot
+notice. The per-mod Lua host, generic registries and UI/resource operations are
+now integrated into one runtime, built by the ordinary build.py entry point.
+There is one C core, not a vendored second CC2X. Canonical cc2x_api is team API 8
+with the original API 4 prefix retained (CC2X_API_V4_SIZE). The independently named
+session extension remains separate. Old draft API 5 session-tail binaries must
+be rebuilt; numeric version alone never proves fork-layout compatibility.
 
 Aircraft, Hold copies, ECO/FLANK, manual braking and Island Airfields are separate
 consumers. Generic engine operations belong here; hotkeys, tuning and policy do
@@ -44,3 +45,26 @@ write, unsafe paths, preservation of existing outputs and exact valid copying.
   delivery alone does not install their DLL or certify multiplayer.
 - Supported game profiles, common build toolchain, notices and fresh native tests
   before any public combined runtime or trust-profile update.
+
+## Current evidence and remaining gates
+
+`python build.py --zig PATH --test` builds the unified x86 DLL using only pinned
+Zig 0.15.2 and runs 18 native/SDK checks. They exercise actual SDK code with fake
+game APIs and synthetic modules, trusted SDK Lua wrappers, session isolation and
+native SEH fault recovery. They do not execute actual author mods or load the DLL
+into a game. The production-artifact test rejects embedded aircraft scenario
+names, research activation and the incompatibility auto-disable bypass marker.
+
+The runtime now reads bounded ordered module bundles; see MODULE_BUNDLES.md.
+Two modules with the same entry filename retain independent roots/owner IDs;
+reorder, duplicate IDs, unsafe/missing/nested/oversize metadata are covered.
+ModLoader's released beta still needs container publishing and an exact reviewed
+runtime capability profile before its single generated folder can use this.
+This gap is not hidden by merging the module manifests as ordinary JSON.
+
+A read-only profile check passed against the locally installed Steam 1.5.18-r2
+EXE: SHA/PE identity, lifecycle/throttle, Lua ABI, World API, all 26 animation
+sites, hangar native entries and UI injection helpers. This is static evidence.
+The new DLL has not replaced the installed runtime. Fresh in-game acceptance,
+host/client replication, save/catalog migration and dedicated support remain
+unverified. No new public binary release or native trust hash is implied.

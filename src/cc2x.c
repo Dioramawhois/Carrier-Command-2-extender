@@ -9,18 +9,38 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
+#include <math.h>
 #include <wchar.h>
+#include <bcrypt.h>
 #include "internal.h"
 #include "cc2x_post_queue.h"
 #include "cc2x_session.h"
 
 #define CC2X_VERSION "0.6.0-dev"
 
+#if defined(_MSC_VER) && !defined(CC2X_USE_GNU_ASM_ABI)
+#define CC2X_THISCALL __thiscall
+#define CC2X_HOOKCALL __fastcall
+#else
+#define CC2X_THISCALL __attribute__((thiscall))
+#define CC2X_HOOKCALL __attribute__((thiscall))
+#endif
+
+/* The Native Bridge is linked into dinput8.dll for the integrated build. */
+#if defined(CC2X_NATIVE_BRIDGE_BUILTIN)
+extern int __cdecl cc2x_native_bridge_builtin_load(const cc2x_api *api);
+extern int __cdecl cc2x_native_bridge_carrier_throttle(int step);
+extern int __cdecl cc2x_native_bridge_animation_speed(uint32_t group, uint32_t multiplier);
+extern int __cdecl cc2x_native_bridge_carrier_hangar_spawn(uint32_t carrier_id, uint32_t slot, uint32_t chassis_type);
+#endif
+
 /* ============================================================================ game profile */
 
 typedef struct {
     const char *build;
     uint32_t timestamp, image_size;
+    const char *sha256;
+    int lua_abi_verified;
     uint32_t server_vtable;                      /* init, tick, end */
     uint32_t server_init, server_tick, server_end;
     uint32_t lua_site; uint8_t lua_site_bytes[8];
@@ -29,11 +49,15 @@ typedef struct {
 
 static const Profile PROFILES[] = {{
     "1.5.18-win32", 0x6a36c177, 0x00af7000,
+    "1c9a01c3007cb2bec2a04d716812cf9f24c87efa11056395c89ddd7d2c341026", 1,
     0x00d34bc4, 0x00772fd0, 0x0077ee10, 0x0077eea0,
     0x004465ec, {0x6a, 0x20, 0x89, 0x85, 0x64, 0xff, 0xff, 0xff},
     0x008cda70, 0x008ce200, 0x008ff6b0, 0x00908220, 0x00904a50, 0x00904050, 0x00d03518,
-}, {   /* Steam update of 2026-10-28: still called 1.5.18, rebuilt (code moved by 0x110..0x180) */
+}, {
+    /* Steam rebuild 26277078 (2026-10-28). Exact executable identity and
+       all Lua helper entry signatures were checked against this PE. */
     "1.5.18-win32-r2", 0x6ae228f3, 0x00af7000,
+    "461e12623bacb7de29ca27b4614425c87e8df2c8327a5e958a957c850effe42a", 1,
     0x00d34bfc, 0x007730c0, 0x0077ef00, 0x0077ef90,
     0x004465ec, {0x6a, 0x20, 0x89, 0x85, 0x64, 0xff, 0xff, 0xff},
     0x008cdbc0, 0x008ce350, 0x008ff820, 0x009083a0, 0x00904bc0, 0x009041c0, 0x00d03530,
@@ -284,6 +308,14 @@ static int patch_ptr(uint32_t slot, uint32_t expected_target, void *fn, void **o
     return 1;
 }
 
+static int patch_bytes(uint32_t site, uint32_t len, const uint8_t *expected, const uint8_t *replacement) {
+    if (!expected || !replacement) { g_pending_failed = 1; return 0; }
+    PatchRec *r = pending_add(va(site), len, expected);
+    if (!r) return 0;
+    memcpy(r->repl, replacement, len);
+    return 1;
+}
+
 static int overlaps(const PatchRec *a, const PatchRec *b) {
     return a->addr < b->addr + b->len && b->addr < a->addr + a->len;
 }
@@ -300,6 +332,7 @@ static int write_bytes(uintptr_t addr, const uint8_t *bytes, uint32_t len) {
 static int patch_commit(void) {
     int ok = !g_pending_failed && g_ndone + g_npending <= MAX_PATCHES;
     for (int i = 0; ok && i < g_npending; ++i) {
+        if (memcmp((void *)g_pending[i].addr, g_pending[i].orig, g_pending[i].len)) { ok = 0; break; }
         for (int j = 0; ok && j < g_ndone; ++j)
             if (overlaps(&g_pending[i], &g_done[j])) {
                 api_log(g_owner, CC2X_LOG_ERROR, "patch at 0x%08x conflicts with %s",
@@ -398,7 +431,7 @@ static int server_post(void (*fn)(void *, void *), void *user) {
 
 /* ============================================================================ server lifecycle */
 
-typedef void (__attribute__((thiscall)) *ServerFn)(void *);
+typedef void (CC2X_THISCALL *ServerFn)(void *);
 static ServerFn o_init, o_tick, o_end;
 static uint32_t g_tickno;
 
@@ -412,7 +445,7 @@ static void session_change(void *server, int started) {
     LOG(CC2X_LOG_INFO, "session %s", started ? "started" : "ended");
 }
 
-static void __attribute__((thiscall)) h_init(void *self) {
+static void CC2X_HOOKCALL h_init(void *self) {
     o_init(self);
     if (g_server && g_server != self) session_change(g_server, 0);
     if (g_server != self) {
@@ -424,7 +457,7 @@ static void __attribute__((thiscall)) h_init(void *self) {
 static int g_time_scale = 1;   /* cc2x.ini [cc2x] time_scale: developer option, logic ticks per tick */
 
 static void tick_once(void *self);
-static void __attribute__((thiscall)) h_tick(void *self) {
+static void CC2X_HOOKCALL h_tick(void *self) {
     for (int k = 0; k < g_time_scale; ++k) tick_once(self);
 }
 
@@ -448,7 +481,7 @@ static void tick_once(void *self) {
     g_tickno++;
 }
 
-static void __attribute__((thiscall)) h_end(void *self) {
+static void CC2X_HOOKCALL h_end(void *self) {
     if (g_server == self) {
         session_change(self, 0);
     }
@@ -470,6 +503,24 @@ static int g_lua_ok;
 
 #define XMM_CLOBBERS "xmm0", "xmm1", "xmm2", "xmm3", "xmm4", "xmm5", "xmm6", "xmm7"
 
+#if defined(_MSC_VER) && !defined(CC2X_USE_GNU_ASM_ABI)
+/* Fastcall uses ECX/EDX for the same internal Lua ABI as the original GNU asm. */
+typedef TValue *(__fastcall *Index2AddrFn)(void *, int);
+typedef void (__fastcall *AuxSetStrFn)(void *, TValue *, const char *);
+typedef void (__fastcall *FinishSetFn)(void *, TValue *, TValue *, TValue *, const void *);
+typedef void *(__fastcall *LuaSNewFn)(void *, const char *);
+typedef void *(__fastcall *LuaHNewFn)(void *);
+typedef void (__fastcall *LuaCStepFn)(void *);
+
+static TValue *x_index2addr(void *L, int idx) { return ((Index2AddrFn)f_index2addr)(L, idx); }
+static void x_auxsetstr(void *L, TValue *t, const char *k) { ((AuxSetStrFn)f_auxsetstr)(L, t, k); }
+static void x_finishset(void *L, TValue *t, TValue *key, TValue *val, const void *slot) {
+    ((FinishSetFn)f_finishset)(L, t, key, val, slot);
+}
+static void *x_luaS_new(void *L, const char *s) { return ((LuaSNewFn)f_luaS_new)(L, s); }
+static void *x_luaH_new(void *L) { return ((LuaHNewFn)f_luaH_new)(L); }
+static void x_luaC_step(void *L) { ((LuaCStepFn)f_luaC_step)(L); }
+#else
 static TValue *x_index2addr(void *L, int idx) {
     TValue *r;
     __asm__ __volatile__("call *%[f]" : "=a"(r), "+c"(L), "+d"(idx) : [f] "m"(f_index2addr)
@@ -502,6 +553,7 @@ static void x_luaC_step(void *L) {
     __asm__ __volatile__("call *%[f]" : "+c"(L) : [f] "m"(f_luaC_step)
                          : "eax", "edx", "memory", "cc", XMM_CLOBBERS);
 }
+#endif
 
 static void gc_check(void *L) {
     if (*(int *)(L_G(L) + 0xc) > 0) x_luaC_step(L);
@@ -525,7 +577,13 @@ static int l_tointeger(cc2x_lua *L, int idx, int64_t *out) {
     TValue *o = arg(L, idx);
     if (!o) return 0;
     if (o->tt == 0x13) { *out = o->v.i; return 1; }
-    if (o->tt == 0x03) { *out = (int64_t)o->v.n; return 1; }
+    if (o->tt == 0x03) {
+        double v = o->v.n;
+        if (!isfinite(v) || trunc(v) != v || v < -9223372036854775808.0 ||
+            v >= 9223372036854775808.0) return 0;
+        *out = (int64_t)v;
+        return 1;
+    }
     return 0;
 }
 static int l_tonumber(cc2x_lua *L, int idx, double *out) {
@@ -597,12 +655,23 @@ static void l_appendi(cc2x_lua *L, int64_t i) {
 #define MAX_FEATURES 64
 typedef struct { char ns[32]; char name[48]; cc2x_lua_fn fn; } LuaFn;
 static LuaFn g_luafn[MAX_LUA_FN]; static int g_nluafn;
+typedef struct { char name[48]; cc2x_lua_fn fn; } GlobalLuaFn;
+static GlobalLuaFn g_global_luafn[64]; static int g_nglobal_luafn;
 static char g_features[MAX_FEATURES][48]; static int g_nfeatures;
 
 static int lua_add(const char *ns, const char *name, cc2x_lua_fn fn) {
     if (!name || !fn || g_nluafn >= MAX_LUA_FN) return 0;
     LuaFn *f = &g_luafn[g_nluafn++];
     snprintf(f->ns, sizeof(f->ns), "%s", ns ? ns : "");
+    snprintf(f->name, sizeof(f->name), "%s", name);
+    f->fn = fn;
+    return 1;
+}
+static int lua_add_global(const char *name, cc2x_lua_fn fn) {
+    if (!name || !name[0] || !fn || g_nglobal_luafn >= 64) return 0;
+    for (int i = 0; i < g_nglobal_luafn; ++i)
+        if (!strcmp(g_global_luafn[i].name, name)) return 0;
+    GlobalLuaFn *f = &g_global_luafn[g_nglobal_luafn++];
     snprintf(f->name, sizeof(f->name), "%s", name);
     f->fn = fn;
     return 1;
@@ -672,9 +741,14 @@ static void register_cc2x(cc2x_lua *L) {
     /* _G.cc2x = table: registry[LUA_RIDX_GLOBALS = 2] */
     TValue *reg = (TValue *)(L_G(L) + 0x28);
     char *regt = reg->v.p;
+    TValue *globals = NULL;
     if (reg->tt == 0x45 && *(uint32_t *)(regt + 8) >= 2) {
-        TValue *globals = *(TValue **)(regt + 0xc) + 1;
+        globals = *(TValue **)(regt + 0xc) + 1;
         x_auxsetstr(L, globals, "cc2x");
+        for (int i = 0; i < g_nglobal_luafn; ++i) {
+            l_pushcfunction(L, g_global_luafn[i].fn);
+            x_auxsetstr(L, globals, g_global_luafn[i].name);
+        }
     } else {
         L_TOP(L) = L_TOP(L) - 1;
         LOG(CC2X_LOG_ERROR, "unexpected Lua registry layout; cc2x not registered");
@@ -687,6 +761,8 @@ static void h_lua_state(cc2x_cpu *cpu, void *user) {
     if (!L) return;
     TValue *top = L_TOP(L);
     register_cc2x(L);
+    LOG(CC2X_LOG_INFO, "LUA_STATE_INTEGRATED state=%p global_overrides=%d",
+        (void *)L, g_nglobal_luafn);
     for (int i = 0; i < g_nluacb; ++i) g_lua_cb[i].fn(L, g_lua_cb[i].user);
     if (L_TOP(L) != top) {
         LOG(CC2X_LOG_WARN, "Lua stack changed by a plugin callback; restored");
@@ -713,6 +789,10 @@ static void to_ansi(const wchar_t *w, char *out, int size) {
 static void load_plugin(const wchar_t *dir, const wchar_t *file, const char *from) {
     char name[MAX_PATH];
     to_ansi(file, name, sizeof(name));
+    if (!_wcsicmp(file, L"cc2x_native_bridge.dll")) {
+        LOG(CC2X_LOG_WARN, "standalone Native Bridge plugin %s in %s ignored: integrated into dinput8.dll", name, from);
+        return;
+    }
     for (int i = 0; i < g_nloaded; ++i)
         if (!_wcsicmp(g_loaded[i], file)) {
             LOG(CC2X_LOG_WARN, "plugin %s in %s ignored: already loaded from an enabled mod (an old copy? it can be deleted)", name, from);
@@ -788,21 +868,68 @@ static int xml_attr(const char *from, const char *attr, wchar_t *out, int size, 
  * because the game's Workshop upload takes only mod.xml, thumbnail.png and content), or
  * <mod folder>\cc2x\*.dll for local development. The game keeps the enabled mods (local folders and
  * Steam Workshop items alike) in %APPDATA%\Carrier Command 2\mods.xml. */
+static wchar_t g_active_mods[256][MAX_PATH * 2];
+static int g_active_count = -1;
+static int active_mod_count(void) { return g_active_count; }
+static int active_mod_path(int index, wchar_t *out, uint32_t capacity) {
+    if (!out || index < 0 || index >= g_active_count || capacity <= wcslen(g_active_mods[index])) return 0;
+    wcscpy(out, g_active_mods[index]);
+    return 1;
+}
+
 static void load_mod_plugins(void) {
+    g_active_count = -1;
     wchar_t appdata[MAX_PATH], list[MAX_PATH * 2];
     if (!GetEnvironmentVariableW(L"APPDATA", appdata, MAX_PATH)) return;
     _snwprintf(list, MAX_PATH * 2, L"%ls\\Carrier Command 2\\mods.xml", appdata);
     list[MAX_PATH * 2 - 1] = 0;
     char *xml = read_file(list);
     if (!xml) { LOG(CC2X_LOG_INFO, "no mods.xml yet: no mods enabled"); return; }
-    const char *p = strstr(xml, "<active_mod_folders");
+    /* Ignore comments rather than activating commented-out paths/sections. */
+    for (char *comment = strstr(xml, "<!--"); comment; comment = strstr(comment, "<!--")) {
+        char *close = strstr(comment + 4, "-->");
+        if (!close) { HeapFree(GetProcessHeap(),0,xml);return; }
+        memset(comment, ' ', (size_t)(close + 3 - comment));
+    }
+    const char *p = strstr(xml, "<active_mod_folders>");
+    const char *end = p ? strstr(p, "</active_mod_folders>") : NULL;
+    if (p && end && strstr(p+1,"<active_mod_folders")) { HeapFree(GetProcessHeap(),0,xml);return; }
+    if (!p || !end) {
+        if (strstr(xml, "<active_mod_folders/>") || strstr(xml, "<active_mod_folders />")) g_active_count = 0;
+        else LOG(CC2X_LOG_ERROR, "invalid active_mod_folders: activation unavailable");
+        HeapFree(GetProcessHeap(), 0, xml);
+        return;
+    }
+    g_active_count = 0;
     int mods = 0;
     wchar_t dir[MAX_PATH * 2], plugins[MAX_PATH * 2], modxml[MAX_PATH * 2], title[128];
-    while (p && (p = strstr(p, "<path ")) != NULL) {
-        if (!xml_attr(p, "value", dir, MAX_PATH * 2, &p)) break;
+    while ((p = strstr(p, "<path ")) != NULL && p < end) {
+        const char *tag_end = strchr(p, '>');
+        const char *value = strstr(p, "value=\"");
+        if (!tag_end || tag_end > end || !value || value > tag_end) { g_active_count = -1; break; }
+        if (!xml_attr(p, "value", dir, MAX_PATH * 2, &p)) { g_active_count = -1; break; }
+        if (p > tag_end) { g_active_count = -1; break; }
+        wchar_t absolute[MAX_PATH * 2];
+        DWORD resolved = GetFullPathNameW(dir, MAX_PATH * 2, absolute, NULL);
+        if (!resolved || resolved >= MAX_PATH * 2) continue;
+        wcscpy(dir, absolute);
         size_t len = wcslen(dir);
         while (len && dir[len - 1] == L'\\') dir[--len] = 0;
-        if (GetFileAttributesW(dir) == INVALID_FILE_ATTRIBUTES) continue;   /* stale entry */
+        DWORD attrs=GetFileAttributesW(dir);
+        if (attrs == INVALID_FILE_ATTRIBUTES || !(attrs & FILE_ATTRIBUTE_DIRECTORY)) continue;
+        _snwprintf(modxml, MAX_PATH * 2, L"%ls\\mod.xml", dir);
+        modxml[MAX_PATH * 2 - 1] = 0;
+        attrs=GetFileAttributesW(modxml);
+        if (attrs == INVALID_FILE_ATTRIBUTES || (attrs & FILE_ATTRIBUTE_DIRECTORY)) continue;
+        int duplicate = 0;
+        for (int j = 0; j < g_active_count; ++j) if (!_wcsicmp(g_active_mods[j], dir)) duplicate = 1;
+        if (duplicate) continue;
+        if (g_active_count == 256) { g_active_count = -1; break; }
+        wcscpy(g_active_mods[g_active_count++], dir);
+    }
+    /* Populate the complete activation snapshot before loading the first plugin. */
+    for (int i = 0; i < g_active_count; ++i) {
+        wcscpy(dir, g_active_mods[i]);
         ++mods;
         _snwprintf(plugins, MAX_PATH * 2, L"%ls\\content\\cc2x", dir);
         plugins[MAX_PATH * 2 - 1] = 0;
@@ -850,18 +977,54 @@ static const Profile *detect(void) {
     return NULL;
 }
 
+static int verify_executable(void) {
+    wchar_t path[32768];if(!GetModuleFileNameW(NULL,path,32768))return 0;
+    HANDLE file=CreateFileW(path,GENERIC_READ,FILE_SHARE_READ,NULL,OPEN_EXISTING,0,NULL);
+    if(file==INVALID_HANDLE_VALUE)return 0;
+    BCRYPT_ALG_HANDLE alg=NULL;BCRYPT_HASH_HANDLE hash=NULL;uint8_t digest[32],buffer[65536];DWORD n=0;
+    int ok=BCryptOpenAlgorithmProvider(&alg,BCRYPT_SHA256_ALGORITHM,NULL,0)>=0;
+    if(ok)ok=BCryptCreateHash(alg,&hash,NULL,0,NULL,0,0)>=0;
+    while(ok){if(!ReadFile(file,buffer,sizeof(buffer),&n,NULL)){ok=0;break;}if(!n)break;ok=BCryptHashData(hash,buffer,n,0)>=0;}
+    if(ok)ok=BCryptFinishHash(hash,digest,32,0)>=0;
+    if (ok) {
+        static const char hex[] = "0123456789abcdef";
+        char actual[65];
+        for (size_t i = 0; i < sizeof(digest); ++i) {
+            actual[i * 2] = hex[digest[i] >> 4];
+            actual[i * 2 + 1] = hex[digest[i] & 15];
+        }
+        actual[64] = 0;
+        ok = P && P->sha256 && strcmp(actual, P->sha256) == 0;
+    }
+    if(hash)BCryptDestroyHash(hash);if(alg)BCryptCloseAlgorithmProvider(alg,0);CloseHandle(file);return ok;
+}
 static void startup(void) {
     P = detect();
     if (!P) return;
+    if (!verify_executable()) { LOG(CC2X_LOG_ERROR,"EXE_SHA256_MISMATCH: Native Bridge profile inactive");P=NULL;return; }
     g_base = (uintptr_t)GetModuleHandleW(NULL);
+    LOG(CC2X_LOG_INFO, "PROFILE_SELECTED build=%s timestamp=0x%08lx image_size=0x%08lx lua_abi=%s",
+        P->build, (unsigned long)P->timestamp, (unsigned long)P->image_size,
+        P->lua_abi_verified ? "profile-enabled" : "quarantined");
 
     uint32_t fns[6] = {P->f_index2addr, P->f_auxsetstr, P->f_finishset, P->f_luaS_new, P->f_luaH_new, P->f_luaC_step};
-    g_lua_ok = 1;
-    for (size_t i = 0; i < sizeof(LUA_SIGS) / sizeof(LUA_SIGS[0]); ++i)
-        if (memcmp((void *)va(fns[LUA_SIGS[i].field]), LUA_SIGS[i].bytes, 8)) g_lua_ok = 0;
-    f_index2addr = va(P->f_index2addr); f_auxsetstr = va(P->f_auxsetstr); f_finishset = va(P->f_finishset);
-    f_luaS_new = va(P->f_luaS_new); f_luaH_new = va(P->f_luaH_new); f_luaC_step = va(P->f_luaC_step);
-    p_nilobject = va(P->nilobject);
+    g_lua_ok = P->lua_abi_verified;
+    if (g_lua_ok) {
+        for (size_t i = 0; i < sizeof(LUA_SIGS) / sizeof(LUA_SIGS[0]); ++i)
+            if (memcmp((void *)va(fns[LUA_SIGS[i].field]), LUA_SIGS[i].bytes, 8)) g_lua_ok = 0;
+    }
+    LOG(g_lua_ok ? CC2X_LOG_INFO : CC2X_LOG_WARN,
+        "GAME_LUA_ABI_SIGNATURES %s build=%s", g_lua_ok ? "PASS" : "FAIL_OR_QUARANTINED", P->build);
+    /* A zero-filled profile is an explicit ABI quarantine, not VA 0x400000.
+       Do not leave callable-looking pointers behind when game-Lua was not
+       verified for this executable. */
+    f_index2addr = g_lua_ok ? va(P->f_index2addr) : 0;
+    f_auxsetstr = g_lua_ok ? va(P->f_auxsetstr) : 0;
+    f_finishset = g_lua_ok ? va(P->f_finishset) : 0;
+    f_luaS_new = g_lua_ok ? va(P->f_luaS_new) : 0;
+    f_luaH_new = g_lua_ok ? va(P->f_luaH_new) : 0;
+    f_luaC_step = g_lua_ok ? va(P->f_luaC_step) : 0;
+    p_nilobject = g_lua_ok ? va(P->nilobject) : 0;
 
     patch_begin("cc2x");
     void *oi, *ot, *oe;
@@ -882,11 +1045,25 @@ static void startup(void) {
         va, api_log,
         patch_begin, patch_call, patch_mid, patch_ptr, patch_commit, patch_abort,
         on_server_tick, on_session, on_lua_state, api_server, server_post,
-        lua_add, lua_feature,
-        l_gettop, l_type, l_tointeger, l_tonumber, l_toboolean, l_tostring,
-        l_pushnil, l_pushboolean, l_pushinteger, l_pushnumber, l_pushstring, l_newtable, l_setfield, l_appendi,
+        g_lua_ok ? lua_add : NULL, lua_feature,
+        g_lua_ok ? l_gettop : NULL, g_lua_ok ? l_type : NULL,
+        g_lua_ok ? l_tointeger : NULL, g_lua_ok ? l_tonumber : NULL,
+        g_lua_ok ? l_toboolean : NULL, g_lua_ok ? l_tostring : NULL,
+        g_lua_ok ? l_pushnil : NULL, g_lua_ok ? l_pushboolean : NULL,
+        g_lua_ok ? l_pushinteger : NULL, g_lua_ok ? l_pushnumber : NULL,
+        g_lua_ok ? l_pushstring : NULL, g_lua_ok ? l_newtable : NULL,
+        g_lua_ok ? l_setfield : NULL, g_lua_ok ? l_appendi : NULL,
         snap_vehicles, snap_vehicle, snap_tiles, snap_tile,
         api_plugin_dir, .config_dir = g_config_dir,
+        .active_mod_count = active_mod_count, .active_mod_path = active_mod_path,
+        .patch_bytes = patch_bytes,
+        .lua_add_global = g_lua_ok ? lua_add_global : NULL,
+#if defined(CC2X_NATIVE_BRIDGE_BUILTIN)
+        .carrier_throttle = cc2x_native_bridge_carrier_throttle,
+        .animation_speed = cc2x_native_bridge_animation_speed,
+        .carrier_hangar_spawn = cc2x_native_bridge_carrier_hangar_spawn,
+        .on_hangar_spawn_result = cc2x_on_hangar_spawn_result,
+#endif
     };
     if (!world_init(P->build)) LOG(CC2X_LOG_WARN, "no world layout for this build: API 3 functions do nothing");
     world_fill(&g_api);
@@ -906,6 +1083,19 @@ static void startup(void) {
     if (g_time_scale > 1) LOG(CC2X_LOG_WARN, "developer option time_scale=%d (logic runs %dx faster)", g_time_scale, g_time_scale);
     LOG(CC2X_LOG_INFO, "CC2X %s ready for Carrier Command 2 %s%s", CC2X_VERSION, P->build,
         g_lua_ok ? "" : " (no Lua bridge)");
+#if defined(CC2X_NATIVE_BRIDGE_BUILTIN)
+    int bridge_ok = cc2x_native_bridge_builtin_load(&g_api);
+    LOG(bridge_ok ? CC2X_LOG_INFO : CC2X_LOG_ERROR,
+        "integrated Native Bridge %s in dinput8.dll", bridge_ok ? "attached" : "failed to attach");
+    /* Do not advertise optional local API 6 operations to external plugins if the
+     * integrated adapter failed to attach. Lua registrations made by a partial
+     * attach still fail closed through the adapter's own readiness checks. */
+    if (!bridge_ok) {
+        g_api.carrier_throttle = NULL;
+        g_api.animation_speed = NULL;
+        g_api.carrier_hangar_spawn = NULL;
+    }
+#endif
     load_plugins();
 }
 

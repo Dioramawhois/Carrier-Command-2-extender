@@ -1,0 +1,7 @@
+#pragma once
+
+namespace cc2::api::vehicle {
+inline constexpr char kUiLibraryShimSource[] = R"CC2X_UI_SHIM(
+@CC2X_UI_SHIM_SOURCE@
+)CC2X_UI_SHIM";
+}  // namespace cc2::api::vehicle

@@ -4,6 +4,11 @@
 #define CC2X_INTERNAL_H
 
 #include "cc2x.h"
+#include "entity_registry.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* cc2x.c */
 uintptr_t va(uint32_t image_va);
@@ -29,5 +34,12 @@ int snap_vehicles(cc2x_vehicle_info *out, int max);
 int snap_vehicle(uint32_t id, cc2x_vehicle_info *out);
 int snap_tiles(cc2x_tile_info *out, int max);
 int snap_tile(uint32_t id, cc2x_tile_info *out);
+/* Internal producer for the existing stock-Lua cc2x.events() ring. */
+void cc2x_native_hangar_spawn_result(uint32_t request_id, int success,
+                                     uint32_t vehicle_id, uint32_t error_code);
+int cc2x_on_hangar_spawn_result(void (*fn)(uint32_t, int, uint32_t, uint32_t, void *), void *user);
 
+#ifdef __cplusplus
+}
+#endif
 #endif

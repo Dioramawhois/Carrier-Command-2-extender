@@ -1,7 +1,9 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-"""Build CC2X (dinput8.dll) and the example plugin with the bundled Zig toolchain.
+"""Build the integrated CC2X runtime and optional example plugins with Zig 0.15.2.
 
-    python build.py            -> dist/dinput8.dll, dist/cc2x_hello.dll, dist/cc2x_selftest.dll
+    python build.py            -> dist/dinput8.dll (C core + Lua host + generic registries)
+    python build.py --test     -> unified runtime and SDK regression executables
+    python build.py --examples -> also cc2x_hello.dll and cc2x_selftest.dll
     python build.py --release  -> also release/<version>/: dinput8.dll, CC2X-README.txt, SHA256SUMS.txt
 
 The toolchain (Zig 0.15.2, used as a C compiler for 32-bit Windows) lives in .deps.
@@ -52,15 +54,19 @@ def version():
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--release', action='store_true')
+    ap.add_argument('--test', action='store_true', help='Run native SDK regressions, never the game')
+    ap.add_argument('--examples', action='store_true')
     ap.add_argument('--zig', type=Path, help='Zig 0.15.2 executable (or set CC2X_ZIG)')
     args = ap.parse_args()
     global ZIG
     if args.zig:
         ZIG = args.zig.resolve()
     DIST.mkdir(exist_ok=True)
-    zig('-shared', '-I', ROOT / 'include', ROOT / 'src/cc2x.c', ROOT / 'src/world.c', ROOT / 'src/lua_world.c', ROOT / 'src/dinput8.def', '-o', DIST / 'dinput8.dll')
-    plugin(ROOT / 'examples/hello_plugin/hello.c', DIST / 'cc2x_hello.dll')
-    plugin(ROOT / 'tests/selftest/selftest.c', DIST / 'cc2x_selftest.dll')
+    subprocess.run([sys.executable, str(ROOT / 'tools/build_unified.py'), '--zig', str(ZIG),
+                    *(['--test'] if args.test else [])], check=True)
+    if args.examples:
+        plugin(ROOT / 'examples/hello_plugin/hello.c', DIST / 'cc2x_hello.dll')
+        plugin(ROOT / 'tests/selftest/selftest.c', DIST / 'cc2x_selftest.dll')
     for junk in list(DIST.glob('*.lib')) + list(DIST.glob('*.pdb')):
         junk.unlink()
     if args.release:
@@ -69,6 +75,10 @@ def main():
         rel.mkdir(parents=True, exist_ok=True)
         shutil.copy2(DIST / 'dinput8.dll', rel / 'dinput8.dll')
         shutil.copy2(ROOT / 'docs/README_PLAYERS.txt', rel / 'CC2X-README.txt')
+        shutil.copy2(ROOT / 'LICENSE', rel / 'LICENSE')
+        shutil.copy2(ROOT / 'NOTICE.md', rel / 'NOTICE.md')
+        shutil.copy2(ROOT / 'third_party/Lua-LICENSE.txt', rel / 'Lua-LICENSE.txt')
+        shutil.copy2(DIST / 'dinput8.build.json', rel / 'dinput8.build.json')
         sha = hashlib.sha256((rel / 'dinput8.dll').read_bytes()).hexdigest()
         (rel / 'SHA256SUMS.txt').write_text('%s  dinput8.dll\n' % sha, encoding='ascii')
         print('release files in', rel)

@@ -1,0 +1,32 @@
+name: Unified SDK offline checks
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  windows-x86:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Fetch pinned compiler
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path .deps -Force | Out-Null
+          Invoke-WebRequest -Uri https://ziglang.org/download/0.15.2/zig-x86_64-windows-0.15.2.zip -OutFile .deps/zig.zip
+          $compilerDigest = (Get-FileHash .deps/zig.zip -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($compilerDigest -ne '3a0ed1e8799a2f8ce2a6e6290a9ff22e6906f8227865911fb7ddedc3cc14cb0c') { throw 'Compiler hash mismatch' }
+          Expand-Archive .deps/zig.zip -DestinationPath .deps
+      - name: Build one runtime and run native fixtures
+        run: python build.py --zig .deps/zig-x86_64-windows-0.15.2/zig.exe --test
+      - name: Distribution and separation regressions
+        run: python -m unittest discover -s tests -p 'test_*.py'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: unified-sdk-offline-evidence
+          path: |
+            dist/dinput8.build.json
+            build/unified/test-results.json
+            build/unified/tests/*.log

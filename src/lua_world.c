@@ -225,9 +225,22 @@ int snap_tile(uint32_t id, cc2x_tile_info *out) {
 
 /* ============================================================================ events */
 
-enum { EV_SESSION = 1, EV_VEHICLE_ADDED, EV_VEHICLE_REMOVED, EV_WAYPOINTS, EV_ISLAND_SPAWN, EV_RAYCAST, EV_LANDING };
+enum { EV_SESSION = 1, EV_VEHICLE_ADDED, EV_VEHICLE_REMOVED, EV_WAYPOINTS, EV_ISLAND_SPAWN, EV_RAYCAST, EV_LANDING, EV_HANGAR_SPAWN };
 static const char *const EV_NAMES[] = {"", "session", "vehicle_added", "vehicle_removed", "waypoints", "island_spawn",
-                                       "raycast", "landing"};
+                                       "raycast", "landing", "hangar_spawn"};
+static const char *hangar_error_name(uint32_t code) {
+    switch (code) {
+    case CC2X_HANGAR_SPAWN_INVALID_CARRIER: return "invalid_carrier";
+    case CC2X_HANGAR_SPAWN_INVALID_SLOT: return "invalid_slot";
+    case CC2X_HANGAR_SPAWN_SLOT_OCCUPIED: return "slot_occupied";
+    case CC2X_HANGAR_SPAWN_UNSUPPORTED_VEHICLE_TYPE: return "unsupported_vehicle_type";
+    case CC2X_HANGAR_SPAWN_UNSUPPORTED_GAME_BUILD: return "unsupported_game_build";
+    case CC2X_HANGAR_SPAWN_WORLD_NOT_READY: return "world_not_ready";
+    case CC2X_HANGAR_SPAWN_SESSION_CHANGED: return "session_changed";
+    case CC2X_HANGAR_SPAWN_NATIVE_OPERATION_FAILED: return "native_operation_failed";
+    default: return "unknown_error";
+    }
+}
 
 typedef struct {
     uint32_t seq;
@@ -242,9 +255,12 @@ typedef struct {
 static Ev g_ev[EV_MAX];
 static uint32_t g_ev_next = 1;      /* sequence number of the next event */
 static CRITICAL_SECTION g_ev_cs;
-typedef struct { uintptr_t key; uint32_t next; } Reader;
+typedef struct { uintptr_t key; char consumer[64]; uint32_t next; } Reader;
 static Reader g_readers[MAX_READERS];
 static int g_nreaders;
+typedef struct { void (*fn)(uint32_t, int, uint32_t, uint32_t, void *); void *user; } HangarResultSubscriber;
+static HangarResultSubscriber g_hangar_result_subscribers[32];
+static int g_hangar_result_subscriber_count;
 
 static void emit(int type, uint32_t a, uint32_t b, uint32_t c, int64_t tag, const double *v, int nv) {
     EnterCriticalSection(&g_ev_cs);
@@ -256,6 +272,36 @@ static void emit(int type, uint32_t a, uint32_t b, uint32_t c, int64_t tag, cons
     e->tag = tag;
     for (int k = 0; k < nv && k < 7; ++k) e->v[k] = v[k];
     LeaveCriticalSection(&g_ev_cs);
+}
+
+void cc2x_native_hangar_spawn_result(uint32_t request_id, int success,
+                                     uint32_t vehicle_id, uint32_t error_code) {
+    emit(EV_HANGAR_SPAWN, (uint32_t)(success != 0), vehicle_id, error_code,
+         (int64_t)request_id, NULL, 0);
+    HangarResultSubscriber subscribers[32];
+    int count;
+    EnterCriticalSection(&g_ev_cs);
+    count = g_hangar_result_subscriber_count;
+    memcpy(subscribers, g_hangar_result_subscribers, (size_t)count * sizeof(subscribers[0]));
+    LeaveCriticalSection(&g_ev_cs);
+    for (int i = 0; i < count; ++i)
+        subscribers[i].fn(request_id, success != 0, vehicle_id, error_code, subscribers[i].user);
+}
+
+int cc2x_on_hangar_spawn_result(void (*fn)(uint32_t, int, uint32_t, uint32_t, void *), void *user) {
+    if (!fn) return 0;
+    EnterCriticalSection(&g_ev_cs);
+    for (int i = 0; i < g_hangar_result_subscriber_count; ++i) {
+        if (g_hangar_result_subscribers[i].fn == fn && g_hangar_result_subscribers[i].user == user) {
+            LeaveCriticalSection(&g_ev_cs); return 1;
+        }
+    }
+    if (g_hangar_result_subscriber_count >= (int)(sizeof(g_hangar_result_subscribers) / sizeof(g_hangar_result_subscribers[0]))) {
+        LeaveCriticalSection(&g_ev_cs); return 0;
+    }
+    g_hangar_result_subscribers[g_hangar_result_subscriber_count++] = (HangarResultSubscriber){fn, user};
+    LeaveCriticalSection(&g_ev_cs);
+    return 1;
 }
 
 /* vehicles that appeared / disappeared since the last tick (ids sorted, merged) */
@@ -460,6 +506,9 @@ static void on_session(void *server, int started, void *user) {
     g_cmd_count = 0;
     LeaveCriticalSection(&g_cmd_cs);
     if (!started) clear_snapshot();
+    EnterCriticalSection(&g_ev_cs);
+    for (int i = 0; i < g_nreaders; ++i) g_readers[i].next = g_ev_next;
+    LeaveCriticalSection(&g_ev_cs);
     emit(EV_SESSION, (uint32_t)started, 0, 0, 0, NULL, 0);
 }
 
@@ -621,20 +670,30 @@ static int lf_tick(cc2x_lua *L) {
     return 1;
 }
 
-/* cc2x.events(): what happened since this Lua state's last call */
-static int lf_events(cc2x_lua *L) {
+/* The legacy empty consumer keeps events() semantics. Named consumers have
+ * independent cursors even when several mods share one stock Lua state. */
+static int events_for_consumer(cc2x_lua *L, const char *consumer) {
     uintptr_t key = lua_state_key(L);
-    static Ev buf[EV_MAX];
+    Ev buf[EV_MAX];
     int n = 0;
     uint32_t lost = 0;
     EnterCriticalSection(&g_ev_cs);
     Reader *r = NULL;
     for (int i = 0; i < g_nreaders; ++i)
-        if (g_readers[i].key == key) r = &g_readers[i];
+        if (g_readers[i].key == key && !strcmp(g_readers[i].consumer, consumer)) r = &g_readers[i];
     if (!r) {
-        if (g_nreaders == MAX_READERS) g_nreaders = 0;   /* states come and go: recycle */
-        r = &g_readers[g_nreaders++];
+        if (g_nreaders == MAX_READERS) {
+            for (int i = 0; i < g_nreaders; ++i)
+                if (g_ev_next - g_readers[i].next > EV_MAX) { r = &g_readers[i]; break; }
+            if (!r) {
+                LeaveCriticalSection(&g_ev_cs);
+                return ret_nil(L, "event_reader_limit_reached");
+            }
+        } else {
+            r = &g_readers[g_nreaders++];
+        }
         r->key = key;
+        strcpy(r->consumer, consumer);
         r->next = g_ev_next;                             /* a new reader starts now */
     }
     if (g_ev_next - r->next > EV_MAX) {
@@ -664,6 +723,12 @@ static int lf_events(cc2x_lua *L) {
         case EV_WAYPOINTS: set_i(L, "vehicle", e->a); set_i(L, "count", e->b); break;
         case EV_ISLAND_SPAWN: set_i(L, "tile", e->a); set_i(L, "team", e->b); set_b(L, "ai_team", e->c); break;
         case EV_LANDING: set_i(L, "vehicle", e->a); set_i(L, "tile", e->b); set_b(L, "queued", e->c); break;
+        case EV_HANGAR_SPAWN:
+            set_i(L, "request_id", e->tag);
+            set_b(L, "success", e->a);
+            if (e->b) set_i(L, "vehicle", e->b);
+            if (e->c) { set_i(L, "error_code", e->c); set_s(L, "error", hangar_error_name(e->c)); }
+            break;
         case EV_RAYCAST:
             set_i(L, "tag", e->tag);
             set_b(L, "hit", e->a);
@@ -677,6 +742,15 @@ static int lf_events(cc2x_lua *L) {
         A->lua_appendi(L, ++k);
     }
     return 1;
+}
+
+static int lf_events(cc2x_lua *L) { return events_for_consumer(L, ""); }
+static int lf_events_for(cc2x_lua *L) {
+    size_t len = 0;
+    const char *consumer = A->lua_tostring(L, 1, &len);
+    if (!consumer || !len || len >= sizeof(g_readers[0].consumer) || memchr(consumer, 0, len))
+        return ret_nil(L, "expected_consumer_id_1_to_63_bytes");
+    return events_for_consumer(L, consumer);
 }
 
 /* cc2x.listen(name): turn on an event that needs a game hook ("waypoints", "island_spawn") */
@@ -841,6 +915,7 @@ static int lf_raycast(cc2x_lua *L) {
 
 void lua_world_init(const cc2x_api *api) {
     A = api;
+    cc2x_entity_registry_init();
     InitializeCriticalSection(&g_snap_cs);
     InitializeCriticalSection(&g_ev_cs);
     InitializeCriticalSection(&g_cmd_cs);
@@ -849,7 +924,7 @@ void lua_world_init(const cc2x_api *api) {
     A->on_session(on_session, NULL);
     static const struct { const char *name; cc2x_lua_fn fn; } FNS[] = {
         {"vehicles", lf_vehicles}, {"vehicle", lf_vehicle}, {"tiles", lf_tiles}, {"tile", lf_tile},
-        {"airfields", lf_airfields}, {"tick", lf_tick}, {"events", lf_events}, {"listen", lf_listen},
+        {"airfields", lf_airfields}, {"tick", lf_tick}, {"events", lf_events}, {"events_for", lf_events_for}, {"listen", lf_listen},
         {"island_controller", lf_island_controller}, {"island_spawn", lf_island_spawn}, {"hangar", lf_hangar},
         {"set_vehicle", lf_set_vehicle}, {"set_airfield", lf_set_airfield}, {"set_waypoint", lf_set_waypoint},
         {"clear_waypoints", lf_clear_waypoints}, {"set_position", lf_set_position},
@@ -857,5 +932,9 @@ void lua_world_init(const cc2x_api *api) {
         {"brakes", lf_brakes}, {"gear", lf_gear}, {"request_landing", lf_request_landing},
         {"queue_push", lf_queue_push}, {"queue_remove", lf_queue_remove}, {"raycast", lf_raycast},
     };
-    for (size_t i = 0; i < sizeof(FNS) / sizeof(FNS[0]); ++i) A->lua_add(NULL, FNS[i].name, FNS[i].fn);
+    /* World subscriptions are still useful to native plugins when the stock
+       game-Lua ABI is quarantined for a new executable. Only skip Lua exports. */
+    if (A->lua_add)
+        for (size_t i = 0; i < sizeof(FNS) / sizeof(FNS[0]); ++i)
+            A->lua_add(NULL, FNS[i].name, FNS[i].fn);
 }

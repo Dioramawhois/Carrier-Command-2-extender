@@ -6,7 +6,7 @@ API 6 adds native operations and API 8 adds lua_add_global. Our previous draft
 had placed session functions at the same API 5 offsets. Passing a min-version
 and size check cannot distinguish these layouts and may call the wrong function.
 
-The replacement preserves the original API 4 struct exactly and exposes a named
+The replacement preserves the original API 4 prefix exactly and exposes a named
 optional C extension from the existing runtime, not a second loader or mod.
 Export: cc2x_query_session_v1(uint32_t version, uint32_t caller_size).
 For version 1 and the exact v1 struct size it returns a process-lifetime immutable
@@ -16,8 +16,11 @@ Unknown version/size returns NULL. No allocated object is transferred.
 Consumers resolve the export from the module owning a known base-API callback,
 then validate the returned table before reading callbacks. Unknown forks without
 this extension remain inactive. A larger numeric cc2x_api version is insufficient.
-No Native Bridge implementation was copied; this does not claim compatibility
-with its extra native features or game profiles. Existing binary review gates apply.
+The unified runtime now adopts Native Bridge's canonical API 8 tail, while this
+extension remains separately named. CC2X_API_V4_SIZE is the prefix boundary, not
+sizeof the expanded header. Existing API 4 consumers can remain prefix-only;
+earlier draft binaries with session fields appended as API 5 must be rebuilt.
+Existing native hash/profile review gates still apply.
 
 Tests run before any game test: stable API prefix static assertions, absent
 query, wrong interface ID/version/size, missing callbacks, queue/session reuse,

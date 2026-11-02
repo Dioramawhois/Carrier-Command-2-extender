@@ -2,6 +2,20 @@
 
 ## 0.6.0-dev (unreleased)
 
+- Integrated the authorized team Native Bridge into this runtime: independent
+  Lua host, generic definition/UI/resource registries, cc2 facade and one C core.
+  Canonical API 8 preserves the API 4 prefix; named sessions do not occupy its tail.
+- Default build produces the whole runtime with pinned Zig 0.15.2. No VS install
+  is needed; native SEH remains in a small separately compiled C boundary.
+  Build metadata records compiler, source/generated inputs, revision and hashes.
+- Added bounded ordered module-container discovery with private roots. Invalid
+  bundles fail atomically, duplicate owner IDs reject all colliding modules.
+- Aircraft-specific branches are removed from production; research activation
+  and incompatibility-policy bypass are test references, not linked features.
+  Team authorization, source snapshot hashes, GPL and Lua MIT notices are retained.
+- 18 offline SDK tests and read-only current-game profile checks passed. These
+  are not fresh gameplay/multiplayer/dedicated acceptance or native trust approval.
+
 - Session command isolation is exposed through the separately named
   `cc2x_query_session_v1` extension, validated by interface ID, version and size.
   The stable API 4 prefix is preserved. The earlier draft's appended API 5 slots

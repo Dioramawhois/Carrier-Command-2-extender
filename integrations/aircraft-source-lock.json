@@ -1,0 +1,235 @@
+{
+  "schema_version": 1,
+  "origin": "Authorized team Native Bridge snapshot 2026-11-02; mods/aircraft_lua_migration",
+  "owner_id": "cc2x_custom_vehicle_type_prototype",
+  "files": {
+    "content/bridge/main.lua": {
+      "source": "mods/aircraft_lua_migration/content/bridge/main.lua",
+      "sha256": "b9c4e3ae6463fcee176398ccfd9b1526bee8876b936f7abdb27c80a73b7a5a34"
+    },
+    "content/bridge.json": {
+      "source": "mods/aircraft_lua_migration/content/bridge.json",
+      "sha256": "a64ce7daf36088f6e2b94166d3fcb555ac079afe72cf5dd55de841380253a64e"
+    },
+    "content/game_objects/cc2x_f15.xml": {
+      "source": "mods/aircraft_lua_migration/content/game_objects/cc2x_f15.xml",
+      "sha256": "ecca0007c63bbc3c44fa62362458d133d6f1a9819d2643de9648ef7b668c9016"
+    },
+    "content/game_objects/cc2x_f16.xml": {
+      "source": "mods/aircraft_lua_migration/content/game_objects/cc2x_f16.xml",
+      "sha256": "aec4564f380769a66792f7aad34c691146f30f12434f450c1c4bad5b415874f3"
+    },
+    "content/icons/f15_large.png": {
+      "source": "mods/aircraft_lua_migration/content/icons/f15_large.png",
+      "sha256": "c233bba0c776106c81d962680544f520ba90a7a3fe076a9ddb8eceb59e8fe5ee"
+    },
+    "content/icons/f15_loadout.png": {
+      "source": "mods/aircraft_lua_migration/content/icons/f15_loadout.png",
+      "sha256": "c233bba0c776106c81d962680544f520ba90a7a3fe076a9ddb8eceb59e8fe5ee"
+    },
+    "content/icons/f15_small.png": {
+      "source": "mods/aircraft_lua_migration/content/icons/f15_small.png",
+      "sha256": "da6cf711b11a4bf27fed300ff1fc414af2c869ebfc1e73774bf0c4d832debfb6"
+    },
+    "content/icons/f16_large.png": {
+      "source": "mods/aircraft_lua_migration/content/icons/f16_large.png",
+      "sha256": "ff6009d668c200d92e9fd4b3e01ed7df44bcce198684435e63d583f5c77f75fe"
+    },
+    "content/icons/f16_loadout.png": {
+      "source": "mods/aircraft_lua_migration/content/icons/f16_loadout.png",
+      "sha256": "ff6009d668c200d92e9fd4b3e01ed7df44bcce198684435e63d583f5c77f75fe"
+    },
+    "content/icons/f16_small.png": {
+      "source": "mods/aircraft_lua_migration/content/icons/f16_small.png",
+      "sha256": "9d69a7191baec6e7654323d95ba395447016e973ee811186b412fef2368d4cc2"
+    },
+    "content/meshes/vehicles/cc2x_f15/manta_plane_backdoor_left_l.mesh": {
+      "source": "mods/aircraft_lua_migration/content/meshes/vehicles/cc2x_f15/manta_plane_backdoor_left_l.mesh",
+      "sha256": "aa0cca003a82c6932af2df2593e16342d9edc448a37b49248cf3e8cc445ccd09"
+    },
+    "content/meshes/vehicles/cc2x_f15/manta_plane_backdoor_left_r.mesh": {
+      "source": "mods/aircraft_lua_migration/content/meshes/vehicles/cc2x_f15/manta_plane_backdoor_left_r.mesh",
+      "sha256": "aa0cca003a82c6932af2df2593e16342d9edc448a37b49248cf3e8cc445ccd09"
+    },
+    "content/meshes/vehicles/cc2x_f15/manta_plane_backdoor_right_l.mesh": {
+      "source": "mods/aircraft_lua_migration/content/meshes/vehicles/cc2x_f15/manta_plane_backdoor_right_l.mesh",
+      "sha256": "aa0cca003a82c6932af2df2593e16342d9edc448a37b49248cf3e8cc445ccd09"
+    },
+    "content/meshes/vehicles/cc2x_f15/manta_plane_backdoor_right_r.mesh": {
+      "source": "mods/aircraft_lua_migration/content/meshes/vehicles/cc2x_f15/manta_plane_backdoor_right_r.mesh",
+      "sha256": "aa0cca003a82c6932af2df2593e16342d9edc448a37b49248cf3e8cc445ccd09"
+    },
+    "content/meshes/vehicles/cc2x_f15/manta_plane_backlandinggear_b_left.mesh": {
+      "source": "mods/aircraft_lua_migration/content/meshes/vehicles/cc2x_f15/manta_plane_backlandinggear_b_left.mesh",
+      "sha256": "c634c5c2a41b22d18957b9eb4af8eaa11c1ce14640d320952bfb35c69de8dd32"
+    },
+    "content/meshes/vehicles/cc2x_f15/manta_plane_backlandinggear_b_right.mesh": {
+      "source": "mods/aircraft_lua_migration/content/meshes/vehicles/cc2x_f15/manta_plane_backlandinggear_b_right.mesh",
+      "sha256": "67e06331e98495cddc35440ce9e4a208bb3632a3ea12925af426573c8ddc2c8b"
+    },
+    "content/meshes/vehicles/cc2x_f15/manta_plane_backlandinggear_left.mesh": {
+      "source": "mods/aircraft_lua_migration/content/meshes/vehicles/cc2x_f15/manta_plane_backlandinggear_left.mesh",
+      "sha256": "12f8efb5a540d5dc49dd02a2a3c1cb5b5dac331d65738fd0985684a5d83f28f6"
+    },
+    "content/meshes/vehicles/cc2x_f15/manta_plane_backlandinggear_right.mesh": {
+      "source": "mods/aircraft_lua_migration/content/meshes/vehicles/cc2x_f15/manta_plane_backlandinggear_right.mesh",
+      "sha256": "847edd1bf05103f057229c46295df444f4d1afa974c06ecb381272e8cc37834a"
+    },
+    "content/meshes/vehicles/cc2x_f15/manta_plane_backwheel.mesh": {
+      "source": "mods/aircraft_lua_migration/content/meshes/vehicles/cc2x_f15/manta_plane_backwheel.mesh",
+      "sha256": "27d5fe194baf1960cc730da133c1a56252eea91aea5659af9671c8524b740fa9"
+    },
+    "content/meshes/vehicles/cc2x_f15/manta_plane_base.mesh": {
+      "source": "mods/aircraft_lua_migration/content/meshes/vehicles/cc2x_f15/manta_plane_base.mesh",
+      "sha256": "bb7bd44840d5da03debec710d59a497ad1d0dbe94e9e2ac8df8a5669b108006c"
+    },
+    "content/meshes/vehicles/cc2x_f15/manta_plane_frontdoor_left.mesh": {
+      "source": "mods/aircraft_lua_migration/content/meshes/vehicles/cc2x_f15/manta_plane_frontdoor_left.mesh",
+      "sha256": "aa0cca003a82c6932af2df2593e16342d9edc448a37b49248cf3e8cc445ccd09"
+    },
+    "content/meshes/vehicles/cc2x_f15/manta_plane_frontdoor_right.mesh": {
+      "source": "mods/aircraft_lua_migration/content/meshes/vehicles/cc2x_f15/manta_plane_frontdoor_right.mesh",
+      "sha256": "aa0cca003a82c6932af2df2593e16342d9edc448a37b49248cf3e8cc445ccd09"
+    },
+    "content/meshes/vehicles/cc2x_f15/manta_plane_frontlandinggear.mesh": {
+      "source": "mods/aircraft_lua_migration/content/meshes/vehicles/cc2x_f15/manta_plane_frontlandinggear.mesh",
+      "sha256": "0aa90c464ca8906041202568901899e9deaee490bad61067fbaebbc9be731096"
+    },
+    "content/meshes/vehicles/cc2x_f15/manta_plane_frontlandinggear_b.mesh": {
+      "source": "mods/aircraft_lua_migration/content/meshes/vehicles/cc2x_f15/manta_plane_frontlandinggear_b.mesh",
+      "sha256": "d132312371221e7dd02e12f6d45c182b27349a892024b21cdf5726de57a6b5af"
+    },
+    "content/meshes/vehicles/cc2x_f15/manta_plane_frontwheel.mesh": {
+      "source": "mods/aircraft_lua_migration/content/meshes/vehicles/cc2x_f15/manta_plane_frontwheel.mesh",
+      "sha256": "a4c515e7bfe4a5fa33659f58d0e8a0a0e57147c9c394786c644eeb36d04e2219"
+    },
+    "content/meshes/vehicles/cc2x_f15/manta_plane_wingflap_left.mesh": {
+      "source": "mods/aircraft_lua_migration/content/meshes/vehicles/cc2x_f15/manta_plane_wingflap_left.mesh",
+      "sha256": "aa0cca003a82c6932af2df2593e16342d9edc448a37b49248cf3e8cc445ccd09"
+    },
+    "content/meshes/vehicles/cc2x_f15/manta_plane_wingflap_right.mesh": {
+      "source": "mods/aircraft_lua_migration/content/meshes/vehicles/cc2x_f15/manta_plane_wingflap_right.mesh",
+      "sha256": "aa0cca003a82c6932af2df2593e16342d9edc448a37b49248cf3e8cc445ccd09"
+    },
+    "content/meshes/vehicles/cc2x_f16/manta_plane_wingflap_left.mesh": {
+      "source": "mods/aircraft_lua_migration/content/meshes/vehicles/cc2x_f16/manta_plane_wingflap_left.mesh",
+      "sha256": "aa0cca003a82c6932af2df2593e16342d9edc448a37b49248cf3e8cc445ccd09"
+    },
+    "content/meshes/vehicles/cc2x_f16/smallplane_backdoor1_left.mesh": {
+      "source": "mods/aircraft_lua_migration/content/meshes/vehicles/cc2x_f16/smallplane_backdoor1_left.mesh",
+      "sha256": "8ca9ec43aeb5179ffc404e580df7af700a95bf808c45fe8d08dbd0323641d592"
+    },
+    "content/meshes/vehicles/cc2x_f16/smallplane_backdoor1_right.mesh": {
+      "source": "mods/aircraft_lua_migration/content/meshes/vehicles/cc2x_f16/smallplane_backdoor1_right.mesh",
+      "sha256": "60da529145b0446c9d3f9028519854a67291dbc3b9c7827d4251793f5c2a96ce"
+    },
+    "content/meshes/vehicles/cc2x_f16/smallplane_backdoor2_left.mesh": {
+      "source": "mods/aircraft_lua_migration/content/meshes/vehicles/cc2x_f16/smallplane_backdoor2_left.mesh",
+      "sha256": "e35f1c45deb23f9526fe631f4000acbc0c84ae35a05a7ebc3db273841749b213"
+    },
+    "content/meshes/vehicles/cc2x_f16/smallplane_backdoor2_right.mesh": {
+      "source": "mods/aircraft_lua_migration/content/meshes/vehicles/cc2x_f16/smallplane_backdoor2_right.mesh",
+      "sha256": "2cd5be865fa45988e7831092ab719b2b71d6dc6ac887d89952bc56e3af8f9926"
+    },
+    "content/meshes/vehicles/cc2x_f16/smallplane_backwheel.mesh": {
+      "source": "mods/aircraft_lua_migration/content/meshes/vehicles/cc2x_f16/smallplane_backwheel.mesh",
+      "sha256": "d9e411ae54b326f13824e4339fd6ca67acaf1fc3fe0c7ab7d671db76d5e84bfd"
+    },
+    "content/meshes/vehicles/cc2x_f16/smallplane_backwheelbar_left.mesh": {
+      "source": "mods/aircraft_lua_migration/content/meshes/vehicles/cc2x_f16/smallplane_backwheelbar_left.mesh",
+      "sha256": "5350acef362126789f66523d1864d6dac033ee744d36177148bcc5001b1b6475"
+    },
+    "content/meshes/vehicles/cc2x_f16/smallplane_backwheelbar_right.mesh": {
+      "source": "mods/aircraft_lua_migration/content/meshes/vehicles/cc2x_f16/smallplane_backwheelbar_right.mesh",
+      "sha256": "0aff73e64eda666a4f3c12c3b1507a558662ab7cba72b3d14b993b5df7d60aee"
+    },
+    "content/meshes/vehicles/cc2x_f16/smallplane_base.mesh": {
+      "source": "mods/aircraft_lua_migration/content/meshes/vehicles/cc2x_f16/smallplane_base.mesh",
+      "sha256": "e2c8be844b998c79e1ef5b53dbcecbee533ab1c23d917560eab210ccd259f4b1"
+    },
+    "content/meshes/vehicles/cc2x_f16/smallplane_frontdoor.mesh": {
+      "source": "mods/aircraft_lua_migration/content/meshes/vehicles/cc2x_f16/smallplane_frontdoor.mesh",
+      "sha256": "a5f7d29a779a537b357ae41e611708356645aad23adcb6dfd34d555cb297a24d"
+    },
+    "content/meshes/vehicles/cc2x_f16/smallplane_frontdoor_left.mesh": {
+      "source": "mods/aircraft_lua_migration/content/meshes/vehicles/cc2x_f16/smallplane_frontdoor_left.mesh",
+      "sha256": "75ecae0f49e7c61e0b51928c6a37cb463c9335348932fed653646b391dda4f25"
+    },
+    "content/meshes/vehicles/cc2x_f16/smallplane_frontdoor_right.mesh": {
+      "source": "mods/aircraft_lua_migration/content/meshes/vehicles/cc2x_f16/smallplane_frontdoor_right.mesh",
+      "sha256": "7a22e82c3cbc9321112e761fe448cd3cd79754b4ad85003e09ad3b4b63c5bfb8"
+    },
+    "content/meshes/vehicles/cc2x_f16/smallplane_frontwheel.mesh": {
+      "source": "mods/aircraft_lua_migration/content/meshes/vehicles/cc2x_f16/smallplane_frontwheel.mesh",
+      "sha256": "41b3d5440da740483c9451e2edf7cc355b98731fc10308cb89d9ce161181388d"
+    },
+    "content/meshes/vehicles/cc2x_f16/smallplane_frontwheelpart.mesh": {
+      "source": "mods/aircraft_lua_migration/content/meshes/vehicles/cc2x_f16/smallplane_frontwheelpart.mesh",
+      "sha256": "887ca08c444f3ee7b31b7b0734e01ee493e6d01d5698545416c99e3127b8d856"
+    },
+    "content/meshes/vehicles/cc2x_f16/smallplane_propeller.mesh": {
+      "source": "mods/aircraft_lua_migration/content/meshes/vehicles/cc2x_f16/smallplane_propeller.mesh",
+      "sha256": "61bf9d20a15ea451000d65f3f3a7a80364c5b540bf27444f5cc01817a7ba1af0"
+    },
+    "content/meshes/vehicles/cc2x_f16/smallplane_propellerplane_midspin.mesh": {
+      "source": "mods/aircraft_lua_migration/content/meshes/vehicles/cc2x_f16/smallplane_propellerplane_midspin.mesh",
+      "sha256": "fb98e69c98634fef74396786678b71a97a49c7a948b961c72fd36bc7b4ef9703"
+    },
+    "content/meshes/vehicles/cc2x_f16/smallplane_wingflap_left.mesh": {
+      "source": "mods/aircraft_lua_migration/content/meshes/vehicles/cc2x_f16/smallplane_wingflap_left.mesh",
+      "sha256": "7bb07bbd0a54f7f96d8e30d432ce89ec27756e18e8c2fd24b56d2081cf61e741"
+    },
+    "content/meshes/vehicles/cc2x_f16/smallplane_wingflap_right.mesh": {
+      "source": "mods/aircraft_lua_migration/content/meshes/vehicles/cc2x_f16/smallplane_wingflap_right.mesh",
+      "sha256": "8123e508200db927a7b2b63f09ae8fe469409875059d1b28ea05055dbd29ecfd"
+    },
+    "content/meshes/vehicles/cc2x_f16/smallplane_wingflapback_left.mesh": {
+      "source": "mods/aircraft_lua_migration/content/meshes/vehicles/cc2x_f16/smallplane_wingflapback_left.mesh",
+      "sha256": "af038238affec8cc1e13092b39e0341fbe120f764acc2816a079ae992c64c815"
+    },
+    "content/meshes/vehicles/cc2x_f16/smallplane_wingflapback_right.mesh": {
+      "source": "mods/aircraft_lua_migration/content/meshes/vehicles/cc2x_f16/smallplane_wingflapback_right.mesh",
+      "sha256": "ff4f3ae51d07d1d0cc7d74fb9aef8bf2e0ccf1dec3f245b5814b6e3c407a0de6"
+    },
+    "content/meshes/vehicles/f15_plane_x.txtr": {
+      "source": "mods/aircraft_lua_migration/content/meshes/vehicles/f15_plane_x.txtr",
+      "sha256": "f13d3aaec8a481a2a2c7d5a4f515ff20384bd51e6155d524f1f3634b1f4817ed"
+    },
+    "content/meshes/vehicles/f15_plane_x_ao.txtr": {
+      "source": "mods/aircraft_lua_migration/content/meshes/vehicles/f15_plane_x_ao.txtr",
+      "sha256": "29e21c29105e552bea2de94287c4af4790a890b61b03723af449335ae2dca557"
+    },
+    "content/meshes/vehicles/f15_plane_x_paintmask.txtr": {
+      "source": "mods/aircraft_lua_migration/content/meshes/vehicles/f15_plane_x_paintmask.txtr",
+      "sha256": "a393c58db07fa9eb3ffbd869afa0b125a189a5827a62a4e0e5113c111c47d6af"
+    },
+    "content/meshes/vehicles/f16_plane_x.txtr": {
+      "source": "mods/aircraft_lua_migration/content/meshes/vehicles/f16_plane_x.txtr",
+      "sha256": "f13d3aaec8a481a2a2c7d5a4f515ff20384bd51e6155d524f1f3634b1f4817ed"
+    },
+    "content/meshes/vehicles/f16_plane_x_ao.txtr": {
+      "source": "mods/aircraft_lua_migration/content/meshes/vehicles/f16_plane_x_ao.txtr",
+      "sha256": "29e21c29105e552bea2de94287c4af4790a890b61b03723af449335ae2dca557"
+    },
+    "content/meshes/vehicles/f16_plane_x_paintmask.txtr": {
+      "source": "mods/aircraft_lua_migration/content/meshes/vehicles/f16_plane_x_paintmask.txtr",
+      "sha256": "a393c58db07fa9eb3ffbd869afa0b125a189a5827a62a4e0e5113c111c47d6af"
+    },
+    "content/meshes/vehicles/vehicle_lods/cc2x_f15_low.mesh": {
+      "source": "mods/aircraft_lua_migration/content/meshes/vehicles/vehicle_lods/cc2x_f15_low.mesh",
+      "sha256": "6f4a38edd5b46347c5a16b4b3471c98f5743620d05f8de1ec5f2175168c6c745"
+    },
+    "content/meshes/vehicles/vehicle_lods/cc2x_f16_low.mesh": {
+      "source": "mods/aircraft_lua_migration/content/meshes/vehicles/vehicle_lods/cc2x_f16_low.mesh",
+      "sha256": "4e6042f50bb00a858f0f36958a662b4f4417e334f0937cd1e985667205618ffb"
+    },
+    "mod.xml": {
+      "source": "mods/aircraft_lua_migration/mod.xml",
+      "sha256": "bc6bcb7194485081f0c628cc851e6b3de6d51cc19a2c86c31ce66a421326aa58"
+    },
+    "UPSTREAM_README.md": {
+      "source": "mods/aircraft_lua_migration/README.md",
+      "sha256": "9456638335fa151f2d66ff2c2c08691cce32376264b020fe895028df35c00f43"
+    }
+  }
+}
