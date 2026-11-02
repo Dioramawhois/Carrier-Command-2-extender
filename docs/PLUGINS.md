@@ -110,24 +110,29 @@ api->lua_feature("my_plugin");             // cc2x.has("my_plugin") == true
 Never raise Lua errors from C (return `nil`, "reason"); use at most ~15 stack slots per call;
 `lua_appendi` only appends new integer keys to a table you created.
 
-## API 5: session-bound commands (0.6.0-dev)
+## Session extension v1 (0.6.0-dev)
 
-Capture `api->session_generation()` and pass it to
-`api->server_post_session(generation, fn, user)`. Zero means no local server;
-zero/stale generation, a full queue or a null callback returns 0. A new session
-always has a fresh generation, even if the game reuses the same server address.
-Ending/changing sessions discards pending commands before session callbacks.
-The plugin owns `user`; there is no discard callback, so do not transfer heap
-ownership to this queue without your own session cleanup. Prefer packed stable IDs
-and resolve them on the executing tick, never keep game object pointers across ticks.
+The common cc2x_api remains API 4. Forks including Native Bridge already use
+numeric API 5-8 tails for unrelated operations; a version comparison is not
+capability negotiation. Never reinterpret those slots as session functions.
 
-`server_post` now also refuses work with no local server. It captures the current
-session at enqueue time; use the explicit API for work prepared before a load/menu
-transition. These functions are not RPC. A remote client's local call cannot
-control the host. No dedicated profile/bootstrap or arbitrary network transport
-is provided by these queue changes.
+Include cc2x_session_win32.h and call
+`cc2x_session_from_core((const void *)api->server_post)` after validating the
+base API. It resolves `cc2x_query_session_v1` only from the module owning that
+core callback. No export or incompatible ID/version/size/callbacks means NULL:
+stay inactive, do not fall back to calling an unknown tail. The query is cdecl.
+
+Capture `session->generation()` and use `session->post(generation, fn, user)`.
+Zero generation means no local server. Zero/stale generation, null callback or
+full queue returns 0. New sessions always get a fresh generation, including
+reused server addresses. Ending/changing a session clears pending commands
+before session notifications. The plugin owns user data; no discard callback
+is made. Prefer packed stable IDs resolved on the executing tick.
+
+Legacy server_post captures the session at enqueue time and rejects no-server
+calls. Neither API sends an RPC. Callback lifetime isolation does not prove
+client delivery, replication or successful server world creation.
 
 Offline regression: `python tests/run_queue_test.py --zig PATH_TO_ZIG` compiles
-and runs only the address-free test, never a game or plugin DLL. Full native build:
-`python build.py --zig PATH_TO_ZIG`. Remote gameplay and dedicated acceptance
-require separate evidence; see MULTIPLAYER.md.
+only the own address-free queue/ABI test executables, never game/plugin DLLs.
+See MULTIPLAYER.md and SESSION_EXTENSION.md for validation and remaining gates.

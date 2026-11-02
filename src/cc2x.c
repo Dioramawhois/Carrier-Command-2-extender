@@ -12,6 +12,7 @@
 #include <wchar.h>
 #include "internal.h"
 #include "cc2x_post_queue.h"
+#include "cc2x_session.h"
 
 #define CC2X_VERSION "0.6.0-dev"
 
@@ -378,6 +379,15 @@ static int server_post_session(uint64_t epoch, void (*fn)(void *, void *), void 
     int ok = cc2x_posts_push(&g_posts, epoch, fn, user);
     LeaveCriticalSection(&g_post_cs);
     return ok;
+}
+/* This name identifies the contract independently of other forks' numeric API tails. */
+CC2X_EXPORT const cc2x_session_api *cc2x_query_session_v1(uint32_t version, uint32_t size) {
+    static const cc2x_session_api extension = {
+        CC2X_SESSION_VERSION, sizeof(cc2x_session_api), CC2X_SESSION_ID,
+        session_generation, server_post_session
+    };
+    if (version != CC2X_SESSION_VERSION || size != sizeof(extension)) return NULL;
+    return &extension;
 }
 static int server_post(void (*fn)(void *, void *), void *user) {
     EnterCriticalSection(&g_post_cs);
@@ -880,8 +890,6 @@ static void startup(void) {
     };
     if (!world_init(P->build)) LOG(CC2X_LOG_WARN, "no world layout for this build: API 3 functions do nothing");
     world_fill(&g_api);
-    g_api.session_generation = session_generation;
-    g_api.server_post_session = server_post_session;
     lua_world_init(&g_api);          /* before the plugins: the core Lua functions come first */
     wchar_t appdata[MAX_PATH], cfg[MAX_PATH * 2];
     if (GetEnvironmentVariableW(L"APPDATA", appdata, MAX_PATH)) {

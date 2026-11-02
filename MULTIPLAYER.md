@@ -1,7 +1,7 @@
 # Multiplayer work in the next CC2X version
 
 This updates the existing CC2X SDK (same runtime/library ID), not a new mod.
-API 5 command lifetime isolation is implemented and offline-tested. It does not
+Named session-extension v1 command lifetime isolation is implemented and offline-tested. It does not
 add RPC, replicate arbitrary plugin state or certify dedicated-server support.
 
 Current client profiles remain the known 1.5.18 Windows x86 builds. The locally

@@ -12,8 +12,9 @@ if __name__ == '__main__':
     parser.add_argument('--zig', type=Path, required=True)
     args = parser.parse_args()
     with tempfile.TemporaryDirectory(prefix='cc2x-queue-') as folder:
-        output = Path(folder) / 'queue-test.exe'
-        subprocess.run([str(args.zig.resolve()), 'cc', '-std=c11', '-Wall', '-Wextra',
-                        '-Werror', '-I', str(ROOT / 'include'),
-                        str(ROOT / 'tests/session_queue_test.c'), '-o', str(output)], check=True)
-        subprocess.run([str(output)], check=True, timeout=10)
+        for name in ('session_queue_test', 'session_api_test'):
+            output = Path(folder) / (name + '.exe')
+            subprocess.run([str(args.zig.resolve()), 'cc', '-std=c11', '-Wall', '-Wextra',
+                            '-Werror', '-I', str(ROOT / 'include'),
+                            str(ROOT / 'tests' / (name + '.c')), '-o', str(output)], check=True)
+            subprocess.run([str(output)], check=True, timeout=10)

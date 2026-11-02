@@ -2,15 +2,16 @@
 
 ## 0.6.0-dev (unreleased)
 
-- API 5 appends session_generation and server_post_session. Queued commands are
-  local-server only, reject absent/stale sessions and are discarded on session end.
-  The legacy server_post also rejects calls with no local server. Plugin ABI fields
-  are appended; existing offsets remain unchanged.
-- Added an address-free queue regression executable covering FIFO, capacity,
-  session turnover and reused game object addresses. This is not a network test.
-- Ordinary-host remote-client and dedicated-server support remain unverified;
-  no dedicated executable profile is introduced without verified addresses.
-  Same SDK/library identity; no new Workshop item.
+- Session command isolation is exposed through the separately named
+  `cc2x_query_session_v1` extension, validated by interface ID, version and size.
+  The stable API 4 prefix is preserved. The earlier draft's appended API 5 slots
+  were removed after finding that Native Bridge uses API 5-8 for different fields.
+- Missing/stale local sessions reject commands; ending/changing a session drops
+  pending work. Legacy server_post also refuses calls with no local server.
+- Added address-free queue and extension-ABI tests. They check FIFO/capacity,
+  session/address reuse, absent extension, identity/version/size and callbacks.
+- Offline tests and Windows x86 builds pass. No RPC, dedicated profile/bootstrap
+  or real multiplayer acceptance is claimed. Same runtime/library identity.
 
 ## 0.5.1 (2026-10-29)
 
