@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.6.0-dev (unreleased)
+
+- API 5 appends session_generation and server_post_session. Queued commands are
+  local-server only, reject absent/stale sessions and are discarded on session end.
+  The legacy server_post also rejects calls with no local server. Plugin ABI fields
+  are appended; existing offsets remain unchanged.
+- Added an address-free queue regression executable covering FIFO, capacity,
+  session turnover and reused game object addresses. This is not a network test.
+- Ordinary-host remote-client and dedicated-server support remain unverified;
+  no dedicated executable profile is introduced without verified addresses.
+  Same SDK/library identity; no new Workshop item.
+
 ## 0.5.1 (2026-10-29)
 
 - Supports the Steam update of Carrier Command 2 from 2026-10-28. The game still says 1.5.18, but

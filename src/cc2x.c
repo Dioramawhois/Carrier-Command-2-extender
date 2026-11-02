@@ -11,8 +11,9 @@
 #include <string.h>
 #include <wchar.h>
 #include "internal.h"
+#include "cc2x_post_queue.h"
 
-#define CC2X_VERSION "0.5.1"
+#define CC2X_VERSION "0.6.0-dev"
 
 /* ============================================================================ game profile */
 
@@ -362,20 +363,25 @@ static void on_lua_state(void (*fn)(cc2x_lua *, void *), void *user) {
 }
 
 /* server_post queue */
-#define POST_MAX 256
-typedef struct { void (*fn)(void *, void *); void *user; } Post;
-static Post g_post[POST_MAX];
-static int g_post_head, g_post_count;
+static cc2x_post_queue g_posts;
 static CRITICAL_SECTION g_post_cs;
+static void *volatile g_server;
 
-static int server_post(void (*fn)(void *, void *), void *user) {
-    int ok = 0;
+static uint64_t session_generation(void) {
     EnterCriticalSection(&g_post_cs);
-    if (fn && g_post_count < POST_MAX) {
-        g_post[(g_post_head + g_post_count) % POST_MAX] = (Post){fn, user};
-        g_post_count++;
-        ok = 1;
-    }
+    uint64_t epoch = g_posts.owner ? g_posts.epoch : 0;
+    LeaveCriticalSection(&g_post_cs);
+    return epoch;
+}
+static int server_post_session(uint64_t epoch, void (*fn)(void *, void *), void *user) {
+    EnterCriticalSection(&g_post_cs);
+    int ok = cc2x_posts_push(&g_posts, epoch, fn, user);
+    LeaveCriticalSection(&g_post_cs);
+    return ok;
+}
+static int server_post(void (*fn)(void *, void *), void *user) {
+    EnterCriticalSection(&g_post_cs);
+    int ok = cc2x_posts_push(&g_posts, g_posts.epoch, fn, user);
     LeaveCriticalSection(&g_post_cs);
     return ok;
 }
@@ -384,10 +390,13 @@ static int server_post(void (*fn)(void *, void *), void *user) {
 
 typedef void (__attribute__((thiscall)) *ServerFn)(void *);
 static ServerFn o_init, o_tick, o_end;
-static void *volatile g_server;
 static uint32_t g_tickno;
 
 static void session_change(void *server, int started) {
+    EnterCriticalSection(&g_post_cs);
+    g_server = started ? server : NULL;
+    cc2x_posts_reset(&g_posts, g_server);
+    LeaveCriticalSection(&g_post_cs);
     world_session();
     for (int i = 0; i < g_nsess; ++i) g_sess_cb[i].fn(server, started, g_sess_cb[i].user);
     LOG(CC2X_LOG_INFO, "session %s", started ? "started" : "ended");
@@ -397,7 +406,6 @@ static void __attribute__((thiscall)) h_init(void *self) {
     o_init(self);
     if (g_server && g_server != self) session_change(g_server, 0);
     if (g_server != self) {
-        g_server = self;
         g_tickno = 0;
         session_change(self, 1);
     }
@@ -414,21 +422,16 @@ static void tick_once(void *self) {
     o_tick(self);
     if (g_server != self) {             /* a tick before init was seen */
         if (g_server) session_change(g_server, 0);
-        g_server = self;
         g_tickno = 0;
         session_change(self, 1);
     }
     world_tick();
     for (;;) {
-        Post p = {0};
+        cc2x_post p = {0};
         EnterCriticalSection(&g_post_cs);
-        if (g_post_count) {
-            p = g_post[g_post_head];
-            g_post_head = (g_post_head + 1) % POST_MAX;
-            g_post_count--;
-        }
+        int have = cc2x_posts_take(&g_posts, self, g_posts.epoch, &p);
         LeaveCriticalSection(&g_post_cs);
-        if (!p.fn) break;
+        if (!have) break;
         p.fn(self, p.user);
     }
     for (int i = 0; i < g_ntick; ++i) g_tick_cb[i].fn(self, g_tick_cb[i].user);
@@ -438,7 +441,6 @@ static void tick_once(void *self) {
 static void __attribute__((thiscall)) h_end(void *self) {
     if (g_server == self) {
         session_change(self, 0);
-        g_server = NULL;
     }
     o_end(self);
 }
@@ -878,6 +880,8 @@ static void startup(void) {
     };
     if (!world_init(P->build)) LOG(CC2X_LOG_WARN, "no world layout for this build: API 3 functions do nothing");
     world_fill(&g_api);
+    g_api.session_generation = session_generation;
+    g_api.server_post_session = server_post_session;
     lua_world_init(&g_api);          /* before the plugins: the core Lua functions come first */
     wchar_t appdata[MAX_PATH], cfg[MAX_PATH * 2];
     if (GetEnvironmentVariableW(L"APPDATA", appdata, MAX_PATH)) {

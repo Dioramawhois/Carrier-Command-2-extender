@@ -29,7 +29,7 @@
 extern "C" {
 #endif
 
-#define CC2X_API_VERSION 4
+#define CC2X_API_VERSION 5
 
 #ifdef _WIN32
 #define CC2X_EXPORT __declspec(dllexport)
@@ -230,7 +230,8 @@ typedef struct cc2x_api {
     void (*on_lua_state)(void (*fn)(cc2x_lua *L, void *user), void *user);
     /* current logic server object (0 outside a session). Only meaningful on the server thread. */
     void *(*server)(void);
-    /* run fn on the server thread at the next tick (safe from Lua functions). 0 = queue full */
+    /* Run fn on the local server thread next tick. 0 = absent server / queue full. No network RPC.
+     * New plugins should use API 5 server_post_session to reject a stale originating session. */
     int (*server_post)(void (*fn)(void *server, void *user), void *user);
 
     /* ---- Lua bridge ------------------------------------------------------------------------- */
@@ -328,6 +329,14 @@ typedef struct cc2x_api {
     /* an island controller is about to spawn the island's defence units (ai_team: the game counts
      * the owner as an AI team). Return 0 to skip the spawn. */
     int (*on_island_spawn)(int (*fn)(void *tile, int ai_team, void *user), void *user);
+    /* ---- API 5: local authority session isolation (not a network transport) ----------------- */
+    /* 0 without a local logic server. A fresh nonzero generation for each session, including
+     * reuse of the same game object address. Read from any thread. */
+    uint64_t (*session_generation)(void);
+    /* Run only in this exact local authority session; 0 if absent/stale/full. Pending posts are
+     * discarded when the session ends. The plugin retains ownership of user data; no callback
+     * is invoked for discarded posts. This does not send an RPC to a remote host. */
+    int (*server_post_session)(uint64_t generation, void (*fn)(void *server, void *user), void *user);
 } cc2x_api;
 
 typedef int (*cc2x_plugin_load_fn)(const cc2x_api *api);

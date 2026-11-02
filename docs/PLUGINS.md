@@ -109,3 +109,25 @@ api->lua_feature("my_plugin");             // cc2x.has("my_plugin") == true
 
 Never raise Lua errors from C (return `nil`, "reason"); use at most ~15 stack slots per call;
 `lua_appendi` only appends new integer keys to a table you created.
+
+## API 5: session-bound commands (0.6.0-dev)
+
+Capture `api->session_generation()` and pass it to
+`api->server_post_session(generation, fn, user)`. Zero means no local server;
+zero/stale generation, a full queue or a null callback returns 0. A new session
+always has a fresh generation, even if the game reuses the same server address.
+Ending/changing sessions discards pending commands before session callbacks.
+The plugin owns `user`; there is no discard callback, so do not transfer heap
+ownership to this queue without your own session cleanup. Prefer packed stable IDs
+and resolve them on the executing tick, never keep game object pointers across ticks.
+
+`server_post` now also refuses work with no local server. It captures the current
+session at enqueue time; use the explicit API for work prepared before a load/menu
+transition. These functions are not RPC. A remote client's local call cannot
+control the host. No dedicated profile/bootstrap or arbitrary network transport
+is provided by these queue changes.
+
+Offline regression: `python tests/run_queue_test.py --zig PATH_TO_ZIG` compiles
+and runs only the address-free test, never a game or plugin DLL. Full native build:
+`python build.py --zig PATH_TO_ZIG`. Remote gameplay and dedicated acceptance
+require separate evidence; see MULTIPLAYER.md.
