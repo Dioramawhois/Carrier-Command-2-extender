@@ -70,6 +70,7 @@ def extract(source, destination, lock):
         for name, data in {
             'build.py': template,
             '.gitignore': b'dist/\n.cache/\n__pycache__/\n*.py[cod]\n*.exe\n*.dll\n*.pdb\n*.o\n',
+            '.gitattributes': b'* -text\n',  # preserve upstream provenance bytes on every checkout
             'SOURCE_MANIFEST.json': (json.dumps({
                 'upstream': lock['upstream'], 'upstream_commit': lock['commit'],
                 'license': 'GPL-3.0-or-later', 'author': 'Yolo / totolerigolo118',

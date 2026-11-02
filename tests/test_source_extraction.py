@@ -43,6 +43,7 @@ class ExtractionTest(unittest.TestCase):
     def test_valid_copy_preserves_bytes_and_reports_source_only(self):
         output = module.extract(self.source, self.root / 'output', self.lock)
         self.assertEqual((output / 'separate-mod/native/plugin.c').read_bytes(), self.payload)
+        self.assertEqual((output / 'separate-mod/.gitattributes').read_bytes(), b'* -text\n')
         self.assertIn('source-only', (output / 'separate-mod/SOURCE_MANIFEST.json').read_text())
         self.assertEqual((self.source / 'plugin.c').read_bytes(), self.payload)
 
