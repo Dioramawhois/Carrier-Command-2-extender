@@ -47,7 +47,7 @@ def extract(source, destination, lock):
         contents[relative] = data
     generated = {
         'LICENSE': (ROOT / 'LICENSE').read_bytes(),
-        '.gitattributes': b'* -text\n',
+        '.gitattributes': b'* -text\n*.xml whitespace=cr-at-eol\n',
         '.gitignore': b'dist/\n.cache/\n__pycache__/\n*.py[cod]\n*.dll\n*.exe\n',
         'SOURCE_MANIFEST.json': (json.dumps({
             **lock, 'license': 'GPL-3.0-or-later',
