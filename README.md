@@ -10,20 +10,37 @@ One file, `dinput8.dll`, put once next to `carrier_command.exe`. It gives
   server events and registering Lua functions - see [docs/PLUGINS.md](docs/PLUGINS.md). A plugin ships inside its mod (`<mod>\content\cc2x\*.dll`); CC2X loads
   the plugins of the mods enabled in the game's mod menu, Steam Workshop items included.
 
-**0.6.0-dev:** the same runtime now includes the team's Native Bridge independent
+**0.6.0-client-beta.1 (2026-11-03):** this release contains the same API 8 runtime
+as the [CC2X SDK Workshop item](https://steamcommunity.com/sharedfiles/filedetails/?id=3833014670).
+The DLL still reports `0.6.0-dev`; its SHA-256 is
+`ce4fc1c883c70af6c40f5431003d17584e9b2becb502ac840d22f73be9d7a7f3`,
+built from source commit `2eecbd93c3555fed9a2b3f25e5b9c91abb55196f`.
+
+The shared runtime includes the team's Native Bridge independent
 Lua VMs, `require('cc2')` facade, generic vehicle/UI/resource registries and bounded
 ordered module bundles. Gameplay scenarios stay in separate mods. The C API uses
 the team's API 8 layout with the original API 4 prefix preserved; session commands
 use a checked named extension. See [integration status](docs/UNIFIED_SDK_PLAN.md)
-and [module packaging](docs/MODULE_BUNDLES.md). Development builds have offline
-regression/static profile evidence; fresh game and multiplayer acceptance remain
-open. They are not an automatically approved replacement for a released DLL.
+and [module packaging](docs/MODULE_BUNDLES.md).
+
+On November 3, the reviewed Windows 1.5.18-r2 client passed single-player checks
+with AI Bridge, Island Airfields v46, Hold, Modes, Brake and separate aircraft:
+combined native/Lua loading, custom aircraft registration and hangar creation,
+save/reload of the unchanged catalog, and creation again after reload. Remote
+multiplayer, dedicated-server support, changed-catalog saves, full flight/island
+landing and native macOS support remain unverified.
 
 **Mod makers:** start with [docs/GUIDE.md](docs/GUIDE.md) - the complete guide from the first Lua
 mod to a published Workshop item.
 
-**Players:** download [dinput8.dll](https://github.com/Dioramawhois/cc2x/releases/latest/download/dinput8.dll) and put it into the game folder - details in
-[docs/README_PLAYERS.txt](docs/README_PLAYERS.txt).
+**Players:** see the [client beta release](https://github.com/Dioramawhois/Carrier-Command-2-extender/releases/tag/0.6.0-client-beta.1)
+and [installation instructions](docs/README_PLAYERS.txt). Recommended automatic
+installation requires the matching CC2 ModLoader 0.4.0 beta 2, currently a team
+release candidate; the older public beta 1 cannot use this runtime. Alternatively,
+copy [dinput8.dll](https://github.com/Dioramawhois/Carrier-Command-2-extender/releases/download/0.6.0-client-beta.1/dinput8.dll)
+(or the Workshop item's `content/dinput8.dll`) next to `carrier_command.exe`.
+A Workshop subscription downloads the SDK but does not install the loader itself.
+Gameplay mods are installed separately.
 
 ## Layout
 
@@ -41,7 +58,7 @@ mod to a published Workshop item.
 | `examples/lua_air_traffic` | example Lua mod (`library_custom_7.lua`) |
 
 `python build.py --zig PATH` -> the one integrated `dist/dinput8.dll` and hashed
-build metadata. `--test` runs the 18 offline SDK checks; `--examples` also builds
+build metadata. `--test` runs the 19 offline SDK checks; `--examples` also builds
 hello/selftest plugins. `--release` stages a developer candidate with readme,
 GPL/Lua notices and SHA-256; it does not certify game acceptance or publish it.
 Zig 0.15.2 builds the C/C++ core, static Lua and a small isolated SEH boundary

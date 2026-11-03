@@ -1,6 +1,17 @@
 # Changelog
 
-## 0.6.0-dev (unreleased)
+## 0.6.0-client-beta.1 (2026-11-03)
+
+- Publishes the same Windows API 8 runtime as Steam Workshop SDK item 3833014670.
+  The runtime continues to report `0.6.0-dev`; its exact compiled source is
+  `2eecbd93c3555fed9a2b3f25e5b9c91abb55196f`, and the DLL SHA-256 is
+  `ce4fc1c883c70af6c40f5431003d17584e9b2becb502ac840d22f73be9d7a7f3`.
+  The corresponding native regression report records 19 passing checks.
+- Documents automatic installation with the matching ModLoader 0.4.0 beta 2
+  candidate and manual DLL installation. Workshop subscription alone does not
+  install the bootstrap, and gameplay mods remain separate. Public ModLoader
+  beta 1 does not support this runtime. This is a client beta; multiplayer,
+  dedicated servers and the remaining gameplay/platform gates stay open.
 
 - Native consumer packages preserve MinGW/Zig redistribution notices; a packaging
   regression prevents their omission. Linked C++ runtime notices are preserved.
