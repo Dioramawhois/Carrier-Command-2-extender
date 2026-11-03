@@ -16,7 +16,7 @@
 #include "cc2x_post_queue.h"
 #include "cc2x_session.h"
 
-#define CC2X_VERSION "0.7.0-client-beta.1"
+#define CC2X_VERSION "0.8.0-client-beta.1"
 
 #if defined(_MSC_VER) && !defined(CC2X_USE_GNU_ASM_ABI)
 #define CC2X_THISCALL __thiscall
@@ -458,12 +458,19 @@ static void CC2X_HOOKCALL h_init(void *self) {
 
 static int g_time_scale = 1;   /* cc2x.ini [cc2x] time_scale: developer option, logic ticks per tick */
 
-static void tick_once(void *self);
+static int tick_once(void *self);
 static void CC2X_HOOKCALL h_tick(void *self) {
-    for (int k = 0; k < g_time_scale; ++k) tick_once(self);
+    for (int k = 0; k < g_time_scale; ++k) if (!tick_once(self)) break;
 }
 
-static void tick_once(void *self) {
+static int session_is_current(void *self, uint64_t epoch) {
+    EnterCriticalSection(&g_post_cs);
+    int current = self && g_posts.owner == self && g_posts.epoch == epoch;
+    LeaveCriticalSection(&g_post_cs);
+    return current;
+}
+
+static int tick_once(void *self) {
     o_tick(self);
     if (g_server != self) {             /* a tick before init was seen */
         if (g_server) session_change(g_server, 0);
@@ -471,16 +478,28 @@ static void tick_once(void *self) {
         session_change(self, 1);
     }
     world_tick();
-    for (;;) {
+    /* Dispatch only the FIFO prefix present at this boundary. Callback posts
+     * wait for another tick, so a self-post cannot starve server subscribers.
+     * Pin the epoch too: a replacement session may reuse the same address. */
+    EnterCriticalSection(&g_post_cs);
+    uint64_t epoch = g_posts.epoch;
+    unsigned budget = g_posts.count;
+    LeaveCriticalSection(&g_post_cs);
+    for (unsigned n = 0; n < budget; ++n) {
         cc2x_post p = {0};
         EnterCriticalSection(&g_post_cs);
-        int have = cc2x_posts_take(&g_posts, self, g_posts.epoch, &p);
+        int have = cc2x_posts_take(&g_posts, self, epoch, &p);
         LeaveCriticalSection(&g_post_cs);
         if (!have) break;
         p.fn(self, p.user);
     }
-    for (int i = 0; i < g_ntick; ++i) g_tick_cb[i].fn(self, g_tick_cb[i].user);
+    for (int i = 0; i < g_ntick; ++i) {
+        if (!session_is_current(self, epoch)) return 0;
+        g_tick_cb[i].fn(self, g_tick_cb[i].user);
+    }
+    if (!session_is_current(self, epoch)) return 0;
     g_tickno++;
+    return 1;
 }
 
 static void CC2X_HOOKCALL h_end(void *self) {

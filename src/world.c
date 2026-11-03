@@ -11,6 +11,11 @@
 #include <math.h>
 #include <string.h>
 #include "internal.h"
+#include "order_context.h"
+#include "waypoint_origin.h"
+#include "cc2x_session.h"
+#include "waypoint_origin_profile.h"
+extern const cc2x_session_api *cc2x_query_session_v1(uint32_t version,uint32_t size);
 
 #if defined(_MSC_VER) && !defined(CC2X_USE_GNU_ASM_ABI)
 #define THISCALL __thiscall
@@ -113,6 +118,11 @@ typedef char (THISCALL *BoolFn)(const void *self);
 static int vbool(const void *obj, uint32_t off) { return ((BoolFn)vfn(obj, off))(obj) != 0; }
 
 static char *srv(void) { return W ? api_server() : NULL; }
+static int read_origin_memory(uint32_t address,void *out,uint32_t bytes,void *user) {
+    (void)user;SIZE_T copied=0;
+    if(!bytes||!address||address>UINT32_MAX-(bytes-1))return 0;
+    return ReadProcessMemory(GetCurrentProcess(),(const void*)(uintptr_t)address,out,bytes,&copied)&&copied==bytes;
+}
 
 /* ============================================================================ objects */
 
@@ -576,7 +586,15 @@ typedef void (*WaypointsFn)(void *vehicle, void *user);
 
 static void hk_waypoints(cc2x_cpu *cpu, void *user) {
     void *v = (void *)(uintptr_t)cpu->eax;
+    cc2x_waypoint_order origin={0};
+    const cc2x_session_api *session=cc2x_query_session_v1(CC2X_SESSION_VERSION,sizeof(cc2x_session_api));
+    int known=cc2x_orders_available()&&session&&cc2x_decode_waypoint_origin(
+        (uint32_t)(uintptr_t)api_server(),cpu->esi,cpu->ebp,cpu->eax,session->generation(),
+        read_origin_memory,NULL,&origin);
+    cc2x_order_scope previous;
+    cc2x_orders_enter(known?&origin:NULL,session?session->generation:NULL,&previous);
     if (v) EACH(ev_waypoints, i) ((WaypointsFn)ev_waypoints.sub[i].fn)(v, ev_waypoints.sub[i].user);
+    cc2x_orders_leave(&previous);
 }
 static int add_waypoints(void) { return patch_mid(W->h_waypoints, 6, W->h_waypoints_bytes, hk_waypoints, NULL); }
 
@@ -669,8 +687,19 @@ static int w_on_spawn(int (*fn)(void *, int, void *), void *user) { return subsc
 /* ============================================================================ setup */
 
 int world_init(const char *build) {
+    cc2x_orders_profile(0);
     for (size_t i = 0; i < sizeof(LAYOUTS) / sizeof(LAYOUTS[0]); ++i)
         if (!strcmp(LAYOUTS[i].build, build)) W = &LAYOUTS[i];
+    if(W&&!strcmp(build,"1.5.18-win32-r2")) {
+        int verified=1;
+        for(size_t i=0;i<sizeof(origin_guards)/sizeof(origin_guards[0]);++i) {
+            unsigned char bytes[64];SIZE_T copied=0;
+            if(!ReadProcessMemory(GetCurrentProcess(),(const void*)va(origin_guards[i].address),
+                                  bytes,origin_guards[i].size,&copied)||copied!=origin_guards[i].size||
+               memcmp(bytes,origin_guards[i].bytes,origin_guards[i].size)) {verified=0;break;}
+        }
+        cc2x_orders_profile(verified);
+    }
     return W != NULL;
 }
 
