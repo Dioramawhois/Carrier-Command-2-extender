@@ -14,6 +14,7 @@ struct UiImageDescriptor {
 };
 struct ModDescriptor {
   std::wstring id,name,version,rootPath,packagePath,entryPath;
+  std::wstring rulesEntry; // optional pure-Lua construction-time decision entry
   std::vector<std::wstring> bridgeScripts;
   std::vector<HookDescriptor> hooks;
   std::vector<UiImageDescriptor> uiImages;
@@ -25,5 +26,6 @@ struct ModDiscovery {std::vector<ModDescriptor> mods;std::vector<std::wstring> d
 ModDiscovery DiscoverActiveBridgeMods(const std::vector<std::wstring>& activePackages);
 bool ResolveModAssetPath(const ModDescriptor& mod,const std::wstring& relative,
                          const wchar_t* extension,std::wstring* absolute);
+bool ValidateUiImageDeclaration(const ModDescriptor& mod,const UiImageDescriptor& image,std::wstring* error);
 bool WriteBridgeBootstrap(const ModDescriptor& mod,const std::wstring& sdkPath,const std::wstring& runtimeRoot,std::wstring*bootstrapPath,std::wstring*error);
 }

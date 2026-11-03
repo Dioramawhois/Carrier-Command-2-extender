@@ -131,6 +131,10 @@ def package(project, metadata, plugin, build_report, resources, destination, *, 
             raise ValueError('Native artifact mismatch')
         if build_report['sdk_header_sha256'] != sha((ROOT / 'include/cc2x.h').read_bytes()):
             raise ValueError('SDK header changed since native build')
+        headers = build_report.get('sdk_headers_sha256')
+        if headers is not None and headers != {
+                path.name: sha(path.read_bytes()) for path in sorted((ROOT / 'include').glob('*.h'))}:
+            raise ValueError('Public SDK headers changed since native build')
         source_hashes = build_report.get('source_sha256', {})
         if not source_hashes or any(sha(regular(project, name)) != expected
                                     for name, expected in source_hashes.items()):
@@ -170,6 +174,10 @@ def package(project, metadata, plugin, build_report, resources, destination, *, 
                      description=metadata.get('description', ''), version=metadata['version'])
     declaration = ET.SubElement(xml, 'cc2mce', schema='1', type='mod', id=identity,
                                  sdk='cc2x', api=str(metadata.get('api', 4)))
+    if metadata.get('lua_api'):
+        declaration.set('lua_api', str(metadata['lua_api']))
+    if metadata.get('framework_api'):
+        declaration.set('framework_api', str(metadata['framework_api']))
     ET.SubElement(declaration, 'requires', id='cc2x.runtime')
     output['mod.xml'] = ET.tostring(xml, encoding='utf-8', xml_declaration=True)
     validate_resource('mod.xml', output['mod.xml'], None)

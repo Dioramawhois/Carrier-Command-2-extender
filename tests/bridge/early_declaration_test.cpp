@@ -39,6 +39,16 @@ int main(int argc,char** argv) {
   CHECK(result.vehicles[0].resourceName==L"aircraft");
   CHECK(result.vehicles[0].nativeBaseType==8);
   CHECK(result.vehicles[0].definitionId==0);
+  cc2x_vehicle_declaration native{};native.size=sizeof(native);native.id="f16";native.name="F-16";
+  native.base="wing_light";native.definition="game_objects/aircraft.xml";native.order=UINT32_MAX;
+  cc2::host::VehicleDeclaration fromC;std::string nativeError;
+  CHECK(cc2::host::BuildVehicleDeclarationFromC(discovery.mods[0],native,&fromC,&nativeError));
+  CHECK(fromC.identity==result.vehicles[0].identity&&fromC.resourceName==result.vehicles[0].resourceName&&
+    fromC.definitionPath==result.vehicles[0].definitionPath&&fromC.nativeBaseType==result.vehicles[0].nativeBaseType&&fromC.order==result.vehicles[0].order);
+  native.base="unsupported";CHECK(!cc2::host::BuildVehicleDeclarationFromC(discovery.mods[0],native,&fromC,&nativeError));native.base="wing_light";
+  native.definition="../aircraft.xml";CHECK(!cc2::host::BuildVehicleDeclarationFromC(discovery.mods[0],native,&fromC,&nativeError));native.definition="game_objects/aircraft.xml";
+  native.order=65536;CHECK(!cc2::host::BuildVehicleDeclarationFromC(discovery.mods[0],native,&fromC,&nativeError));native.order=UINT32_MAX;
+  native.size=0;CHECK(!cc2::host::BuildVehicleDeclarationFromC(discovery.mods[0],native,&fromC,&nativeError));
   const auto ranked=make(L"ranked","sample.ranked",
       "cc2.vehicles.register({id='f16',name='F-16',base='wing_light',definition='game_objects/aircraft_f16.xml',order=0})\n"
       "cc2.vehicles.register({id='f15',name='F-15',base='wing_heavy',definition='game_objects/aircraft_f15.xml',order=1})\n"

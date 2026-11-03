@@ -14,6 +14,9 @@ extern "C" {
 #include <lauxlib.h>
 }
 namespace fs=std::filesystem;
+extern "C" const cc2x_framework_api* cc2x_query_framework_v1(std::uint32_t,std::uint32_t);
+extern "C" void cc2x_native_bridge_plugin_begin(const wchar_t*);
+extern "C" int cc2x_native_bridge_plugin_end(int);
 using cc2::runtime::Host;
 namespace {
 void(*tick)(void*,void*)=nullptr;void*tickUser=nullptr;
@@ -21,6 +24,16 @@ void(*session)(void*,int,void*)=nullptr;void*sessionUser=nullptr;
 int tickSubscriptions=0,sessionSubscriptions=0;
 std::vector<std::wstring> roots;
 std::vector<std::string> logs;
+const cc2x_framework_api* nativeFramework=nullptr;cc2x_vm* savedVm=nullptr;int nativeWaypointEvents=0;
+int NativeSum(cc2x_vm* vm,void*) {
+  savedVm=vm;std::int64_t a=0,b=0;
+  if(!nativeFramework||nativeFramework->vm->gettop(vm)!=2||!nativeFramework->vm->tointeger(vm,1,&a)||!nativeFramework->vm->tointeger(vm,2,&b))return 0;
+  nativeFramework->vm->pushinteger(vm,a+b);return 1;
+}
+std::int32_t NativeWaypoints(const cc2x_framework_event* event,void*) {
+  if(event&&event->size==sizeof(*event)&&std::strcmp(event->name,"waypoints")==0&&event->a==7)++nativeWaypointEvents;
+  return CC2X_FRAMEWORK_DEFAULT;
+}
 std::unordered_map<std::string,cc2x_lua_fn> stockLuaFunctions;
 std::unordered_map<std::string,cc2x_lua_fn> stockLuaGlobals;
 std::vector<std::string> stockLuaFeatures;
@@ -29,10 +42,16 @@ std::uint32_t lastHangarCarrier=0,lastHangarSlot=0,lastHangarChassis=0;
 std::uint32_t lastHangarResultRequest=0,lastHangarResultVehicle=0,lastHangarResultError=0;
 int lastHangarResultSuccess=-1;
 void(*hangarResultCallback)(std::uint32_t,int,std::uint32_t,std::uint32_t,void*)=nullptr;void*hangarResultUser=nullptr;
-int NativeThrottle(int step){lastNativeThrottle=step;return step>=-1&&step<=1;}
-int NativeAnimation(std::uint32_t group,std::uint32_t multiplier){lastNativeGroup=static_cast<int>(group);lastNativeMultiplier=static_cast<int>(multiplier);return 1;}
-int NativeHangarSpawn(std::uint32_t carrier,std::uint32_t slot,std::uint32_t chassis){lastHangarCarrier=carrier;lastHangarSlot=slot;lastHangarChassis=chassis;return carrier>0?73:0;}
+int nativeMutations=0;
+int NativeThrottle(int step){++nativeMutations;lastNativeThrottle=step;return step>=-1&&step<=1;}
+int NativeAnimation(std::uint32_t group,std::uint32_t multiplier){++nativeMutations;lastNativeGroup=static_cast<int>(group);lastNativeMultiplier=static_cast<int>(multiplier);return 1;}
+int NativeHangarSpawn(std::uint32_t carrier,std::uint32_t slot,std::uint32_t chassis){++nativeMutations;lastHangarCarrier=carrier;lastHangarSlot=slot;lastHangarChassis=chassis;return carrier>0?73:0;}
 int HangarResultRegister(void(*fn)(std::uint32_t,int,std::uint32_t,std::uint32_t,void*),void*user){hangarResultCallback=fn;hangarResultUser=user;return fn!=nullptr;}
+int WaypointsRegister(void(*)(void*,void*),void*){return 1;}
+int AirfieldRegister(void(*)(void*,void*),void*){return 1;}
+int HangarChoiceRegister(int(*)(void*,void*,void*),void*){return 1;}
+int ControllerRegister(int(*)(int,void*),void*){return 1;}
+int SpawnRegister(int(*)(void*,int,void*),void*){return 1;}
 int StockLuaAdd(const char*ns,const char*name,cc2x_lua_fn fn){stockLuaFunctions[std::string(ns?ns:"")+"."+name]=fn;return 1;}
 int StockLuaAddGlobal(const char*name,cc2x_lua_fn fn){if(!name||!fn||stockLuaGlobals.count(name))return 0;stockLuaGlobals[name]=fn;return 1;}
 void StockLuaFeature(const char*name){stockLuaFeatures.emplace_back(name);}
@@ -42,6 +61,11 @@ void LuaPushInteger(cc2x_lua*L,std::int64_t value){lua_pushinteger(reinterpret_c
 void LuaPushString(cc2x_lua*L,const char*value){lua_pushstring(reinterpret_cast<lua_State*>(L),value);}
 void LuaPushNil(cc2x_lua*L){lua_pushnil(reinterpret_cast<lua_State*>(L));}
 void LuaNewTable(cc2x_lua*L){lua_newtable(reinterpret_cast<lua_State*>(L));}
+int LuaTop(cc2x_lua*L){return lua_gettop(reinterpret_cast<lua_State*>(L));}
+int LuaType(cc2x_lua*L,int i){return lua_type(reinterpret_cast<lua_State*>(L),i);}
+int LuaToNumber(cc2x_lua*L,int i,double*out){int ok=0;*out=lua_tonumberx(reinterpret_cast<lua_State*>(L),i,&ok);return ok;}
+const char* LuaToString(cc2x_lua*L,int i,size_t*n){return lua_tolstring(reinterpret_cast<lua_State*>(L),i,n);}
+void LuaPushNumber(cc2x_lua*L,double v){lua_pushnumber(reinterpret_cast<lua_State*>(L),v);}
 void Log(const char*,int,const char*format,...){char text[8192];va_list a;va_start(a,format);vsnprintf(text,sizeof(text),format,a);va_end(a);logs.emplace_back(text);}
 extern "C" void cc2x_native_hangar_spawn_result(std::uint32_t request,int success,std::uint32_t vehicle,std::uint32_t error){lastHangarResultRequest=request;lastHangarResultSuccess=success;lastHangarResultVehicle=vehicle;lastHangarResultError=error;if(hangarResultCallback)hangarResultCallback(request,success,vehicle,error,hangarResultUser);}
 void TickRegister(void(*fn)(void*,void*),void*u){tick=fn;tickUser=u;++tickSubscriptions;}
@@ -122,6 +146,12 @@ local h=require('modules.helper'); assert(h.value==42);assert(require('cc2')==cc
 local old, generation, checkedMissingAfterReload=false
 return {
  on_load=function()
+  assert(os==nil and io==nil and package==nil and debug==nil)
+  assert(load==nil and loadfile==nil and dofile==nil)
+  assert(cc2.native.fixture.sum(2,3)==5)
+  assert(cc2.module_id=='test_a')
+  assert(not cc2.events.available('island_controller') and not cc2.events.available('island_spawn'))
+  assert(cc2.events.on('hangar_choice',function(vehicle,tile,index) return vehicle==7 and 2 or nil end))
   local ok,reason=cc2.entities.register('test:drone',{base='vehicle',definition='stock_carrier'})
   assert(ok and reason=='registered')
   assert(cc2.entities.count()==1)
@@ -132,6 +162,11 @@ return {
   print('TEST_LOAD_A')
  end,
  on_update=function(dt)
+  for _,msg in ipairs(assert(cc2.messages.poll())) do
+    assert(msg.topic=='request' and msg.subject==7 and msg.value==2)
+    assert(cc2.messages.publish('reply',msg.subject,msg.value+1))
+    print('MODULE_MESSAGE_ROUNDTRIP_PASS')
+  end
   assert(type(dt)=='number' and dt>=0 and dt<=0.25)
   assert(type(cc2.input.key_down(38))=='boolean')
   local g=cc2.world.generation()
@@ -183,10 +218,24 @@ return {
   api.lua_add=StockLuaAdd;api.lua_feature=StockLuaFeature;api.lua_tointeger=LuaToInteger;
   api.lua_pushboolean=LuaPushBoolean;api.lua_pushinteger=LuaPushInteger;api.lua_pushstring=LuaPushString;api.lua_pushnil=LuaPushNil;api.lua_newtable=LuaNewTable;
   api.lua_add_global=StockLuaAddGlobal;
+  api.lua_gettop=LuaTop;api.lua_type=LuaType;api.lua_tonumber=LuaToNumber;
+  api.lua_tostring=LuaToString;api.lua_pushnumber=LuaPushNumber;
+  api.on_waypoints=WaypointsRegister;api.on_airfield_tick=AirfieldRegister;
+  api.on_hangar_choice=HangarChoiceRegister;api.on_island_controller=ControllerRegister;api.on_island_spawn=SpawnRegister;
   api.carrier_throttle=NativeThrottle;api.animation_speed=NativeAnimation;api.carrier_hangar_spawn=NativeHangarSpawn;api.on_hangar_spawn_result=HangarResultRegister;
   std::string config=root.string();api.config_dir=config.c_str();
   {Host wrong;auto bad=api;bad.api_version=4;CHECK(!wrong.Attach(&bad,false));bad=api;bad.size=offsetof(cc2x_api,active_mod_path);CHECK(!wrong.Attach(&bad,false));bad=api;bad.on_server_tick=nullptr;CHECK(!wrong.Attach(&bad,false));}
   Host host;CHECK(host.Attach(&api,false));CHECK(host.Attach(&api,false));CHECK(tickSubscriptions==1&&sessionSubscriptions==1);
+  nativeFramework=cc2x_query_framework_v1(CC2X_FRAMEWORK_VERSION,sizeof(cc2x_framework_api));
+  CHECK(cc2x_framework_compatible(nativeFramework));
+  CHECK(!cc2x_query_framework_v1(999,sizeof(cc2x_framework_api)));
+  CHECK(!cc2x_query_framework_v1(CC2X_FRAMEWORK_VERSION,1));
+  CHECK(nativeFramework->vm_bind("fixture","sum",NativeSum,nullptr)>0);
+  CHECK(!nativeFramework->vm_bind("fixture","sum",NativeSum,nullptr));
+  const auto nativeSubscription=nativeFramework->subscribe("waypoints",NativeWaypoints,nullptr);CHECK(nativeSubscription>0);
+  CHECK(!nativeFramework->subscribe("unknown.event",NativeWaypoints,nullptr));
+  const auto nativeMailbox=nativeFramework->mailbox_open("native.fixture");CHECK(nativeMailbox>0);
+  CHECK(!nativeFramework->mailbox_open("native.fixture"));
   CHECK(stockLuaFunctions.count("carrier.throttle")==1);
   CHECK(stockLuaFunctions.count(".spawn_in_hangar")==1);
   CHECK(stockLuaFunctions.count("animation.routes")==1&&stockLuaFunctions.count("animation.runway")==1);
@@ -239,13 +288,34 @@ return {
   auto server=reinterpret_cast<void*>(0x12340000);session(server,1,sessionUser);tick(server,tickUser);
   auto m=host.Stats();CHECK(m.modules==2&&m.loads==2&&m.errors>0&&m.requested==1);CHECK(Has("TEST_LOAD_A")&&Has("AFTER_A")&&Has("ENTITY_TYPE_REGISTRY_PASS"));CHECK(Has("EXPECTED_ENTRY_LOAD_ERROR")&&!Has("DISABLED_MUST_NOT_EXECUTE"));CHECK(cc2x_entity_type_count()==1);
   alignas(16) unsigned char carrier[0xD00]{};auto*throttle=reinterpret_cast<float*>(carrier+0xC94);
+  CHECK(host.WorldEvent("island_controller",1,0,0,0,true)==0);
+  CHECK(host.WorldEvent("island_controller",2,0,0,0,true)==0);
+  CHECK(host.WorldEvent("island_spawn",101,0,0,1,true)==1);
+  CHECK(host.WorldEvent("island_spawn",101,1,0,1,true)==1);
+  CHECK(host.WorldEvent("hangar_choice",7,101,0,-1,true)==2);
+  CHECK(host.WorldEvent("hangar_choice",9,101,0,-1,true)==-1);
+  host.WorldEvent("waypoints",7);CHECK(nativeWaypointEvents==1);
+  CHECK(savedVm&&nativeFramework->vm->gettop(savedVm)==-1);
+  CHECK(nativeFramework->message_send("test_a","request",7,2));
+  CHECK(!host.Mailbox().Send("disabled","request",7,2));
   host.AfterCarrierUpdate(carrier);CHECK(*throttle==0.025f&&host.Stats().applied==1);
   tick(server,tickUser);auto requests=host.Stats().requested;CHECK(requests==2);
+  double reply=0;CHECK(host.Mailbox().Read("test_a","reply",7,&reply)&&reply==3);CHECK(Has("MODULE_MESSAGE_ROUNDTRIP_PASS"));
+  CHECK(nativeFramework->message_read("test_a","reply",7,&reply)&&reply==3);
+  CHECK(nativeFramework->mailbox_publish(nativeMailbox,"state",7,11));
+  CHECK(nativeFramework->message_read("native.fixture","state",7,&reply)&&reply==11);
+  CHECK(nativeFramework->message_send("native.fixture","request",7,2));
+  cc2x_message nativeMessages[64]{};
+  CHECK(nativeFramework->mailbox_poll(nativeMailbox,nativeMessages,1)==-1);
+  CHECK(nativeFramework->mailbox_poll(nativeMailbox,nativeMessages,64)==1&&nativeMessages[0].subject==7&&nativeMessages[0].value==2);
+  CHECK(nativeFramework->mailbox_forget(nativeMailbox,7));CHECK(!nativeFramework->message_read("native.fixture","state",7,&reply));
   session(server,0,sessionUser);CHECK(host.Stats().dropped==1);vehicleA.hp=4200;vehicleA.available=false;session(server,1,sessionUser);CHECK(cc2x_entity_type_count()==1);
   host.AfterCarrierUpdate(carrier);CHECK(*throttle==0.025f);tick(server,tickUser);CHECK(host.Stats().loads==2&&Has("STALE_HANDLE_REJECTED")&&Has("WORLD_ID_RE_RESOLVED_AFTER_RELOAD"));
   vehicleA.available=true;tick(server,tickUser);CHECK(Has("WORLD_API_REGISTERED"));
   auto before=host.Stats().updates;std::thread wrong([&]{tick(server,tickUser);});wrong.join();CHECK(host.Stats().updates==before&&host.Stats().wrongThread==1);
   session(server,0,sessionUser);auto noSessionUpdates=host.Stats().updates;tick(server,tickUser);CHECK(host.Stats().updates==noSessionUpdates);
+  CHECK(!host.Mailbox().Read("test_a","reply",7,&reply));
+  CHECK(host.WorldEvent("island_controller",1,0,0,0,true)==0);
   emptyWorld=true;session(server,1,sessionUser);std::thread migrated([&]{tick(server,tickUser);});migrated.join();emptyWorld=false;CHECK(host.Stats().updates==before+1&&host.Stats().wrongThread==1&&Has("EMPTY_WORLD_READ_PASS"));
   session(server,0,sessionUser);
   for(int i=0;i<50;++i){session(server,0,sessionUser);session(server,1,sessionUser);tick(server,tickUser);}
@@ -265,6 +335,8 @@ return {
   session(server,1,sessionUser);tick(server,tickUser);
   CHECK(host.QueueHangarSpawn(7,4,12)==2);session(server,0,sessionUser);
   CHECK(lastHangarResultRequest==2&&lastHangarResultSuccess==0&&lastHangarResultError==CC2X_HANGAR_SPAWN_SESSION_CHANGED);
+  CHECK(nativeFramework->unsubscribe(nativeSubscription));CHECK(!nativeFramework->unsubscribe(nativeSubscription));
+  CHECK(nativeFramework->mailbox_close(nativeMailbox));CHECK(!nativeFramework->mailbox_close(nativeMailbox));
   host.Shutdown();CHECK(host.Stats().modules==0&&host.Stats().unloads==26);CHECK(cc2x_entity_type_count()==0);
   tick(server,tickUser);session(server,0,sessionUser);CHECK(host.Stats().modules==0);
   // The same native callback subscription survives removal of every module.
@@ -276,6 +348,43 @@ return {
     CHECK(api5Prefix.Attach(&oldApi,false));
     CHECK(stockLuaFunctions.size()==registrationsBefore);
     api5Prefix.Shutdown();
+  }
+  {
+    roots.clear();const auto before=nativeMutations;Host framework;
+    CHECK(framework.Attach(&api,false));framework.Session(server,true);framework.Tick(server);
+    alignas(16) unsigned char untouched[0xD00]{};untouched[0xC94]=123;
+    unsigned char original[sizeof(untouched)]{};std::memcpy(original,untouched,sizeof(untouched));
+    framework.AfterCarrierUpdate(untouched);
+    CHECK(framework.Stats().modules==0&&framework.Stats().requested==0&&framework.Stats().applied==0);
+    CHECK(std::memcmp(untouched,original,sizeof(untouched))==0&&nativeMutations==before);
+    CHECK(framework.WorldEvent("island_controller",1,0,0,0,true)==0);
+    CHECK(framework.WorldEvent("island_spawn",101,0,0,1,true)==1);
+    CHECK(framework.WorldEvent("hangar_choice",7,101,0,-1,true)==-1);
+    CHECK(!framework.Mailbox().Send("cc2_modes","set",7,1));
+    framework.Session(server,false);framework.Shutdown();CHECK(nativeMutations==before);
+    CHECK(cc2x_entity_type_count()==0);
+  }
+  {
+    const auto rules=root/L"rules_mod";Write(rules/L"mod.xml","<mod/>");
+    Write(rules/L"content/bridge.json",R"({"id":"rules.mod","scripts":["bridge/main.lua"],"rules":"bridge/rules.lua"})");
+    Write(rules/L"content/bridge/main.lua",R"(return {on_load=function() assert(type(cc2.world.find)=='function');assert(not cc2.events.available('island_controller')) end})");
+    Write(rules/L"content/bridge/rules.lua",R"(
+assert(cc2.world.find==nil and os==nil and io==nil and package==nil and debug==nil)
+assert(cc2.messages.poll()==nil)
+assert(cc2.events.on('island_controller',function(team) return team==1 end))
+assert(cc2.events.on('island_spawn',function(tile,ai) return ai~=0 end))
+return {}
+)");
+    roots={rules.wstring()};const auto before=nativeMutations;Host construction;
+    CHECK(construction.Attach(&api,false));
+    CHECK(construction.WorldEvent("island_controller",1,0,0,0,true)==1); // before Session/init completes
+    CHECK(construction.WorldEvent("island_controller",2,0,0,0,true)==0);
+    CHECK(construction.WorldEvent("island_spawn",101,0,0,1,true)==0);
+    CHECK(construction.WorldEvent("island_spawn",101,1,0,1,true)==1);
+    CHECK(construction.Stats().modules==0&&construction.Stats().loads==0&&nativeMutations==before);
+    construction.Session(server,true);construction.Tick(server);
+    CHECK(construction.Stats().modules==1&&construction.Stats().errors==0);
+    construction.Shutdown();CHECK(construction.WorldEvent("island_controller",1,0,0,0,true)==0);
   }
   std::error_code error;fs::remove_all(root,error);
   std::cout<<"PASS real Lua + mock CC2X: registration/delegation, API 5 prefix compatibility, callbacks, World Read API, session re-resolution, thread rejection, 50 sessions, shutdown; API bytes="<<sizeof(api)<<"\n";

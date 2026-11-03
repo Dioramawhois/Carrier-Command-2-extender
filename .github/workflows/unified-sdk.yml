@@ -21,6 +21,8 @@ jobs:
       - name: Build one runtime and run native fixtures
         run: python build.py --zig .deps/zig-x86_64-windows-0.15.2/zig.exe --test
       - name: Distribution and separation regressions
+        env:
+          CC2X_TEST_RUNTIME: dist/dinput8.dll
         run: python -m unittest discover -s tests -p 'test_*.py'
       - uses: actions/upload-artifact@v4
         if: always()

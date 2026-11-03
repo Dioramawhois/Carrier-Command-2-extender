@@ -16,7 +16,7 @@
 #include "cc2x_post_queue.h"
 #include "cc2x_session.h"
 
-#define CC2X_VERSION "0.6.0-dev"
+#define CC2X_VERSION "0.7.0-client-beta.1"
 
 #if defined(_MSC_VER) && !defined(CC2X_USE_GNU_ASM_ABI)
 #define CC2X_THISCALL __thiscall
@@ -32,6 +32,8 @@ extern int __cdecl cc2x_native_bridge_builtin_load(const cc2x_api *api);
 extern int __cdecl cc2x_native_bridge_carrier_throttle(int step);
 extern int __cdecl cc2x_native_bridge_animation_speed(uint32_t group, uint32_t multiplier);
 extern int __cdecl cc2x_native_bridge_carrier_hangar_spawn(uint32_t carrier_id, uint32_t slot, uint32_t chassis_type);
+extern void __cdecl cc2x_native_bridge_plugin_begin(const wchar_t *directory);
+extern int __cdecl cc2x_native_bridge_plugin_end(int accepted);
 #endif
 
 /* ============================================================================ game profile */
@@ -808,11 +810,17 @@ static void load_plugin(const wchar_t *dir, const wchar_t *file, const char *fro
     if (g_nloaded < MAX_PLUGINS) wcsncpy(g_loaded[g_nloaded++], file, MAX_PATH - 1);
     to_ansi(dir, g_loading_dir, sizeof(g_loading_dir));
     patch_abort();
+#if defined(CC2X_NATIVE_BRIDGE_BUILTIN)
+    cc2x_native_bridge_plugin_begin(dir);
+#endif
     int ok = load(&g_api);
     if (g_npending) {                 /* plugin forgot to commit */
         patch_abort();
         ok = 0;
     }
+#if defined(CC2X_NATIVE_BRIDGE_BUILTIN)
+    ok = cc2x_native_bridge_plugin_end(ok);
+#endif
     g_loading_dir[0] = 0;
     LOG(ok ? CC2X_LOG_INFO : CC2X_LOG_WARN, "plugin %s %s (%s)", name, ok ? "loaded" : "inactive", from);
 }

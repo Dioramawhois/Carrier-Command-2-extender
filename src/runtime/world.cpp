@@ -7,6 +7,7 @@ extern "C" {
 #include <climits>
 #include <chrono>
 #include <vector>
+#include <cstring>
 namespace cc2::runtime {
 namespace {
 constexpr char Meta[]="cc2.world.selector";
@@ -172,6 +173,43 @@ int VehicleCommand(lua_State*L){
   else if(op==2&&a->vehicle_brakes){int x=0,y=0;double brake=lua_tonumberx(L,2,&x),grip=lua_tonumberx(L,3,&y);if(!x||!y||!std::isfinite(brake)||!std::isfinite(grip))return Failure(L,"finite_numbers_expected");a->vehicle_brakes(p,static_cast<float>(brake),static_cast<float>(grip));}
   else return Failure(L,"capability_unavailable");lua_pushboolean(L,1);return 1;
 }
+int Throttle(lua_State* L) {
+  auto* s=Arg(L);void* vehicle=ResolveTyped(s,0x100);
+  if(!vehicle)return Failure(L,"stale_missing_or_wrong_vehicle");
+  if(lua_gettop(L)==1) {
+    double value=0;if(!s->host->ReadVehicleThrottle(s->id,&value))return Failure(L,"unsupported_vehicle_or_profile");
+    lua_pushnumber(L,value);return 1;
+  }
+  int ok=0;double value=lua_tonumberx(L,2,&ok);
+  if(lua_gettop(L)!=2||lua_type(L,2)!=LUA_TNUMBER||!ok||!std::isfinite(value)||value<0||value>1)return Failure(L,"expected_throttle_0_to_1");
+  if(!s->host->WriteVehicleThrottle(s->id,value))return Failure(L,"unsupported_vehicle_or_profile");
+  lua_pushboolean(L,1);return 1;
+}
+int Buttons(lua_State* L) {
+  auto* h=Owner(L);std::uint32_t id=0;auto* context=h->CurrentButtons();
+  if(lua_gettop(L)!=1||!ValidId(L,1,&id))return Failure(L,"expected_vehicle_id");
+  if(!context||context->vehicleId!=id)return Failure(L,"vehicle_controls_callback_required");
+  lua_createtable(L,static_cast<int>(context->buttons.size()),0);int i=1;
+  for(const auto& b:context->buttons){lua_createtable(L,0,4);
+    lua_pushlstring(L,b.name.data(),b.name.size());lua_setfield(L,-2,"name");
+    lua_pushinteger(L,b.index);lua_setfield(L,-2,"index");
+    lua_pushboolean(L,b.on);lua_setfield(L,-2,"on");
+    lua_pushboolean(L,b.enabled);lua_setfield(L,-2,"enabled");lua_rawseti(L,-2,i++);}
+  return 1;
+}
+int SetButtons(lua_State* L) {
+  auto* h=Owner(L);std::uint32_t id=0;auto* context=h->CurrentButtons();
+  if(lua_gettop(L)!=2||!ValidId(L,1,&id)||!lua_istable(L,2))return Failure(L,"expected_vehicle_id_and_button_values");
+  if(!context||context->vehicleId!=id)return Failure(L,"vehicle_controls_callback_required");
+  std::map<std::string,bool> values;lua_pushnil(L);
+  while(lua_next(L,2)){
+    std::size_t size=0;const char* name=lua_type(L,-2)==LUA_TSTRING?lua_tolstring(L,-2,&size):nullptr;
+    if(!name||!size||size>127||std::memchr(name,0,size)||!lua_isboolean(L,-1)||values.size()>=64){lua_pop(L,2);return Failure(L,"expected_up_to_64_named_boolean_states");}
+    values.emplace(std::string(name,size),lua_toboolean(L,-1)!=0);lua_pop(L,1);
+  }
+  if(!api::vehicle::StageButtons(context,values))return Failure(L,"unusable_ambiguous_or_conflicting_button_request");
+  lua_pushboolean(L,1);lua_pushliteral(L,"staged");return 2;
+}
 }
 void RegisterWorld(lua_State*L,Host*host) {
   luaL_newmetatable(L,Meta);lua_pushvalue(L,-1);lua_setfield(L,-2,"__index");
@@ -180,11 +218,13 @@ void RegisterWorld(lua_State*L,Host*host) {
   const char*commands[]={"gear","waypoints_sync","brakes"};for(int i=0;i<3;++i){lua_pushinteger(L,i);lua_pushcclosure(L,VehicleCommand,1);lua_setfield(L,-2,commands[i]);}
   lua_pushcfunction(L,Body);lua_setfield(L,-2,"body");lua_pop(L,1);
   luaL_getmetatable(L,Meta);
+  lua_pushcfunction(L,Throttle);lua_setfield(L,-2,"throttle");
   const luaL_Reg methods[]={{"body_set",BodySet},{"request_landing",Landing},{"bay",Bay},{"to_world",Transform},{nullptr,nullptr}};luaL_setfuncs(L,methods,0);lua_pop(L,1);
   lua_newtable(L);
   auto add=[&](const char*name,lua_CFunction fn){lua_pushlightuserdata(L,host);lua_pushcclosure(L,fn,1);lua_setfield(L,-2,name);};
   add("find",Find);add("generation",Generation);add("tick",WorldTick);add("count",Count);add("tile_at",TileAt);add("raycast",Raycast);
   add("vehicles",Vehicles);add("vehicle",Vehicle);add("tiles",Tiles);add("tile",Tile);
+  add("buttons",Buttons);add("set_buttons",SetButtons);
   lua_newtable(L);
 #define CC2_WORLD_CONSTANT(name) lua_pushinteger(L,name);lua_setfield(L,-2,#name);
 #include "world_constants.inc"

@@ -1,5 +1,10 @@
 # Writing a CC2X plugin
 
+For development-candidate operations shared with independent Lua, see
+[C/Lua capability parity](C_LUA_PARITY.md) and `include/cc2x_framework.h`.
+C/C++ plugins remain supported. C++ entry points need `extern "C"` linkage;
+the plugin build helper selects C++17 for `.cpp`, `.cc` and `.cxx` sources.
+
 A plugin is a 32-bit Windows DLL `cc2x_<name>.dll` with one export:
 
 ```c

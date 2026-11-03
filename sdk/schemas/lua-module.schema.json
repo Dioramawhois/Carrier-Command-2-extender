@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:cc2x:lua-module:2",
+  "title": "CC2X Lua API 2 independent gameplay module",
+  "type": "object",
+  "required": ["id", "scripts"],
+  "properties": {
+    "schema": {"const": 2},
+    "id": {"type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[A-Za-z0-9_-]+(?:[.][A-Za-z0-9_-]+)*$"},
+    "scripts": {"type": "array", "minItems": 1, "maxItems": 256, "uniqueItems": true, "items": {"$ref": "#/$defs/path"}},
+    "rules": {"$ref": "#/$defs/path", "description": "Separate read-only Lua VM for construction-time controller/spawn decisions. No world, input, mutations, filesystem or native-library API."}
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "path": {"type": "string", "minLength": 1, "maxLength": 240, "pattern": "^[A-Za-z0-9_/-]+[.]lua$", "description": "Content-relative source path. Runtime additionally rejects parent components, absolute paths, reserved names, links, duplicate or stock-screen entries and files outside the selected code root."}
+  }
+}

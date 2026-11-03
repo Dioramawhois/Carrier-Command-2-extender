@@ -4,16 +4,112 @@
 -- Stock update_* closures are not imported from game-owned Lua states.
 
 local M = {
-    version = "1.0.0-cc2x-preview",
+    version = "1.1.0-cc2x-api2-dev",
+    lua_api_version = rawget(_G, "cc2_bridge_lua_api_version") or 1,
     game_api = {},
     bridge = {},
     carrier = {},
     animation = {},
     entities = {},
+    session = {},
     vehicles = {},
+    messages = {},
+    events = {},
+    module_id = rawget(_G, "cc2_bridge_module_id"),
+    native = rawget(_G, "cc2_bridge_native") or {},
     input = { key = { up = 0x26, right = 0x27 } },
     world = rawget(_G, "cc2_bridge_world") or {},
 }
+
+-- Screen/UI scripts use cc2x.modules.send(owner, topic, subject, value).
+-- Only this module may drain its queue or publish its reply/state. Requests
+-- are not trusted orders: each mod checks its own permissions and arguments.
+function M.messages.poll()
+    local native = rawget(_G, "cc2_bridge_messages_poll")
+    if type(native) ~= "function" then return nil, "unavailable" end
+    return native()
+end
+function M.session.generation()
+    local native = rawget(_G, "cc2_bridge_session_generation")
+    return type(native) == "function" and native() or 0
+end
+function M.session.tick()
+    local native = rawget(_G, "cc2_bridge_session_tick")
+    return type(native) == "function" and native() or 0
+end
+function M.session.post(callback)
+    local native = rawget(_G, "cc2_bridge_session_post")
+    if type(callback) ~= "function" then return nil, "expected_function" end
+    if type(native) ~= "function" then return nil, "unavailable" end
+    return native(callback)
+end
+function M.session.cancel(task)
+    local native = rawget(_G, "cc2_bridge_session_cancel")
+    if type(native) ~= "function" then return false, "unavailable" end
+    return native(task)
+end
+function M.messages.send(owner, topic, subject, value)
+    if type(owner) ~= "string" or #owner < 1 or #owner > 128 or owner:find("%z") then
+        return false, "invalid_recipient"
+    end
+    local native = rawget(_G, "cc2_bridge_messages_send")
+    if type(native) ~= "function" then return false, "unavailable" end
+    return native(owner, topic, subject, value)
+end
+function M.messages.read(owner, topic, subject)
+    local native = rawget(_G, "cc2_bridge_messages_read")
+    if type(native) ~= "function" then return nil, "unavailable" end
+    return native(owner, topic, subject)
+end
+function M.messages.publish(topic, subject, value)
+    if type(topic) ~= "string" or #topic < 1 or #topic > 64 or
+        not topic:match("^[%w_.-]+$") or type(subject) ~= "number" or
+        subject % 1 ~= 0 or subject < 0 or subject > 4294967295 or
+        type(value) ~= "number" or value ~= value or math.abs(value) == math.huge then
+        return false, "invalid_message"
+    end
+    local native = rawget(_G, "cc2_bridge_messages_publish")
+    if type(native) ~= "function" then return false, "unavailable" end
+    return native(topic, subject, value)
+end
+function M.messages.forget(subject)
+    if type(subject) ~= "number" or subject % 1 ~= 0 or subject < 0 or subject > 4294967295 then
+        return false, "expected_subject_uint32"
+    end
+    local native = rawget(_G, "cc2_bridge_messages_forget")
+    if type(native) ~= "function" then return false, "unavailable" end
+    return native(subject)
+end
+
+local event_names = {waypoints = true, airfield_tick = true,
+    hangar_choice = true, island_controller = true, island_spawn = true,
+    vehicle_controls = true, vehicle_control_query = true}
+local event_handlers = {}
+function M.events.available(name)
+    local native = rawget(_G, "cc2_bridge_event_capabilities")
+    return event_names[name] == true and type(native) == "table" and native[name] == true
+end
+function M.events.on(name, handler)
+    if not event_names[name] or type(handler) ~= "function" then
+        return false, "expected_event_name_and_function"
+    end
+    if not M.events.available(name) then return false, "unavailable" end
+    local subscribe = rawget(_G, "cc2_bridge_event_subscription")
+    if type(subscribe) == "function" and subscribe(name, true) ~= true then return false, "unavailable" end
+    event_handlers[name] = handler
+    return true
+end
+function M.events.off(name)
+    event_handlers[name] = nil
+    local subscribe = rawget(_G, "cc2_bridge_event_subscription")
+    if type(subscribe) == "function" then subscribe(name, false) end
+end
+-- Called only by the shared Host on the authoritative game thread. Numeric
+-- object IDs are copied; callers resolve checked cc2.world selectors as needed.
+function _G.__cc2_engine_event(name, a, b, c)
+    local handler = event_handlers[name]
+    if handler then return handler(a, b, c) end
+end
 
 local names = {}
 
@@ -229,6 +325,18 @@ end
 
 function M.entities.count()
     local native = rawget(_G, "cc2_bridge_entity_type_count")
+    if type(native) ~= "function" then return nil, "unavailable" end
+    return native()
+end
+
+function M.entities.remove(id)
+    local native = rawget(_G, "cc2_bridge_entity_type_remove")
+    if type(native) ~= "function" then return false, "unavailable" end
+    return native(id)
+end
+
+function M.entities.clear()
+    local native = rawget(_G, "cc2_bridge_entity_type_clear")
     if type(native) ~= "function" then return nil, "unavailable" end
     return native()
 end

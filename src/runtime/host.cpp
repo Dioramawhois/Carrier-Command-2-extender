@@ -12,6 +12,8 @@
 #include "../api/vehicle/definition_adapter.h"
 #include "api/vehicle/definition_registry.h"
 #include "api/vehicle/lua_api.h"
+#include "api/vehicle/control.h"
+#include "platform/seh_guard.h"
 extern "C" {
 #include "lua.h"
 #include "lauxlib.h"
@@ -24,6 +26,7 @@ extern "C" {
 #include <cmath>
 #include <cstring>
 #include <map>
+#include <set>
 #include <string>
 #include <cstdlib>
 
@@ -32,6 +35,10 @@ struct Module {
   Host* host=nullptr;
   lua_State* L=nullptr;
   std::string id;
+  host::ModDescriptor descriptor;
+  std::wstring sdkPath;
+  bool rules=false;
+  std::set<std::string> subscriptions;
   unsigned long long generation=0,updates=0,callbacks=0,errors=0;
   struct Counter {unsigned long long calls=0,errors=0;};
   std::map<unsigned,Counter> handlers;
@@ -40,6 +47,55 @@ struct Module {
 };
 namespace {
 const cc2x_api* g_stockLuaApi=nullptr;
+Host* g_stockHost=nullptr;
+
+bool StockText(cc2x_lua* L,int at,std::string* result,std::size_t limit) {
+  const auto* a=g_stockLuaApi;if(!a||a->lua_type(L,at)!=CC2X_LUA_STRING)return false;
+  std::size_t length=0;const char* text=(a->lua_tostring)(L,at,&length);
+  if(!text||!length||length>limit||std::memchr(text,'\0',length))return false;
+  result->assign(text,length);return true;
+}
+int StockMessageSend(cc2x_lua* L) {
+  const auto* a=g_stockLuaApi;if(!a)return 0;
+  std::string owner,topic;int64_t id=0;double value=0;
+  const bool valid=g_stockHost&&a->lua_gettop(L)==4&&StockText(L,1,&owner,128)&&StockText(L,2,&topic,64)&&
+    a->lua_type(L,3)==CC2X_LUA_NUMBER&&(a->lua_tointeger)(L,3,&id)&&id>=0&&id<=UINT32_MAX&&
+    a->lua_type(L,4)==CC2X_LUA_NUMBER&&(a->lua_tonumber)(L,4,&value)&&std::isfinite(value);
+  a->lua_pushboolean(L,valid&&g_stockHost->Mailbox().Send(owner,topic,static_cast<std::uint32_t>(id),value));return 1;
+}
+int StockMessageRead(cc2x_lua* L) {
+  const auto* a=g_stockLuaApi;if(!a)return 0;
+  std::string owner,topic;int64_t id=0;double value=0;
+  if(g_stockHost&&a->lua_gettop(L)==3&&StockText(L,1,&owner,128)&&StockText(L,2,&topic,64)&&
+      a->lua_type(L,3)==CC2X_LUA_NUMBER&&(a->lua_tointeger)(L,3,&id)&&id>=0&&id<=UINT32_MAX&&
+      g_stockHost->Mailbox().Read(owner,topic,static_cast<std::uint32_t>(id),&value))a->lua_pushnumber(L,value);
+  else a->lua_pushnil(L);return 1;
+}
+int AirfieldIndex(Host* host,void* airfield) {
+  const auto* a=host->Api();if(!a->find||!a->geti||!a->ref||!a->count)return -1;
+  auto* tile=a->find(CC2X_WORLD_TILES,static_cast<std::uint32_t>(a->geti(airfield,CC2X_AIRFIELD_TILE,0)));
+  auto* island=tile?a->ref(tile,CC2X_TILE_ISLAND,0):nullptr;if(!island)return -1;
+  int count=a->count(island,CC2X_ISLAND_AIRFIELDS);if(count<0||count>256)return -1;
+  for(int i=0;i<count;++i)if(a->ref(island,CC2X_ISLAND_AIRFIELDS,i)==airfield)return i;
+  return -1;
+}
+void WorldWaypoints(void* vehicle,void* user) {
+  auto* h=static_cast<Host*>(user);if(vehicle&&h->Api()->geti)h->WorldEvent("waypoints",static_cast<double>(h->Api()->geti(vehicle,CC2X_VEHICLE_ID,0)));
+}
+void WorldAirfield(void* airfield,void* user) {
+  auto* h=static_cast<Host*>(user);if(!airfield||!h->Api()->geti)return;
+  const int index=AirfieldIndex(h,airfield);if(index>=0)h->WorldEvent("airfield_tick",static_cast<double>(h->Api()->geti(airfield,CC2X_AIRFIELD_TILE,0)),index);
+}
+int WorldHangar(void* airfield,void* vehicle,void* user) {
+  auto* h=static_cast<Host*>(user);if(!airfield||!vehicle||!h->Api()->geti)return -1;
+  const int index=AirfieldIndex(h,airfield);if(index<0)return -1;
+  return h->WorldEvent("hangar_choice",static_cast<double>(h->Api()->geti(vehicle,CC2X_VEHICLE_ID,0)),static_cast<double>(h->Api()->geti(airfield,CC2X_AIRFIELD_TILE,0)),index,-1,true);
+}
+int WorldController(int team,void* user){return static_cast<Host*>(user)->WorldEvent("island_controller",team,0,0,0,true);}
+int WorldSpawn(void* tile,int aiTeam,void* user) {
+  auto* h=static_cast<Host*>(user);if(!tile||!h->Api()->geti)return 1;
+  return h->WorldEvent("island_spawn",static_cast<double>(h->Api()->geti(tile,CC2X_TILE_ID,0)),aiTeam,0,1,true);
+}
 std::string Utf8(const std::wstring& value) {
   int n=WideCharToMultiByte(CP_UTF8,0,value.data(),static_cast<int>(value.size()),nullptr,0,nullptr,nullptr);
   std::string s(n,'\0');if(n)WideCharToMultiByte(CP_UTF8,0,value.data(),static_cast<int>(value.size()),s.data(),n,nullptr,nullptr);return s;
@@ -59,6 +115,69 @@ std::wstring WideUtf8(const char* value,std::size_t length) {
   return result;
 }
 Module* Current(lua_State* L) {return static_cast<Module*>(lua_touserdata(L,lua_upvalueindex(1)));}
+int EventSubscribe(lua_State* L) {
+  auto* m=Current(L);std::size_t length=0;const char* name=lua_type(L,1)==LUA_TSTRING?lua_tolstring(L,1,&length):nullptr;
+  if(lua_gettop(L)!=2||!name||length>64||std::memchr(name,0,length)||!lua_isboolean(L,2)||!m->host->EventAvailable(std::string(name,length),m->rules)) {
+    lua_pushboolean(L,0);return 1;
+  }
+  const std::string event(name,length);
+  if(lua_toboolean(L,2)&&(event=="vehicle_controls"||event=="vehicle_control_query")&&!api::vehicle::EnsureButtons()){lua_pushboolean(L,0);return 1;}
+  if(lua_toboolean(L,2))m->subscriptions.insert(std::string(name,length));else m->subscriptions.erase(std::string(name,length));
+  lua_pushboolean(L,1);return 1;
+}
+int BoundNative(lua_State* L) {
+  auto* m=Current(L);const auto id=static_cast<std::uint64_t>(lua_tointeger(L,lua_upvalueindex(2)));
+  return InvokeNativeBinding(L,m->host,id);
+}
+struct NativeEventCall {cc2x_framework_event_fn callback;const cc2x_framework_event* event;void* user;std::int32_t result=CC2X_FRAMEWORK_DEFAULT;};
+void CallNativeEvent(void* context){auto* call=static_cast<NativeEventCall*>(context);call->result=call->callback(call->event,call->user);}
+bool FrameworkName(const std::string& value,std::size_t limit=64) {
+  if(value.empty()||value.size()>limit)return false;
+  for(unsigned char c:value)if(!((c>='a'&&c<='z')||(c>='A'&&c<='Z')||(c>='0'&&c<='9')||c=='_'||c=='.'||c=='-'))return false;
+  return true;
+}
+int MessagePoll(lua_State* L) {
+  auto* m=Current(L);
+  if(lua_gettop(L)!=0||!m->host->InLuaContext()){lua_pushnil(L);lua_pushliteral(L,"server_callback_required");return 2;}
+  auto messages=m->host->Mailbox().Drain(m->id);lua_createtable(L,static_cast<int>(messages.size()),0);
+  int i=1;for(const auto& message:messages){lua_createtable(L,0,3);
+    lua_pushstring(L,message.topic.c_str());lua_setfield(L,-2,"topic");
+    lua_pushinteger(L,message.subject);lua_setfield(L,-2,"subject");
+    lua_pushnumber(L,message.value);lua_setfield(L,-2,"value");lua_rawseti(L,-2,i++);}
+  return 1;
+}
+int MessagePublish(lua_State* L) {
+  auto* m=Current(L);std::size_t length=0;const char* topic=lua_type(L,1)==LUA_TSTRING?lua_tolstring(L,1,&length):nullptr;
+  int idOk=0,valueOk=0;const auto id=lua_tointegerx(L,2,&idOk);const double value=lua_tonumberx(L,3,&valueOk);
+  const bool valid=lua_gettop(L)==3&&m->host->InLuaContext()&&topic&&length>0&&length<=64&&!std::memchr(topic,'\0',length)&&
+      lua_type(L,2)==LUA_TNUMBER&&idOk&&id>=0&&id<=UINT32_MAX&&lua_type(L,3)==LUA_TNUMBER&&valueOk&&std::isfinite(value);
+  lua_pushboolean(L,valid&&m->host->Mailbox().Publish(m->id,std::string(topic,length),static_cast<std::uint32_t>(id),value));return 1;
+}
+int MessageForget(lua_State* L) {
+  auto* m=Current(L);int ok=0;auto subject=lua_tointegerx(L,1,&ok);
+  if(lua_gettop(L)!=1||lua_type(L,1)!=LUA_TNUMBER||!ok||subject<0||subject>UINT32_MAX||!m->host->InLuaContext()){lua_pushboolean(L,0);return 1;}
+  m->host->Mailbox().Forget(m->id,static_cast<std::uint32_t>(subject));lua_pushboolean(L,1);return 1;
+}
+int MessageSend(lua_State* L) {
+  auto* m=Current(L);std::size_t ownerSize=0,topicSize=0;
+  const char* owner=lua_type(L,1)==LUA_TSTRING?lua_tolstring(L,1,&ownerSize):nullptr;
+  const char* topic=lua_type(L,2)==LUA_TSTRING?lua_tolstring(L,2,&topicSize):nullptr;
+  int subjectOk=0,valueOk=0;auto subject=lua_tointegerx(L,3,&subjectOk);double value=lua_tonumberx(L,4,&valueOk);
+  const bool valid=lua_gettop(L)==4&&m->host->InLuaContext()&&owner&&ownerSize>0&&ownerSize<=128&&!std::memchr(owner,0,ownerSize)&&
+    topic&&topicSize>0&&topicSize<=64&&!std::memchr(topic,0,topicSize)&&lua_type(L,3)==LUA_TNUMBER&&subjectOk&&subject>=0&&subject<=UINT32_MAX&&
+    lua_type(L,4)==LUA_TNUMBER&&valueOk&&std::isfinite(value);
+  lua_pushboolean(L,valid&&m->host->Mailbox().Send(std::string(owner,ownerSize),std::string(topic,topicSize),static_cast<std::uint32_t>(subject),value));return 1;
+}
+int MessageRead(lua_State* L) {
+  auto* m=Current(L);std::size_t ownerSize=0,topicSize=0;
+  const char* owner=lua_type(L,1)==LUA_TSTRING?lua_tolstring(L,1,&ownerSize):nullptr;
+  const char* topic=lua_type(L,2)==LUA_TSTRING?lua_tolstring(L,2,&topicSize):nullptr;
+  int ok=0;const auto subject=lua_tointegerx(L,3,&ok);double value=0;
+  const bool valid=lua_gettop(L)==3&&m->host->InLuaContext()&&owner&&ownerSize>0&&ownerSize<=128&&!std::memchr(owner,0,ownerSize)&&
+    topic&&topicSize>0&&topicSize<=64&&!std::memchr(topic,0,topicSize)&&lua_type(L,3)==LUA_TNUMBER&&ok&&subject>=0&&subject<=UINT32_MAX;
+  if(valid&&m->host->Mailbox().Read(std::string(owner,ownerSize),std::string(topic,topicSize),static_cast<std::uint32_t>(subject),&value))lua_pushnumber(L,value);
+  else lua_pushnil(L);return 1;
+}
 void* Allocate(void*ud,void*ptr,size_t oldSize,size_t newSize) {
   auto*m=static_cast<Module*>(ud);if(!ptr)oldSize=0;
   if(!newSize){std::free(ptr);m->allocated-=oldSize;return nullptr;}
@@ -70,19 +189,50 @@ void Budget(lua_State*L,lua_Debug*) {
   if(m->budget<=10000)luaL_error(L,"Native Bridge callback instruction budget exceeded");m->budget-=10000;
 }
 void SetBudget(Module&m){m.budget=2000000;lua_sethook(m.L,Budget,LUA_MASKCOUNT,10000);}
-int ReadLua(lua_State*L,const char*filename) {
+int SessionGeneration(lua_State* L){lua_pushinteger(L,Current(L)->host->ActiveGeneration());return 1;}
+int SessionTick(lua_State* L){lua_pushinteger(L,Current(L)->host->ActiveTick());return 1;}
+int SessionPost(lua_State* L) {
+  auto* m=Current(L);
+  if(lua_gettop(L)!=1||!lua_isfunction(L,1)||!m->host->InLuaContext()){lua_pushnil(L);lua_pushliteral(L,"expected_function_in_active_session");return 2;}
+  lua_pushvalue(L,1);const int ref=luaL_ref(L,LUA_REGISTRYINDEX);
+  const auto id=m->host->PostTask("lua."+m->id,m->host->ActiveGeneration(),[m,ref]{
+    const int top=lua_gettop(m->L);SetBudget(*m);lua_rawgeti(m->L,LUA_REGISTRYINDEX,ref);
+    if(lua_pcall(m->L,0,0,0)!=LUA_OK){++m->errors;m->host->Log("LUA_TASK_ERROR",m->id.c_str(),lua_tostring(m->L,-1));}
+    lua_settop(m->L,top);
+  },[m,ref]{luaL_unref(m->L,LUA_REGISTRYINDEX,ref);});
+  if(!id){luaL_unref(L,LUA_REGISTRYINDEX,ref);lua_pushnil(L);lua_pushliteral(L,"no_session_or_task_queue_full");return 2;}
+  lua_pushinteger(L,static_cast<lua_Integer>(id));return 1;
+}
+int SessionCancel(lua_State* L) {
+  auto* m=Current(L);int ok=0;const auto id=lua_tointegerx(L,1,&ok);
+  lua_pushboolean(L,lua_gettop(L)==1&&ok&&id>0&&m->host->InLuaContext()&&m->host->CancelTask("lua."+m->id,static_cast<std::uint64_t>(id)));return 1;
+}
+int ReadLua(lua_State*L,const char*filename,const Module* module=nullptr) {
   if(!filename){lua_pushliteral(L,"filename expected");return LUA_ERRFILE;}
   int n=MultiByteToWideChar(CP_UTF8,MB_ERR_INVALID_CHARS,filename,-1,nullptr,0);
   if(!n){lua_pushliteral(L,"invalid UTF-8 filename");return LUA_ERRFILE;}
   std::wstring path(n,L'\0');MultiByteToWideChar(CP_UTF8,MB_ERR_INVALID_CHARS,filename,-1,path.data(),n);path.pop_back();
+  if(module&&_wcsicmp(path.c_str(),module->sdkPath.c_str())!=0) {
+    auto relative=std::filesystem::path(path).lexically_relative(std::filesystem::path(module->descriptor.rootPath)).generic_wstring();
+    std::wstring resolved;
+    if(relative.empty()||!host::ResolveModAssetPath(module->descriptor,relative,L".lua",&resolved)) {
+      lua_pushliteral(L,"Lua file must remain inside this module's safe code root");return LUA_ERRFILE;
+    }
+    path=std::move(resolved);
+  }
   std::ifstream file(std::filesystem::path(path),std::ios::binary|std::ios::ate);
   if(!file||file.tellg()<0||file.tellg()>8*1024*1024){lua_pushliteral(L,"cannot read Lua file or file exceeds 8 MiB");return LUA_ERRFILE;}
   std::string data(static_cast<std::size_t>(file.tellg()),'\0');file.seekg(0);if(!data.empty())file.read(data.data(),data.size());
   if(!file){lua_pushliteral(L,"Lua file read failed");return LUA_ERRFILE;}
   return luaL_loadbufferx(L,data.data(),data.size(),filename,"t");
 }
-int LoadFile(lua_State*L){int rc=ReadLua(L,lua_tostring(L,1));if(rc==LUA_OK)return 1;lua_pushnil(L);lua_insert(L,-2);return 2;}
-int DoFile(lua_State*L){int top=lua_gettop(L);int rc=ReadLua(L,lua_tostring(L,1));if(rc!=LUA_OK)return lua_error(L);lua_call(L,0,LUA_MULTRET);return lua_gettop(L)-top;}
+int LoadFile(lua_State*L){int rc=ReadLua(L,lua_tostring(L,1),Current(L));if(rc==LUA_OK)return 1;lua_pushnil(L);lua_insert(L,-2);return 2;}
+int DoFile(lua_State*L){int top=lua_gettop(L);int rc=ReadLua(L,lua_tostring(L,1),Current(L));if(rc!=LUA_OK)return lua_error(L);lua_call(L,0,LUA_MULTRET);return lua_gettop(L)-top;}
+void OpenLibraries(lua_State* L) {
+  const luaL_Reg libraries[]={{"_G",luaopen_base},{LUA_TABLIBNAME,luaopen_table},{LUA_STRLIBNAME,luaopen_string},
+    {LUA_MATHLIBNAME,luaopen_math},{LUA_UTF8LIBNAME,luaopen_utf8},{LUA_COLIBNAME,luaopen_coroutine},{nullptr,nullptr}};
+  for(const auto* library=libraries;library->name;++library){luaL_requiref(L,library->name,library->func,1);lua_pop(L,1);}
+}
 int VehicleRegister(lua_State* L) {
   auto* module=Current(L);
   if (!module || lua_gettop(L)!=1 || !lua_istable(L,1)) {
@@ -167,7 +317,9 @@ int Key(lua_State* L) {
 int Animation(lua_State* L) {
   int ok=0;auto multiplier=lua_tointegerx(L,1,&ok);
   auto group=static_cast<api::animation::Group>(lua_tointeger(L,lua_upvalueindex(2)));
-  return Result(L,ok&&multiplier>=1&&static_cast<unsigned long long>(multiplier)<=UINT32_MAX&&api::animation::SetSpeed(group,static_cast<unsigned>(multiplier)),"applied_or_unavailable");
+  const auto* api=Current(L)->host->Api();
+  return Result(L,ok&&multiplier>=1&&static_cast<unsigned long long>(multiplier)<=UINT32_MAX&&api->animation_speed&&
+    api->animation_speed(static_cast<std::uint32_t>(group),static_cast<unsigned>(multiplier)),"applied_or_unavailable");
 }
 int HangarSpawn(lua_State* L) {
   auto* m=Current(L);
@@ -239,8 +391,21 @@ int EntityTypeRegister(lua_State* L) {
   if (!m || !m->host->InLuaContext()) return Result(L,false,"wrong_execution_context_or_no_session");
   if (lua_gettop(L)!=3 || lua_type(L,1)!=LUA_TSTRING || lua_type(L,2)!=LUA_TSTRING || lua_type(L,3)!=LUA_TSTRING)
     return Result(L,false,"expected_id_base_definition_strings");
+  for(int i=1;i<=3;++i){std::size_t size=0;const auto* text=lua_tolstring(L,i,&size);
+    if(!size||size>=97||std::memchr(text,0,size))return Result(L,false,"invalid_type_descriptor");}
   const auto result=cc2x_entity_type_register(m->id.c_str(),lua_tostring(L,1),lua_tostring(L,2),lua_tostring(L,3));
   return Result(L,result==CC2X_ENTITY_TYPE_OK,EntityTypeError(result));
+}
+int EntityTypeRemove(lua_State* L) {
+  auto* m=Current(L);if(!m||!m->host->InLuaContext())return Result(L,false,"wrong_execution_context_or_no_session");
+  std::size_t size=0;const auto* text=lua_type(L,1)==LUA_TSTRING?lua_tolstring(L,1,&size):nullptr;
+  if(lua_gettop(L)!=1||!text||!size||size>=97||std::memchr(text,0,size))return Result(L,false,"invalid_type_id");
+  return Result(L,cc2x_entity_type_remove(m->id.c_str(),text)!=0,"removed_or_not_owned");
+}
+int EntityTypeClear(lua_State* L) {
+  auto* m=Current(L);if(!m||!m->host->InLuaContext())return Result(L,false,"wrong_execution_context_or_no_session");
+  if(lua_gettop(L))return Result(L,false,"no_arguments_expected");
+  lua_pushinteger(L,cc2x_entity_type_remove_owner(m->id.c_str()));return 1;
 }
 int EntityTypeCount(lua_State* L) {
   auto* m=Current(L);
@@ -349,7 +514,7 @@ void OnHangarSpawnResult(std::uint32_t requestId,int success,std::uint32_t vehic
 }
 Host::Host(bool(*sampler)(int)):inputSampler_(sampler){}
 Host::~Host(){Shutdown();}
-bool Host::Attach(const cc2x_api* api,bool installNative) {
+bool Host::Attach(const cc2x_api* api,bool installNative,bool deferCatalog) {
   std::lock_guard<std::recursive_mutex> lock(mutex_);
   if(attached_)return api&&api_.module_base==api->module_base;
   if(!api||api->api_version<5||api->size<offsetof(cc2x_api,patch_bytes)+sizeof(api->patch_bytes))return false;
@@ -387,6 +552,11 @@ bool Host::Attach(const cc2x_api* api,bool installNative) {
       api_.game_build,animationReady?"ready":"unsupported",hangarReadyForCalls?"ready":"unsupported");
   }
   g_stockLuaApi=&api_;
+  g_stockHost=this;
+  if(api_.lua_add&&api_.lua_gettop&&api_.lua_type&&api_.lua_tostring&&api_.lua_tointeger&&api_.lua_tonumber&&api_.lua_pushboolean&&api_.lua_pushnil&&api_.lua_pushnumber) {
+    const bool messages=api_.lua_add("modules","send",StockMessageSend)&&api_.lua_add("modules","read",StockMessageRead);
+    if(messages&&api_.lua_feature)api_.lua_feature("module_messages");
+  }
   bool luaCarrier=false,luaAnimation=false,luaHangar=false;
   const bool luaVehicleDefinitions=api::vehicle::RegisterStockLuaApi(&api_);
   if(api_.log)api_.log("native_bridge",luaVehicleDefinitions?CC2X_LOG_INFO:CC2X_LOG_WARN,
@@ -417,7 +587,7 @@ bool Host::Attach(const cc2x_api* api,bool installNative) {
   if (!installNative) {
     // Pure host tests do not run inside DLL_PROCESS_ATTACH; prepare directly
     // so their first synthetic server tick observes the same published catalog.
-    PrepareStartupCatalog();
+    if(!deferCatalog)PrepareStartupCatalog();
   } else {
     HANDLE catalogThread = CreateThread(nullptr, 0, PrepareStartupCatalogThread,
         this, 0, nullptr);
@@ -428,6 +598,13 @@ bool Host::Attach(const cc2x_api* api,bool installNative) {
     }
   }
   api_.on_session(OnSession,this);api_.on_server_tick(OnTick,this);
+  eventCapabilities_["waypoints"]=api_.on_waypoints&&api_.on_waypoints(WorldWaypoints,this);
+  eventCapabilities_["airfield_tick"]=api_.on_airfield_tick&&api_.on_airfield_tick(WorldAirfield,this);
+  eventCapabilities_["hangar_choice"]=api_.on_hangar_choice&&api_.on_hangar_choice(WorldHangar,this);
+  eventCapabilities_["island_controller"]=api_.on_island_controller&&api_.on_island_controller(WorldController,this);
+  eventCapabilities_["island_spawn"]=api_.on_island_spawn&&api_.on_island_spawn(WorldSpawn,this);
+  eventCapabilities_["vehicle_controls"]=api::vehicle::ButtonsSupported();
+  eventCapabilities_["vehicle_control_query"]=api::vehicle::ButtonsSupported();
   Log("PLUGIN_ATTACHED","host","API size/version checked; two stable native subscriptions; VM deferred");return true;
 }
 void Host::Log(const char* event,const char* mod,const char* detail) {
@@ -462,6 +639,7 @@ void Host::Session(void* server,bool started) {
     }
     hangarSpawnResults_.clear(); // Results belong to the world that produced them.
     server_=server;++metrics_.generation;threadGeneration_=0;lastTick_=0;sessionTicks_=0;
+    mailbox_.Begin(metrics_.generation);
     hangarSpawnRequested_=false;hangarSpawnInFlight_=false;hangarSpawnUnsafeLatched_=false;
     hangarSpawnRollbackPending_=false;
     hangarSpawnRequestGeneration_=hangarSpawnAttemptGeneration_=metrics_.generation;
@@ -478,6 +656,7 @@ void Host::Session(void* server,bool started) {
       LogHangarSpawn("HANGAR_SPAWN_DROPPED","session ended before server-thread execution");
     }
     hangarSpawnResults_.clear();
+    mailbox_.End();
     hangarSpawnRequested_=false;hangarSpawnInFlight_=false;hangarSpawnUnsafeLatched_=false;
     hangarSpawnRollbackPending_=false;hangarSpawnRollbackId_=0;hangarSpawnRollbackTicks_=0;
     hangarSpawnCarrierId_=hangarSpawnSlot_=hangarSpawnType_=0;
@@ -488,7 +667,7 @@ void Host::Session(void* server,bool started) {
 }
 bool Host::InLuaContext() const {return inLua_&&thread_==GetCurrentThreadId()&&server_&&!stopped_;}
 bool Host::KeyDown(int key) const {
-  if(!InLuaContext()||key<1||key>255)return false;
+  if(!InServerContext()||key<1||key>255)return false;
   if(inputSampler_)return inputSampler_(key);
   HWND window=GetForegroundWindow();DWORD pid=0;if(window)GetWindowThreadProcessId(window,&pid);
   return pid==GetCurrentProcessId()&&(GetAsyncKeyState(key)&0x8000)!=0;
@@ -513,16 +692,42 @@ void Host::AfterCarrierUpdate(void* carrier) {
 }
 void Host::Register(Module& m) {
   auto add=[&](const char*name,lua_CFunction fn){lua_pushlightuserdata(m.L,&m);lua_pushcclosure(m.L,fn,1);lua_setglobal(m.L,name);};
+  add("cc2_bridge_event_subscription",EventSubscribe);
+  if(m.rules) {
+    add("print",Print);add("loadfile",LoadFile);add("dofile",DoFile);
+    lua_pushinteger(m.L,2);lua_setglobal(m.L,"cc2_bridge_lua_api_version");
+    lua_pushstring(m.L,m.id.c_str());lua_setglobal(m.L,"cc2_bridge_module_id");
+    lua_newtable(m.L);
+    for(const auto& capability:eventCapabilities_){
+      lua_pushboolean(m.L,capability.second&&(capability.first=="island_controller"||capability.first=="island_spawn"));
+      lua_setfield(m.L,-2,capability.first.c_str());
+    }
+    lua_setglobal(m.L,"cc2_bridge_event_capabilities");
+    return; // No world, input, mutations, registry, messages or native loader.
+  }
   add("cc2_bridge_apply_throttle_input",Throttle);add("cc2_bridge_key_down",Key);
   add("cc2_bridge_host_handler_event",Handler);add("print",Print);add("cc2_bridge_is_ready",Ready);
   add("loadfile",LoadFile);add("dofile",DoFile);
   add("cc2_bridge_abi_version",One);add("cc2_bridge_bootstrap_status",One);add("cc2_bridge_build_id",Version);
   add("cc2_bridge_reload_mods",Reload);
+  add("cc2_bridge_messages_poll",MessagePoll);
+  add("cc2_bridge_messages_publish",MessagePublish);
+  add("cc2_bridge_messages_forget",MessageForget);
+  add("cc2_bridge_messages_send",MessageSend);
+  add("cc2_bridge_messages_read",MessageRead);
+  add("cc2_bridge_session_generation",SessionGeneration);add("cc2_bridge_session_tick",SessionTick);
+  add("cc2_bridge_session_post",SessionPost);add("cc2_bridge_session_cancel",SessionCancel);
+  lua_pushstring(m.L,m.id.c_str());lua_setglobal(m.L,"cc2_bridge_module_id");
+  lua_pushinteger(m.L,2);lua_setglobal(m.L,"cc2_bridge_lua_api_version");
+  lua_newtable(m.L);for(const auto& capability:eventCapabilities_){lua_pushboolean(m.L,capability.second&&capability.first!="island_controller"&&capability.first!="island_spawn");lua_setfield(m.L,-2,capability.first.c_str());}
+  lua_setglobal(m.L,"cc2_bridge_event_capabilities");
   add("cc2_bridge_hangar_spawn",HangarSpawn);
   add("cc2_bridge_hangar_spawn_result",BridgeHangarSpawnResult);
   add("cc2_bridge_vehicle_spawn_in_hangar",VehicleSpawnInHangar);
   add("cc2_bridge_hangar_slots",HangarSlots);
   add("cc2_bridge_entity_type_register",EntityTypeRegister);
+  add("cc2_bridge_entity_type_remove",EntityTypeRemove);
+  add("cc2_bridge_entity_type_clear",EntityTypeClear);
   add("cc2_bridge_vehicle_register",VehicleRegister);
   add("cc2_bridge_vehicle_lookup",VehicleLookup);
   add("cc2_bridge_vehicle_list",VehicleList);
@@ -531,6 +736,7 @@ void Host::Register(Module& m) {
   const char* names[]={"cc2_bridge_anim_routes","cc2_bridge_anim_runway","cc2_bridge_anim_lift","cc2_bridge_anim_crane"};
   for(int i=0;i<4;++i){lua_pushlightuserdata(m.L,&m);lua_pushinteger(m.L,i);lua_pushcclosure(m.L,Animation,2);lua_setglobal(m.L,names[i]);}
   RegisterWorld(m.L,this);
+  RegisterNativeBindings(m);
   char worldDetail[256];
   sprintf_s(worldDetail,"sdk=%s api=%u live=%s physics=%s",api_.sdk_version?api_.sdk_version:"unknown",api_.api_version,
     api_.find&&api_.count&&api_.ref&&api_.geti&&api_.getf?"available":"partial",
@@ -546,6 +752,237 @@ bool Host::Call(Module& m,const char* name,double dt,bool argument) {
   if(status!=LUA_OK){++m.errors;const char*err=lua_tostring(m.L,-1);Log("LUA_ERROR",m.id.c_str(),err?err:"unknown");}
   lua_settop(m.L,top);return status==LUA_OK;
 }
+int Host::WorldEvent(const char* name,double a,double b,double c,int neutral,bool decision) {
+  std::lock_guard<std::recursive_mutex> lock(mutex_);
+  if(!attached_||stopped_||inLua_||!name||!eventCapabilities_[name])return neutral;
+  const bool construction=std::strcmp(name,"island_controller")==0||std::strcmp(name,"island_spawn")==0;
+  if(!server_&&!construction)return neutral;
+  const DWORD current=GetCurrentThreadId();
+  if(!construction&&thread_&&threadGeneration_==metrics_.generation&&thread_!=current){++metrics_.wrongThread;return neutral;}
+  if(!construction){thread_=current;threadGeneration_=metrics_.generation;}
+  inLua_=true;
+  if(construction)LoadRules();else if(!loaded_)Load();
+  int chosen=neutral;bool hasChoice=false,conflict=false;
+  const auto nativeListeners=nativeListeners_; // callbacks may unsubscribe without invalidating iteration
+  for(const auto& listener:nativeListeners) {
+    if(listener.event!=name||std::none_of(nativeListeners_.begin(),nativeListeners_.end(),[&](const auto& active){return active.id==listener.id;}))continue;
+    const cc2x_framework_event event{sizeof(cc2x_framework_event),name,Generation(),SessionTickId(),a,b,c};
+    NativeEventCall call{listener.callback,&event,listener.user};
+    if(!cc2x_seh_guard(CallNativeEvent,&call)) {if(buttonsContext_)buttonsContext_->rejected=true;Log("NATIVE_EVENT_ERROR","framework",name);continue;}
+    if(!decision||call.result==CC2X_FRAMEWORK_DEFAULT)continue;
+    const auto result=call.result;
+    const bool valid=std::strcmp(name,"hangar_choice")==0?result>=-1&&result<=63:
+      std::strcmp(name,"vehicle_control_query")==0?result>=-1&&result<=1023:result>=0&&result<=1;
+    if(!valid){if(buttonsContext_)buttonsContext_->rejected=true;Log("INVALID_NATIVE_EVENT_DECISION","framework",name);continue;}
+    if(result!=neutral){if(hasChoice&&chosen!=result)conflict=true;chosen=result;hasChoice=true;}
+  }
+  auto& listeners=construction?ruleModules_:modules_;
+  for(auto& module:listeners) {
+    auto& m=*module;SetBudget(m);const int top=lua_gettop(m.L);lua_getglobal(m.L,"__cc2_engine_event");
+    if(!lua_isfunction(m.L,-1)){lua_settop(m.L,top);continue;}
+    lua_pushstring(m.L,name);lua_pushnumber(m.L,a);lua_pushnumber(m.L,b);lua_pushnumber(m.L,c);
+    const int status=lua_pcall(m.L,4,1,0);
+    if(status!=LUA_OK){++m.errors;if(buttonsContext_)buttonsContext_->rejected=true;Log("LUA_EVENT_ERROR",m.id.c_str(),lua_tostring(m.L,-1));}
+    else if(decision&&!lua_isnil(m.L,-1)) {
+      int ok=0;auto result=lua_tointegerx(m.L,-1,&ok);
+      if(lua_isboolean(m.L,-1)&&construction){ok=1;result=lua_toboolean(m.L,-1);}
+      const bool valid=ok&&(std::strcmp(name,"hangar_choice")==0?result>=-1&&result<=63:
+        std::strcmp(name,"vehicle_control_query")==0?result>=-1&&result<=1023:result>=0&&result<=1);
+      if(!valid){++m.errors;Log("INVALID_EVENT_DECISION",m.id.c_str(),name);}
+      else if(result!=neutral){if(hasChoice&&chosen!=result)conflict=true;chosen=static_cast<int>(result);hasChoice=true;}
+    }
+    lua_settop(m.L,top);
+  }
+  inLua_=false;
+  if(conflict){Log("EVENT_DECISION_CONFLICT","host",name);return neutral;}
+  return chosen;
+}
+void Host::LoadRules() {
+  if(rulesLoaded_)return;
+  if(InterlockedCompareExchange(&startupCatalogState_,0,0)!=1) {
+    Log("RULE_CATALOG_UNAVAILABLE","host","construction decision retains vanilla behavior");return;
+  }
+  rulesLoaded_=true;
+  std::error_code error;std::filesystem::create_directories(storage_,error);
+  const auto sdk=storage_+L"\\cc2.lua";
+  {std::ofstream file(std::filesystem::path(sdk),std::ios::binary|std::ios::trunc);file<<kBridgeSdk;if(!file){Log("SDK_WRITE_ERROR","rules");return;}}
+  for(const auto& original:startupCatalog_.mods) {
+    if(original.rulesEntry.empty())continue;
+    auto mod=original;mod.entryPath=mod.rootPath+L"\\"+mod.rulesEntry;mod.bridgeScripts={mod.rulesEntry};mod.hooks.clear();
+    std::wstring bootstrap,reason;
+    if(!host::WriteBridgeBootstrap(mod,sdk,storage_+L"\\rules",&bootstrap,&reason)){Log("RULE_BOOTSTRAP_ERROR",Utf8(mod.id).c_str(),Utf8(reason).c_str());continue;}
+    auto m=std::make_unique<Module>();m->host=this;m->id=Utf8(mod.id);m->descriptor=mod;m->sdkPath=sdk;m->rules=true;m->generation=++metrics_.vmGeneration;
+    m->L=lua_newstate(Allocate,m.get());if(!m->L){Log("RULE_ALLOCATION_ERROR",m->id.c_str());continue;}
+    *static_cast<Module**>(lua_getextraspace(m->L))=m.get();SetBudget(*m);OpenLibraries(m->L);Register(*m);
+    auto path=Utf8(bootstrap);int rc=ReadLua(m->L,path.c_str());if(rc==LUA_OK)rc=lua_pcall(m->L,0,0,0);
+    if(rc!=LUA_OK){Log("RULE_LOAD_ERROR",m->id.c_str(),lua_tostring(m->L,-1));lua_close(m->L);continue;}
+    Log("RULE_MODULE_LOADED",m->id.c_str(),"no world/native/OS capabilities; engine decision callbacks only");ruleModules_.push_back(std::move(m));
+  }
+}
+void Host::ButtonsEvent(api::vehicle::ButtonContext* context) {
+  std::lock_guard<std::recursive_mutex> lock(mutex_);
+  if(!context||buttonsContext_)return;
+  buttonsContext_=context;WorldEvent("vehicle_controls",context->vehicleId);buttonsContext_=nullptr;
+}
+int Host::ButtonQueryEvent(api::vehicle::ButtonContext* context) {
+  std::lock_guard<std::recursive_mutex> lock(mutex_);if(!context||buttonsContext_)return -1;
+  buttonsContext_=context;const int result=WorldEvent("vehicle_control_query",context->vehicleId,context->sourceIndex,0,-1,true);buttonsContext_=nullptr;return result;
+}
+bool Host::EventAvailable(const std::string& name,bool rules) const {
+  auto capability=eventCapabilities_.find(name);const bool construction=name=="island_controller"||name=="island_spawn";
+  return capability!=eventCapabilities_.end()&&capability->second&&rules==construction;
+}
+bool Host::HasEventSubscribers(const char* name) {
+  std::lock_guard<std::recursive_mutex> lock(mutex_);if(stopped_||!name)return false;
+  for(const auto& listener:nativeListeners_)if(listener.event==name)return true;
+  for(const auto& m:modules_)if(m->subscriptions.count(name))return true;return false;
+}
+std::uint64_t Host::SubscribeNative(const std::string& event,cc2x_framework_event_fn callback,void* user) {
+  std::lock_guard<std::recursive_mutex> lock(mutex_);auto capability=eventCapabilities_.find(event);
+  if(stopped_||!callback||nativeListeners_.size()>=256||capability==eventCapabilities_.end()||!capability->second||nextNativeId_>=INT64_MAX)return 0;
+  if((event=="vehicle_controls"||event=="vehicle_control_query")&&!api::vehicle::EnsureButtons())return 0;
+  const auto id=++nextNativeId_;nativeListeners_.push_back({id,event,callback,user});return id;
+}
+bool Host::UnsubscribeNative(std::uint64_t id) {
+  std::lock_guard<std::recursive_mutex> lock(mutex_);
+  auto it=std::find_if(nativeListeners_.begin(),nativeListeners_.end(),[&](const auto& entry){return entry.id==id;});
+  if(it==nativeListeners_.end())return false;nativeListeners_.erase(it);return true;
+}
+void Host::RegisterNativeBindings(Module& m) {
+  lua_newtable(m.L);
+  for(const auto& binding:nativeBindings_) {
+    lua_getfield(m.L,-1,binding.owner.c_str());
+    if(!lua_istable(m.L,-1)){lua_pop(m.L,1);lua_newtable(m.L);lua_pushvalue(m.L,-1);lua_setfield(m.L,-3,binding.owner.c_str());}
+    lua_pushlightuserdata(m.L,&m);lua_pushinteger(m.L,static_cast<lua_Integer>(binding.id));lua_pushcclosure(m.L,BoundNative,2);
+    lua_setfield(m.L,-2,binding.name.c_str());lua_pop(m.L,1);
+  }
+  lua_setglobal(m.L,"cc2_bridge_native");
+}
+std::uint64_t Host::BindNative(const std::string& owner,const std::string& name,cc2x_vm_fn callback,void* user) {
+  std::lock_guard<std::recursive_mutex> lock(mutex_);
+  if(stopped_||!callback||!FrameworkName(owner)||!FrameworkName(name)||nativeBindings_.size()>=256||nextNativeId_>=INT64_MAX||
+    !modules_.empty()||!ruleModules_.empty()||metrics_.updates||std::any_of(nativeBindings_.begin(),nativeBindings_.end(),[&](const auto& b){return b.owner==owner&&b.name==name;}))return 0;
+  const auto id=++nextNativeId_;nativeBindings_.push_back({id,owner,name,callback,user});return id;
+}
+bool Host::UnbindNative(std::uint64_t id) {
+  std::lock_guard<std::recursive_mutex> lock(mutex_);
+  auto it=std::find_if(nativeBindings_.begin(),nativeBindings_.end(),[&](const auto& b){return b.id==id;});
+  if(it==nativeBindings_.end())return false;nativeBindings_.erase(it);return true;
+}
+bool Host::FindNativeBinding(std::uint64_t id,cc2x_vm_fn* callback,void** user) {
+  std::lock_guard<std::recursive_mutex> lock(mutex_);if(stopped_||!InLuaContext()||!callback||!user)return false;
+  for(const auto& b:nativeBindings_)if(b.id==id){*callback=b.callback;*user=b.user;return true;}return false;
+}
+std::uint64_t Host::OpenNativeMailbox(const std::string& owner) {
+  std::lock_guard<std::recursive_mutex> lock(mutex_);
+  if(stopped_||owner.rfind("native.",0)!=0||!FrameworkName(owner,128)||nativeMailboxes_.size()>=256||nextNativeId_>=INT64_MAX||!mailbox_.Enable(owner))return 0;
+  const auto id=++nextNativeId_;nativeMailboxes_.emplace(id,owner);return id;
+}
+bool Host::CloseNativeMailbox(std::uint64_t id) {
+  std::lock_guard<std::recursive_mutex> lock(mutex_);auto it=nativeMailboxes_.find(id);if(it==nativeMailboxes_.end())return false;
+  mailbox_.Remove(it->second);nativeMailboxes_.erase(it);return true;
+}
+int Host::PollNativeMailbox(std::uint64_t id,cc2x_message* out,std::uint32_t capacity) {
+  std::lock_guard<std::recursive_mutex> lock(mutex_);auto it=nativeMailboxes_.find(id);
+  if(stopped_||!InServerContext()||it==nativeMailboxes_.end()||!out||capacity<64)return -1;
+  auto messages=mailbox_.Drain(it->second);int count=0;
+  for(const auto& message:messages){auto& record=out[count++];std::memset(&record,0,sizeof(record));std::memcpy(record.topic,message.topic.data(),message.topic.size());record.subject=message.subject;record.value=message.value;}
+  return count;
+}
+bool Host::PublishNativeMailbox(std::uint64_t id,const std::string& topic,std::uint32_t subject,double value) {
+  std::lock_guard<std::recursive_mutex> lock(mutex_);auto it=nativeMailboxes_.find(id);
+  return !stopped_&&InServerContext()&&it!=nativeMailboxes_.end()&&mailbox_.Publish(it->second,topic,subject,value);
+}
+bool Host::ForgetNativeMailbox(std::uint64_t id,std::uint32_t subject) {
+  std::lock_guard<std::recursive_mutex> lock(mutex_);auto it=nativeMailboxes_.find(id);
+  if(stopped_||!InServerContext()||it==nativeMailboxes_.end())return false;mailbox_.Forget(it->second,subject);return true;
+}
+bool Host::RegisterNativeEntity(const std::string& owner,const char* id,const char* base,const char* definition) {
+  std::lock_guard<std::recursive_mutex> lock(mutex_);
+  if(!InServerContext()||owner.rfind("native.",0)!=0||!FrameworkName(owner,96)||
+     cc2x_entity_type_register(owner.c_str(),id,base,definition)!=CC2X_ENTITY_TYPE_OK)return false;
+  if(std::find(nativeEntityOwners_.begin(),nativeEntityOwners_.end(),owner)==nativeEntityOwners_.end())nativeEntityOwners_.push_back(owner);
+  return true;
+}
+unsigned long long Host::ActiveGeneration(){std::lock_guard<std::recursive_mutex> lock(mutex_);return server_&&!stopped_?metrics_.generation:0;}
+unsigned long long Host::ActiveTick(){std::lock_guard<std::recursive_mutex> lock(mutex_);return server_&&!stopped_?sessionTicks_:0;}
+std::uint64_t Host::PostTask(const std::string& owner,std::uint64_t generation,std::function<void()> run,std::function<void()> cleanup) {
+  std::lock_guard<std::recursive_mutex> lock(mutex_);
+  if(!attached_||stopped_||!server_||!generation||generation!=metrics_.generation||!FrameworkName(owner,128)||!run||tasks_.size()>=256||nextNativeId_>=INT64_MAX||
+    std::count_if(tasks_.begin(),tasks_.end(),[&](const auto& task){return task.owner==owner;})>=64)return 0;
+  const auto id=++nextNativeId_;tasks_.push_back({id,generation,owner,std::move(run),std::move(cleanup)});return id;
+}
+bool Host::CancelTask(const std::string& owner,std::uint64_t id) {
+  std::lock_guard<std::recursive_mutex> lock(mutex_);
+  auto it=std::find_if(tasks_.begin(),tasks_.end(),[&](const auto& task){return task.id==id&&task.owner==owner;});
+  if(it==tasks_.end())return false;auto cleanup=std::move(it->cleanup);tasks_.erase(it);if(cleanup)cleanup();return true;
+}
+void Host::DropTasks(const std::string& owner) {
+  std::vector<std::uint64_t> ids;for(const auto& task:tasks_)if(task.owner==owner)ids.push_back(task.id);
+  for(auto id:ids)CancelTask(owner,id);
+}
+void Host::RunTasks(std::uint64_t cutoff) {
+  std::vector<std::uint64_t> ids;for(const auto& task:tasks_)if(task.id<=cutoff)ids.push_back(task.id);
+  for(auto id:ids){auto it=std::find_if(tasks_.begin(),tasks_.end(),[&](const auto& task){return task.id==id;});
+    if(it==tasks_.end())continue;auto task=std::move(*it);tasks_.erase(it);
+    if(task.generation==metrics_.generation)task.run();else{++metrics_.dropped;Log("STALE_TASK_DROPPED",task.owner.c_str());}
+    if(task.cleanup)task.cleanup();
+  }
+}
+bool Host::ReadVehicleThrottle(std::uint32_t id,double* value) {
+  std::lock_guard<std::recursive_mutex> lock(mutex_);if(!id||!value||!InServerContext()||!api_.find)return false;
+  void* vehicle=api_.find(CC2X_WORLD_VEHICLES,id);float output=0;
+  if(!vehicle||!api::vehicle::ReadThrottle(&api_,vehicle,&output))return false;*value=output;return true;
+}
+bool Host::WriteVehicleThrottle(std::uint32_t id,double value) {
+  std::lock_guard<std::recursive_mutex> lock(mutex_);if(!id||!InServerContext()||!api_.find)return false;
+  void* vehicle=api_.find(CC2X_WORLD_VEHICLES,id);return vehicle&&api::vehicle::WriteThrottle(&api_,vehicle,value);
+}
+bool Host::DescribeNativePackage(const std::string& owner,const std::wstring& pluginDirectory,host::ModDescriptor* package) {
+  std::lock_guard<std::recursive_mutex> lock(mutex_);
+  if(!package||stopped_||!attached_||nativeDeclarationsFrozen_||InterlockedCompareExchange(&resourceInitObserved_,0,0)||
+    !FrameworkName(owner)||pluginDirectory.empty()||!api_.active_mod_count||!api_.active_mod_path)return false;
+  const auto directory=std::filesystem::path(pluginDirectory).lexically_normal();
+  auto safeDirectory=[](std::filesystem::path path){
+    for(;;){auto attributes=GetFileAttributesW(path.c_str());if(attributes==INVALID_FILE_ATTRIBUTES||(attributes&FILE_ATTRIBUTE_REPARSE_POINT)||!(attributes&FILE_ATTRIBUTE_DIRECTORY))return false;
+      auto parent=path.parent_path();if(parent.empty()||parent==path)break;path=std::move(parent);
+    }return true;
+  };
+  if(!safeDirectory(directory))return false;
+  const int count=api_.active_mod_count();if(count<0||count>256)return false;
+  for(int i=0;i<count;++i){wchar_t path[1024]{};if(!api_.active_mod_path(i,path,1024))return false;
+    const auto root=std::filesystem::path(path).lexically_normal();
+    const auto standard=root/L"content"/L"cc2x",legacy=root/L"cc2x";
+    if(_wcsicmp(directory.c_str(),standard.c_str())&&_wcsicmp(directory.c_str(),legacy.c_str()))continue;
+    auto content=root/L"content";const DWORD attributes=GetFileAttributesW(content.c_str());
+    if(attributes==INVALID_FILE_ATTRIBUTES)content=root;
+    if(!safeDirectory(root)||!safeDirectory(content))return false;
+    host::ModDescriptor result;result.id=Wide(owner.c_str());
+    std::transform(result.id.begin(),result.id.end(),result.id.begin(),towlower);
+    result.name=result.id;result.version=L"native";result.rootPath=content.wstring();result.packagePath=root.wstring();
+    *package=std::move(result);return true;
+  }return false;
+}
+bool Host::CommitNativeDeclarations(const std::vector<host::ModDescriptor>& packages,const std::vector<host::VehicleDeclaration>& declarations) {
+  std::lock_guard<std::recursive_mutex> lock(mutex_);
+  if(stopped_||!attached_||nativeDeclarationsFrozen_||InterlockedCompareExchange(&resourceInitObserved_,0,0)||
+    packages.size()>256||nativeDeclarations_.size()+declarations.size()>256)return false;
+  auto combined=nativePackages_;
+  for(const auto& package:packages){
+    auto it=combined.find(package.id);
+    if(it==combined.end()){if(combined.size()>=256)return false;combined.emplace(package.id,package);}
+    else {
+      if(_wcsicmp(it->second.rootPath.c_str(),package.rootPath.c_str())||_wcsicmp(it->second.packagePath.c_str(),package.packagePath.c_str()))return false;
+      for(const auto& image:package.uiImages){if(std::any_of(it->second.uiImages.begin(),it->second.uiImages.end(),[&](const auto& prior){return prior.weapon==image.weapon&&prior.identity==image.identity;}))return false;it->second.uiImages.push_back(image);}
+    }
+  }
+  auto vehicles=nativeDeclarations_;
+  for(const auto& declaration:declarations){
+    if(!combined.count(declaration.owner)||std::any_of(vehicles.begin(),vehicles.end(),[&](const auto& prior){return prior.identity==declaration.identity||_wcsicmp(prior.resourceName.c_str(),declaration.resourceName.c_str())==0;}))return false;
+    vehicles.push_back(declaration);
+  }
+  nativePackages_=std::move(combined);nativeDeclarations_=std::move(vehicles);return true;
+}
 DWORD WINAPI Host::PrepareStartupCatalogThread(void* context) {
   if (!context) return ERROR_INVALID_PARAMETER;
   static_cast<Host*>(context)->PrepareStartupCatalog();
@@ -553,6 +990,13 @@ DWORD WINAPI Host::PrepareStartupCatalogThread(void* context) {
 }
 
 void Host::PrepareStartupCatalog() {
+  std::vector<host::ModDescriptor> nativePackages;
+  std::vector<host::VehicleDeclaration> nativeDeclarations;
+  {
+    std::lock_guard<std::recursive_mutex> lock(mutex_);if(nativeDeclarationsFrozen_)return;
+    nativeDeclarationsFrozen_=true;nativeDeclarations=nativeDeclarations_;
+    for(const auto& entry:nativePackages_)nativePackages.push_back(entry.second);
+  }
   const DWORD thread = GetCurrentThreadId();
   if (!api_.active_mod_count || !api_.active_mod_path) {
     InterlockedExchange(&startupCatalogState_, -1);
@@ -578,7 +1022,10 @@ void Host::PrepareStartupCatalog() {
   }
   auto discovered = host::DiscoverActiveBridgeMods(packages);
   auto declarations = host::CollectEarlyDeclarations(discovered);
-  const bool hasUiResources = std::any_of(discovered.mods.begin(), discovered.mods.end(),
+  declarations.vehicles.insert(declarations.vehicles.end(),nativeDeclarations.begin(),nativeDeclarations.end());
+  auto assetPackages=discovered;
+  assetPackages.mods.insert(assetPackages.mods.end(),nativePackages.begin(),nativePackages.end());
+  const bool hasUiResources = std::any_of(assetPackages.mods.begin(), assetPackages.mods.end(),
       [](const host::ModDescriptor& mod) { return !mod.uiImages.empty(); });
   if (hasUiResources) {
     wchar_t executable[32768]{};
@@ -598,7 +1045,7 @@ void Host::PrepareStartupCatalog() {
       const auto cacheRoot = (std::filesystem::path(localAppData) / L"Carrier Command 2" /
           L"CC2X" / L"ui-atlas-cache").wstring();
       api::ui::AtlasBuildResult atlas;
-      if (!api::ui::PrepareAtlas(discovered, vanillaAtlas, cacheRoot, api_.game_build,
+      if (!api::ui::PrepareAtlas(assetPackages, vanillaAtlas, cacheRoot, api_.game_build,
               &atlas, &error)) {
         discovered.diagnostics.push_back(L"UI_ATLAS_PREPARE_FAILED: " + Wide(error.c_str()));
         if (api_.log) api_.log("cc2x_ui_atlas_factory", CC2X_LOG_ERROR,
@@ -674,6 +1121,7 @@ void Host::Load() {
     for(int i=0;i<count;++i){wchar_t path[1024]{};if(api_.active_mod_path(i,path,1024))packages.emplace_back(path);else Log("ACTIVATION_PATH_ERROR","host");}
     discovered=host::DiscoverActiveBridgeMods(packages);
     auto declarations=host::CollectEarlyDeclarations(discovered);
+    declarations.vehicles.insert(declarations.vehicles.end(),nativeDeclarations_.begin(),nativeDeclarations_.end());
     std::string catalogError;
     if(!api::vehicle::Registry().MatchesCatalog(std::move(declarations.vehicles),&catalogError)) {
       const auto detail="restart_required=1; "+catalogError;
@@ -690,18 +1138,22 @@ void Host::Load() {
     std::wstring bootstrap,error;
     if(!host::WriteBridgeBootstrap(mod,sdk,storage_,&bootstrap,&error)){Log("BOOTSTRAP_ERROR",Utf8(mod.id).c_str(),Utf8(error).c_str());continue;}
     auto m=std::make_unique<Module>();m->host=this;m->id=Utf8(mod.id);m->generation=++metrics_.vmGeneration;
+    m->descriptor=mod;m->sdkPath=sdk;
     m->L=lua_newstate(Allocate,m.get());if(!m->L){Log("VM_ALLOCATION_ERROR",m->id.c_str());continue;}
+    if(!mailbox_.Enable(m->id)){lua_close(m->L);Log("MODULE_ENDPOINT_ERROR",m->id.c_str());continue;}
     *static_cast<Module**>(lua_getextraspace(m->L))=m.get();SetBudget(*m);
-    luaL_openlibs(m->L);Register(*m);
+    OpenLibraries(m->L);Register(*m);
     auto path=Utf8(bootstrap);
     int rc=ReadLua(m->L,path.c_str());if(rc==LUA_OK)rc=lua_pcall(m->L,0,0,0);
-    if(rc!=LUA_OK){Log("MODULE_LOAD_ERROR",m->id.c_str(),lua_tostring(m->L,-1));cc2x_entity_type_remove_owner(m->id.c_str());lua_close(m->L);metrics_.dropped+=commands_.size();auto epoch=commands_.active;commands_.End(epoch);commands_.Begin(epoch);continue;}
+    if(rc!=LUA_OK){Log("MODULE_LOAD_ERROR",m->id.c_str(),lua_tostring(m->L,-1));mailbox_.Remove(m->id);cc2x_entity_type_remove_owner(m->id.c_str());lua_close(m->L);metrics_.dropped+=commands_.size();auto epoch=commands_.active;commands_.End(epoch);commands_.Begin(epoch);continue;}
     ++metrics_.loads;Log("MODULE_LOADED",m->id.c_str());modules_.push_back(std::move(m));
   }
 }
 void Host::CloseModules() {
-  for(auto& m:modules_){Call(*m,"__cc2_host_unload",0,false);cc2x_entity_type_remove_owner(m->id.c_str());lua_close(m->L);m->L=nullptr;++metrics_.unloads;Log("VM_CLOSED",m->id.c_str());}
+  for(auto& m:modules_){Call(*m,"__cc2_host_unload",0,false);DropTasks("lua."+m->id);mailbox_.Remove(m->id);cc2x_entity_type_remove_owner(m->id.c_str());lua_close(m->L);m->L=nullptr;++metrics_.unloads;Log("VM_CLOSED",m->id.c_str());}
   modules_.clear();loaded_=false;metrics_.dropped+=commands_.size();auto epoch=commands_.active;commands_.End(epoch);if(epoch)commands_.Begin(epoch);
+  for(auto& m:ruleModules_){Call(*m,"__cc2_host_unload",0,false);lua_close(m->L);m->L=nullptr;}
+  ruleModules_.clear();rulesLoaded_=false;
   // Animation coefficients are process-wide and shared with stock Lua. Module
   // teardown cannot infer ownership; explicit x1 or process exit restores stock.
 }
@@ -713,6 +1165,7 @@ void Host::Tick(void* server) {
   if(threadGeneration_==metrics_.generation&&thread_!=current){++metrics_.wrongThread;Log("WRONG_THREAD","host");return;}
   if(thread_!=current)Log("VM_THREAD_MIGRATION","host","serialized; new session generation");
   thread_=current;threadGeneration_=metrics_.generation;inLua_=true;
+  const auto taskCutoff=nextNativeId_; // posts made inside this tick run on a later tick
   if(!resourceInitLogged_) {
     resourceInitLogged_=true;
     char detail[160]{};
@@ -728,6 +1181,7 @@ void Host::Tick(void* server) {
   if(reload_){CloseModules();reload_=false;}
   if(!loaded_)Load();
   ++metrics_.updates;++sessionTicks_;
+  RunTasks(taskCutoff);
   for(auto& m:modules_){Call(*m,"__cc2_host_update",dt,true);++m->updates;}
   const bool report=now-lastReport_>=5000;
   if(report){lastReport_=now;for(auto& m:modules_){char detail[200];sprintf_s(detail,"vm=%llu updates=%llu callbacks=%llu errors=%llu bytes=%zu",m->generation,m->updates,m->callbacks,m->errors,m->allocated);Log("MODULE_COUNTERS",m->id.c_str(),detail);for(auto&entry:m->handlers){sprintf_s(detail,"vm=%llu handler=%u calls=%llu errors=%llu",m->generation,entry.first,entry.second.calls,entry.second.errors);Log("HANDLER_COUNTERS",m->id.c_str(),detail);}}}
@@ -816,6 +1270,7 @@ std::uint32_t Host::QueueHangarSpawn(std::uint32_t carrierId,std::uint32_t slot,
   return hangarSpawnRequestId_;
 }
 void Host::RequestReload(){std::lock_guard<std::recursive_mutex>lock(mutex_);reload_=true;}
-void Host::Shutdown(){std::lock_guard<std::recursive_mutex>lock(mutex_);if(stopped_)return;stopped_=true;inLua_=false;CloseModules();commands_.Enable(false);server_=nullptr;}
+void Host::Shutdown(){std::lock_guard<std::recursive_mutex>lock(mutex_);if(stopped_)return;stopped_=true;inLua_=false;CloseModules();nativeListeners_.clear();nativeBindings_.clear();for(const auto& owner:nativeEntityOwners_)cc2x_entity_type_remove_owner(owner.c_str());nativeEntityOwners_.clear();tasks_.clear();for(const auto& endpoint:nativeMailboxes_)mailbox_.Remove(endpoint.second);nativeMailboxes_.clear();mailbox_.End();commands_.Enable(false);server_=nullptr;if(g_stockHost==this){g_stockHost=nullptr;g_stockLuaApi=nullptr;}}
+Host* SharedHost(){return g_stockHost;}
 Metrics Host::Stats(){std::lock_guard<std::recursive_mutex>lock(mutex_);auto out=metrics_;out.modules=modules_.size();out.callbacks=out.errors=0;for(auto&m:modules_){out.callbacks+=m->callbacks;out.errors+=m->errors;}return out;}
 }

@@ -1,69 +1,104 @@
-# CC2X - Carrier Command 2 extender
+# CC2X SDK - Carrier Command 2 extender
 
-One file, `dinput8.dll`, put once next to `carrier_command.exe`. It gives
+CC2X is a shared framework for **C/C++ plugins and Lua mods**. Install one
+`dinput8.dll` beside `carrier_command.exe`; gameplay mods remain separate,
+optional packages. The SDK itself adds no aircraft, flight modes, brakes,
+button layouts or island gameplay rules.
 
-- **Lua (Workshop) mods** a global `cc2x` table in the game's own Lua: the live world (vehicles,
-  islands, airfields), game events, commands and functions added by plugins - no C needed - see
-  [docs/LUA_API.md](docs/LUA_API.md);
-- **native plugins** a C API: the live game world (vehicles, islands, airfields, physics, game
-  events) without game addresses - see [docs/WORLD_API.md](docs/WORLD_API.md) - plus safe patching,
-  server events and registering Lua functions - see [docs/PLUGINS.md](docs/PLUGINS.md). A plugin ships inside its mod (`<mod>\content\cc2x\*.dll`); CC2X loads
-  the plugins of the mods enabled in the game's mod menu, Steam Workshop items included.
+## Current client beta: 0.7.0-client-beta.1
 
-**0.6.0-client-beta.1 (2026-11-03):** this release contains the same API 8 runtime
-as the [CC2X SDK Workshop item](https://steamcommunity.com/sharedfiles/filedetails/?id=3833014670).
-The DLL still reports `0.6.0-dev`; its SHA-256 is
-`ce4fc1c883c70af6c40f5431003d17584e9b2becb502ac840d22f73be9d7a7f3`,
-built from source commit `2eecbd93c3555fed9a2b3f25e5b9c91abb55196f`.
+This release provides the stable **C API 8** prefix, the new **framework C API
+1**, and **independent Lua API 2**. Both languages use the same checked engine
+operations for supported capabilities. The original x86 C prefix remains 296
+bytes; new functions use a named extension rather than an incompatible struct
+cast. [C/Lua capability map and examples](docs/C_LUA_PARITY.md).
 
-The shared runtime includes the team's Native Bridge independent
-Lua VMs, `require('cc2')` facade, generic vehicle/UI/resource registries and bounded
-ordered module bundles. Gameplay scenarios stay in separate mods. The C API uses
-the team's API 8 layout with the original API 4 prefix preserved; session commands
-use a checked named extension. See [integration status](docs/UNIFIED_SDK_PLAN.md)
-and [module packaging](docs/MODULE_BUNDLES.md).
+- **Independent Lua modules:** `require('cc2')`, checked world selectors, engine
+  events, early read-only rules, named controls, throttle access, requests and
+  published states, metadata, custom vehicle/UI catalogs and next-tick tasks.
+- **Native C/C++ plugins:** the same engine mechanisms, plus registration of
+  functions in independent Lua VMs. Native plugins are separately packaged;
+  no gameplay plugin is compiled into this shared runtime.
+- **Game-owned screen Lua:** the existing `cc2x` bridge and module request/state
+  channel remain available. Independent and game-owned VM handles are distinct.
 
-On November 3, the reviewed Windows 1.5.18-r2 client passed single-player checks
-with AI Bridge, Island Airfields v46, Hold, Modes, Brake and separate aircraft:
-combined native/Lua loading, custom aircraft registration and hangar creation,
-save/reload of the unchanged catalog, and creation again after reload. Remote
-multiplayer, dedicated-server support, changed-catalog saves, full flight/island
-landing and native macOS support remain unverified.
+The full Brake v15 and Island Airfields Lua ports are separate work; the SDK
+beta does not claim to complete them. Remote multiplayer, dedicated servers,
+full flight/landing, changed-catalog saves, clean-machine acceptance and native
+macOS support remain unverified. Offline tests are not gameplay acceptance.
+See the exact release's `RELEASE.json` and test evidence for its verified scope.
 
-**Mod makers:** start with [docs/GUIDE.md](docs/GUIDE.md) - the complete guide from the first Lua
-mod to a published Workshop item.
+## Install the runtime
 
-**Players:** see the [client beta release](https://github.com/Dioramawhois/Carrier-Command-2-extender/releases/tag/0.6.0-client-beta.1)
-and [installation instructions](docs/README_PLAYERS.txt). Recommended automatic
-installation requires the matching CC2 ModLoader 0.4.0 beta 2, currently a team
-release candidate; the older public beta 1 cannot use this runtime. Alternatively,
-copy [dinput8.dll](https://github.com/Dioramawhois/Carrier-Command-2-extender/releases/download/0.6.0-client-beta.1/dinput8.dll)
-(or the Workshop item's `content/dinput8.dll`) next to `carrier_command.exe`.
-A Workshop subscription downloads the SDK but does not install the loader itself.
-Gameplay mods are installed separately.
+Download [the client beta release](https://github.com/Dioramawhois/Carrier-Command-2-extender/releases/tag/0.7.0-client-beta.1)
+or subscribe to the existing [SDK Workshop item](https://steamcommunity.com/sharedfiles/filedetails/?id=3833014670).
+A subscription downloads the files; it does not copy the bootstrap into the
+game installation.
 
-## Layout
+1. Close the game.
+2. Copy `dinput8.dll` from the release, or the Workshop item's `content` folder,
+   into the folder containing `carrier_command.exe`.
+3. Preserve a backup of an older known CC2X DLL. Do not overwrite an unrelated
+   loader without checking compatibility.
+4. Install and enable your gameplay mods separately, then start the game.
 
-| | |
-|---|---|
-| `include/cc2x.h` | the whole plugin API (one header) |
-| `src/cc2x.c` | the extender: dinput8 proxy, build check, patch engine, events, Lua bridge, snapshots, plugin loader |
-| `src/lua_world.c` | the world for Lua: per-tick copy, events, command queue, rules |
-| `src/world.c` | the world API: where the game keeps its objects in each supported build, physics, game events |
-| `tests/lua_mod` | Lua mod that checks the Lua world API (`library_custom_9.lua`) |
-| `tests/selftest` | plugin that checks the world API in a running game (PASS / FAIL in `cc2x.log`) |
-| `examples/hello_plugin` | minimal plugin |
-| `build.py` | build with the bundled Zig toolchain (`.deps`, a C compiler for 32-bit Windows) |
+[Detailed player instructions](docs/README_PLAYERS.txt) include the exact Steam
+folder. Automatic installation requires a ModLoader build that explicitly
+reviews this 0.7 runtime and its new API capabilities. **ModLoader 0.4.0 beta 2
+and its bundled 0.6 runtime do not provide that support.** Use the manual route
+until the matching ModLoader update is available. Do not bypass its DLL checks.
 
-| `examples/lua_air_traffic` | example Lua mod (`library_custom_7.lua`) |
+## Write a mod
 
-`python build.py --zig PATH` -> the one integrated `dist/dinput8.dll` and hashed
-build metadata. `--test` runs the 19 offline SDK checks; `--examples` also builds
-hello/selftest plugins. `--release` stages a developer candidate with readme,
-GPL/Lua notices and SHA-256; it does not certify game acceptance or publish it.
-Zig 0.15.2 builds the C/C++ core, static Lua and a small isolated SEH boundary
-without Visual Studio. The compiler setup is in
-[docs/GUIDE.md](docs/GUIDE.md#111-tools).
+- [Lua framework guide](docs/FRAMEWORK_LUA_MODS.md) and [independent modules](docs/INDEPENDENT_LUA.md).
+- [C/Lua operation map](docs/C_LUA_PARITY.md), [C plugins](docs/PLUGINS.md) and [world API](docs/WORLD_API.md).
+- [Full mod-author guide](docs/GUIDE.md) and [game-owned Lua API](docs/LUA_API.md).
+- [C11 example](examples/framework_c_plugin/framework.c) and [C++17 example](examples/framework_cpp_plugin/framework.cpp).
+
+Gameplay policy belongs in the mod. Engine research becomes a checked reusable
+primitive exposed to both C and Lua. A native implementation of an entire mod
+with a Lua enable switch is not a replacement for a public Lua engine API.
+
+## Build from source
+
+Use Python 3.12+ and the hash-pinned Zig 0.15.2 Windows toolchain documented in
+[the build guide](docs/GUIDE.md#111-tools). No Visual Studio is required.
+
+```text
+python build.py --zig PATH-TO-ZIG --test
+python -m unittest discover -s tests -p "test_*.py"
+```
+
+The result is one `dist/dinput8.dll` with hashed build metadata. The native
+fixtures execute real Lua against synthetic engine objects; Python tests check
+packaging, separation and distribution. C/C++ plugins can use the external
+SDK's `build.py` `plugin(source, output)` helper. Lua gameplay packages use
+`tools/package_lua_mod.py` without a C compiler.
+
+Publication is a separate operation. `tools/package_release.py` requires a
+clean source commit, matching passing native evidence, unchanged input hashes
+and the pinned provider-source archive. It stages runtime/source ZIPs, all
+linked-component notices and checksums; it never publishes or installs them.
+Release assets identify the exact compiled commit. Generated inputs are
+included in the source asset and are regenerated by the build scripts.
+
+## Source layout
+
+| Path | Purpose |
+| --- | --- |
+| `include/cc2x.h` | Stable native C API prefix |
+| `include/cc2x_framework.h` | Named C/Lua framework extension |
+| `include/cc2x_session.h` | Legacy named session-safe queue extension |
+| `sdk/cc2.lua` | Independent Lua facade |
+| `src/cc2x.c`, `src/world.c`, `src/lua_world.c` | Proxy, verified game access and stock Lua bridge |
+| `src/runtime` | Isolated VMs, lifecycle, catalogs, mailboxes and tasks |
+| `src/api` | Shared checked engine mechanisms |
+| `tests` | Offline regression fixtures; not live gameplay proof |
+| `distribution` | Historical release records |
+
+The previous [0.6 client beta](https://github.com/Dioramawhois/Carrier-Command-2-extender/releases/tag/0.6.0-client-beta.1)
+is preserved unchanged. Its acceptance and binary hashes are historical evidence,
+not evidence for a different 0.7 DLL.
 
 ## How it works (short)
 

@@ -111,6 +111,16 @@ int main(){
   CHECK(collision.mods.size()==1 && collision.mods[0].id==L"a.second");
   Write(moduleRoot/L"index.json",std::string(65537,' '));
   CHECK(cc2::host::DiscoverActiveBridgeMods({bundle.wstring()}).mods.empty());
+  const auto rules=root/L"mods/rules";Write(rules/L"mod.xml","<mod/>");
+  Write(rules/L"content/bridge/main.lua","return {}\n");Write(rules/L"content/bridge/rules.lua","return {}\n");
+  Write(rules/L"content/bridge.json",R"({"id":"rules.mod","scripts":["bridge/main.lua"],"rules":"bridge/rules.lua"})");
+  auto withRules=cc2::host::DiscoverActiveBridgeMods({rules.wstring()});
+  CHECK(withRules.mods.size()==1&&withRules.mods[0].rulesEntry==L"bridge/rules.lua");
+  for(const auto* invalid:{R"({"id":"rules.mod","scripts":["bridge/main.lua"],"rules":"../escape.lua"})",
+      R"({"id":"rules.mod","scripts":["bridge/main.lua"],"rules":["bridge/rules.lua"]})",
+      R"({"id":"rules.mod","scripts":["bridge/main.lua"],"rules":"scripts/screen.lua"})"}) {
+    Write(rules/L"content/bridge.json",invalid);CHECK(cc2::host::DiscoverActiveBridgeMods({rules.wstring()}).mods.empty());
+  }
   std::error_code error;fs::remove_all(root,error);
   std::cout<<"PASS exact CC2X activation snapshot, local/Workshop, disabled exclusion, nested/legacy manifests, isolation, traversal, stock paths, duplicate IDs, deterministic rebuild\n";return 0;
 }

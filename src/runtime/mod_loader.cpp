@@ -339,13 +339,8 @@ bool ParseUiImages(const JsonValue* ui, const std::wstring& root,
         }
         *target = field.second.string;
       }
-      if (image.large.empty()) {
-        *error = L"ui image requires large PNG: " + item.first; return false;
-      }
-      if (weapon && image.engineType.empty()) {
-        *error = L"weapon ui image requires attachment type: " + item.first;
-        return false;
-      }
+      ModDescriptor declaration;declaration.rootPath=root;
+      if(!ValidateUiImageDeclaration(declaration,image,error))return false;
       output->push_back(std::move(image));
     }
   }
@@ -403,6 +398,7 @@ void ParsePackage(const std::wstring& package,ModSource source,std::vector<ModDe
     const auto* runtime = Field(json, L"runtime");
     const auto* entry = Field(json, L"entry");
     const auto* scripts = Field(json, L"scripts");
+    const auto* rules = Field(json, L"rules");
     const auto* hooks = Field(json, L"hooks");
     const auto* ui = Field(json, L"ui");
     const bool legacy = schema && schema->kind == JsonValue::Kind::Other && schema->primitive == L"1";
@@ -420,6 +416,7 @@ void ParsePackage(const std::wstring& package,ModSource source,std::vector<ModDe
         (entry && entry->kind != JsonValue::Kind::String) ||
         (hooks && hooks->kind != JsonValue::Kind::Array) ||
         (scripts && scripts->kind != JsonValue::Kind::Array) ||
+        (rules && (rules->kind != JsonValue::Kind::String || legacy)) ||
         (legacy && (!name || !version || !runtime || !entry || !hooks))) {
       diagnostics->push_back(label + std::wstring(L": MANIFEST_FAIL: invalid schema or field types"));
       return;
@@ -438,6 +435,12 @@ void ParsePackage(const std::wstring& package,ModSource source,std::vector<ModDe
     mod.version = version ? version->string : L"unspecified";
     std::transform(mod.id.begin(),mod.id.end(),mod.id.begin(),towlower);
     mod.packagePath = package; mod.rootPath = scriptRoot; mod.source = source;
+    if(rules) {
+      if(!SafeEntry(rules->string)||!ValidateEntryPath(scriptRoot,rules->string)) {
+        diagnostics->push_back(label+L": MANIFEST_FAIL: unsafe rules entry");return;
+      }
+      mod.rulesEntry=rules->string;
+    }
     if (entry) mod.bridgeScripts.push_back(entry->string);
     if (scripts) {
       if (scripts->kind != JsonValue::Kind::Array || scripts->array.size() > 256) {
@@ -466,6 +469,9 @@ void ParsePackage(const std::wstring& package,ModSource source,std::vector<ModDe
     if (mod.bridgeScripts.empty()) {
       diagnostics->push_back(label + std::wstring(L": MANIFEST_FAIL: at least one script or entry is required"));
       return;
+    }
+    if(!mod.rulesEntry.empty()&&std::any_of(mod.bridgeScripts.begin(),mod.bridgeScripts.end(),[&](const auto& script){return _wcsicmp(script.c_str(),mod.rulesEntry.c_str())==0;})) {
+      diagnostics->push_back(label+L": MANIFEST_FAIL: rules must use a separate entry");return;
     }
     mod.entryPath = scriptRoot + L"\\";
     for (wchar_t c : mod.bridgeScripts.front()) mod.entryPath.push_back(c == L'/' ? L'\\' : c);
@@ -505,7 +511,8 @@ void ParsePackage(const std::wstring& package,ModSource source,std::vector<ModDe
     if (mod.id.empty()) return;
 
     mod.activation=source==ModSource::Workshop?ModActivation::WorkshopActive:ModActivation::StockActive;
-    for (const auto& script : mod.bridgeScripts) {
+    auto checkedScripts=mod.bridgeScripts;if(!mod.rulesEntry.empty())checkedScripts.push_back(mod.rulesEntry);
+    for (const auto& script : checkedScripts) {
       std::wstring full = scriptRoot + L"\\" + script;
       std::replace(full.begin(),full.end(),L'/',L'\\');
       std::wstring relative=CanonicalPath(full).substr(package.size()+1);
@@ -625,6 +632,19 @@ ModDiscovery DiscoverActiveBridgeMods(const std::vector<std::wstring>& activePac
   result.mods=std::move(unique);return result;
 }
 
+bool ValidateUiImageDeclaration(const ModDescriptor& mod,const UiImageDescriptor& image,std::wstring* error) {
+  auto fail=[&](const std::wstring& text){if(error)*error=text;return false;};
+  if(!SafeId(image.identity))return fail(L"invalid ui image identity");
+  if(image.large.empty())return fail(L"ui image requires large PNG: "+image.identity);
+  if(image.weapon&&(image.engineType.rfind(L"attachment_",0)!=0||!SafeId(image.engineType)))return fail(L"weapon ui image requires attachment type: "+image.identity);
+  if((!image.weapon&&!image.engineType.empty())||(image.weapon&&!image.loadout.empty()))return fail(L"invalid ui image fields");
+  for(const auto* field:{&image.small,&image.large,&image.loadout})if(!field->empty()) {
+    std::wstring resolved;
+    if(!SafeImagePath(*field)||!ResolveModAssetPath(mod,*field,L".png",&resolved))return fail(L"invalid or unsafe ui image: "+image.identity);
+  }
+  if(error)error->clear();return true;
+}
+
 bool ResolveModAssetPath(const ModDescriptor& mod,const std::wstring& relative,
                          const wchar_t* extension,std::wstring* absolute) {
   if (!absolute || !extension || relative.empty() || relative.size() > 240 ||
@@ -674,6 +694,8 @@ bool WriteBridgeBootstrap(const ModDescriptor& mod, const std::wstring& sdkPath,
       L"local forbidden=" + LuaQuote(_wcsicmp(mod.rootPath.c_str(),mod.packagePath.c_str())==0 ? L"content/scripts/" :
           (_wcsicmp(mod.rootPath.c_str(),(mod.packagePath+L"\\content").c_str())==0 ? L"scripts/" : L"")) + L"\n" +
       hookTable +
+      L"local read_module_file,run_module_file=loadfile,dofile\n" +
+      L"loadfile=nil; dofile=nil; load=nil; collectgarbage=nil\n" +
       L"local cache, loading = {}, {}\n" +
       L"local function safe_name(n) return type(n)=='string' and #n>0 and #n<=160 and not n:match('(^%.)') and not n:match('%.%.') and n:match('^[%w_%.%-]+$') end\n" +
       L"function require(name)\n" +
@@ -683,8 +705,8 @@ bool WriteBridgeBootstrap(const ModDescriptor& mod, const std::wstring& sdkPath,
       L"  loading[name]=true\n" +
       L"  local rel=name:gsub('%.','/')\n" +
       L"  if #forbidden>0 and rel:lower():sub(1,#forbidden)==forbidden then loading[name]=nil; error('stock Lua resource cannot be loaded by Bridge',2) end\n" +
-      L"  local chunk,err=loadfile(root..'/'..rel..'.lua')\n" +
-      L"  if not chunk then chunk,err=loadfile(root..'/'..rel..'/init.lua') end\n" +
+      L"  local chunk,err=read_module_file(root..'/'..rel..'.lua')\n" +
+      L"  if not chunk then chunk,err=read_module_file(root..'/'..rel..'/init.lua') end\n" +
       L"  if not chunk then loading[name]=nil; error(err,2) end\n" +
       L"  local ok,value=pcall(chunk)\n" +
       L"  loading[name]=nil\n" +
@@ -694,12 +716,12 @@ bool WriteBridgeBootstrap(const ModDescriptor& mod, const std::wstring& sdkPath,
       L"  __cc2_host_require_count=(__cc2_host_require_count or 0)+1\n" +
       L"  return value\n" +
       L"end\n" +
-      L"local sdk=dofile(sdkPath)\n" +
+      L"local sdk=run_module_file(sdkPath)\n" +
       L"if type(sdk)~='table' or type(sdk.carrier)~='table' or type(sdk.animation)~='table' then error('invalid cc2 SDK') end\n" +
       L"if type(sdk.carrier.throttle)~='function' or type(sdk.animation.routes)~='function' then error('SDK API shape mismatch') end\n" +
       L"cc2=sdk; __cc2_host_sdk_pass=true\n" +
       L"cache.cc2=sdk\n" +
-      L"local mod=dofile(entry)\n" +
+      L"local mod=run_module_file(entry)\n" +
       L"if type(mod)~='table' then error('entry must return a lifecycle table') end\n" +
       L"__cc2_host_entry_pass=true\n" +
       L"__cc2_host_require_pass=(__cc2_host_require_count or 0)>0\n" +

@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "upstream": "https://github.com/totolerigolo118/carrier-command-2-mods",
-  "commit": "174f3317e8790e244d89cd9ccdcc4c339d956769",
+  "commit": "a40d1572eabd6d9710e6d64aae431824ffc98790",
   "projects": [
     {
       "directory": "cc2-hold-copies",
@@ -28,7 +28,7 @@
         },
         "reference/build_ui.py": {
           "source": "tour/etude_bouton_hold/fabriquer_mod_hold.py",
-          "sha256": "583c2f09385c50f8f3e7527d74753e113a46e93ffaf57ea90b06edcbb3547946"
+          "sha256": "11c325ab40435ce697e37d58e3de3a008841181f602e23448ccd9d093cf80e3d"
         },
         "reference/UPSTREAM_STATUS.md": {
           "source": "tour/etude_bouton_hold/PLUGIN_hold_v2.md",
@@ -90,19 +90,19 @@
         },
         "native/cc2x_frein.c": {
           "source": "tour/atterrissage_manuel/frein/cc2x_frein.c",
-          "sha256": "48f9b302328e4ead690797f2436986d8247f9b64d5ed8949bff1cdf6e2c1cb1a"
+          "sha256": "cadf51341ceaf963f9f49db79cee5636ad84da96dd851f8e4ac48b80f51fae51"
         },
         "native/tests/test_frein.c": {
           "source": "tour/atterrissage_manuel/frein/tests/test_frein.c",
-          "sha256": "743947a29e3d155160c7166ecc75913a39368b0c0ede96da94bee203b71bcceb"
+          "sha256": "bf2745dcd12229a8c8fe886dec6e9464e464f9fb806e247a3fcf79f023028fb3"
         },
         "native/frein.ini.example": {
           "source": "tour/atterrissage_manuel/frein/frein.ini.example",
-          "sha256": "f8ca37c30c646ec84f790985970498617a3fedea3a9bcd05b3a06d6b2eadb6bf"
+          "sha256": "e4370e357d8b22c783d64320c0140c52ed84095acd0ed488391347c9232b7f31"
         },
         "reference/UPSTREAM_STATUS.md": {
-          "source": "tour/atterrissage_manuel/frein/RISQUES_v12.md",
-          "sha256": "cb0f37f5cc2f6db7753f6496e2896349c5f217170b1c0c5976a2b9861ce44052"
+          "source": "tour/atterrissage_manuel/frein/RISQUES_v15.md",
+          "sha256": "1424fd6166969751076007641d32ef6a762b97f2dd8f97cbc3d3f370d0e2fafa"
         }
       }
     }

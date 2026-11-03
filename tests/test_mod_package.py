@@ -65,6 +65,18 @@ class PackageTest(unittest.TestCase):
             self.assertEqual(report['output_sha256']['LICENSES/' + name],
                              hashlib.sha256(expected).hexdigest())
 
+    def test_named_extension_headers_are_part_of_new_native_provenance(self):
+        self.report['sdk_headers_sha256'] = {
+            path.name: self.sha(path) for path in sorted((ROOT / 'include').glob('*.h'))}
+        self.report['sdk_headers_sha256']['cc2x_framework.h'] = '0' * 64
+        with self.assertRaisesRegex(ValueError, 'Public SDK headers changed'):
+            self.package()
+
+    def test_native_extension_requirement_is_preserved_in_mod_metadata(self):
+        self.metadata['framework_api'] = 1
+        folder = self.package()
+        self.assertIn('framework_api="1"', (folder / 'mod.xml').read_text())
+
     @unittest.skipUnless(__import__('os').name == 'nt', 'Windows 8.3 path identity')
     def test_short_windows_source_root_keeps_lexical_artifact_boundary(self):
         import ctypes

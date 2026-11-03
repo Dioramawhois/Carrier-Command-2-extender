@@ -3,6 +3,7 @@
 #include "api/mods/workshop_upload.h"
 #include "api/vehicle/definition_adapter.h"
 #include "api/vehicle/ui_library_injection.h"
+#include "api/vehicle/buttons.h"
 #include <cstring>
 namespace cc2::runtime {
 namespace {
@@ -15,6 +16,9 @@ std::uint32_t __fastcall Update(void*self,void*,std::uint32_t a,std::uint32_t b,
 void __cdecl ObserveEarlyResourceInit(cc2x_cpu*,void*) {
   if(target)target->ObserveGameResourceInit();
 }
+void OnButtons(api::vehicle::ButtonContext* context,void* user){static_cast<Host*>(user)->ButtonsEvent(context);}
+int OnButtonQuery(api::vehicle::ButtonContext* context,void* user){return static_cast<Host*>(user)->ButtonQueryEvent(context);}
+bool ButtonsInterested(const char* name,void* user){return static_cast<Host*>(user)->HasEventSubscribers(name);}
 }
 bool InstallNativeExtensions(const cc2x_api* api,Host* host) {
   if(!api->va||!api->patch_ptr||!api->patch_begin||!api->patch_commit||!api->patch_abort||!api->patch_bytes)return false;
@@ -36,6 +40,8 @@ bool InstallNativeExtensions(const cc2x_api* api,Host* host) {
     return false;
   }
   (void)api::vehicle::InstallStockUiLibraryInjection(api);
+  if(!api::vehicle::ConfigureButtons(api,OnButtons,host,OnButtonQuery,ButtonsInterested)&&api->log)
+    api->log("cc2x_controls",CC2X_LOG_WARN,"event=BUTTON_PROFILE_UNAVAILABLE; named control writes disabled");
   auto**vtable=reinterpret_cast<void**>(api->va(vtableVa));
   const auto actual55=reinterpret_cast<std::uintptr_t>(vtable[55])-static_cast<std::uintptr_t>(api->module_base)+0x400000;
   const auto actual57=reinterpret_cast<std::uintptr_t>(vtable[57])-static_cast<std::uintptr_t>(api->module_base)+0x400000;

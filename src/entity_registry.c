@@ -35,11 +35,12 @@ void cc2x_entity_registry_init(void) {
 static int valid_label(const char *s, size_t cap, int namespaced) {
     size_t n;
     int colons = 0;
-    if (!s || !(n = strlen(s)) || n >= cap) return 0;
+    if (!s || !(n = strnlen(s, cap)) || n >= cap) return 0;
     for (size_t i = 0; i < n; ++i) {
         unsigned char c = (unsigned char)s[i];
         if (c == ':') { ++colons; if (!namespaced || i == 0 || i + 1 == n) return 0; continue; }
-        if (!(isalnum(c) || c == '_' || c == '-' || c == '.')) return 0;
+        if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+              (c >= '0' && c <= '9') || c == '_' || c == '-' || c == '.')) return 0;
     }
     return namespaced ? colons == 1 : colons == 0;
 }

@@ -1,14 +1,16 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Read-only checks of the production artifact; never loads the DLL."""
 from pathlib import Path
+import os
 import struct
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
+RUNTIME = Path(os.environ.get('CC2X_TEST_RUNTIME', ROOT / 'dist/dinput8.dll'))
 
 class DistributionTest(unittest.TestCase):
     def test_x86_dll_exports_proxy_and_named_session_extension(self):
-        binary = (ROOT / 'dist/dinput8.dll').read_bytes()
+        binary = RUNTIME.read_bytes()
         pe = struct.unpack_from('<I', binary, 0x3c)[0]
         self.assertEqual(binary[pe:pe + 4], b'PE\0\0')
         machine, count, _, _, _, optional_size, flags = struct.unpack_from('<HHIIIHH', binary, pe + 4)
@@ -37,9 +39,11 @@ class DistributionTest(unittest.TestCase):
         self.assertTrue({'DirectInput8Create', 'DllCanUnloadNow', 'DllGetClassObject',
                          'DllRegisterServer', 'DllUnregisterServer',
                          'cc2x_query_session_v1'} <= names)
+        if os.environ.get('CC2X_TEST_RUNTIME'):
+            self.assertIn('cc2x_query_framework_v1', names)
 
     def test_runtime_does_not_embed_aircraft_scenarios_or_research_activation(self):
-        binary = (ROOT / 'dist/dinput8.dll').read_bytes()
+        binary = RUNTIME.read_bytes()
         for value in (b'cc2x_f16', b'cc2x_f15', b'custom_entity_registration_probe.enabled',
                       b'MOD_COMPATIBILITY_AUTO_DISABLE_BYPASSED'):
             self.assertFalse(value in binary, value.decode())

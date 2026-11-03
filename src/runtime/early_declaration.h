@@ -1,6 +1,7 @@
 #pragma once
 
 #include "mod_loader.h"
+#include "cc2x_framework.h"
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -20,6 +21,15 @@ struct DeclarationCatalog {
   std::vector<VehicleDeclaration> vehicles;
   std::vector<std::wstring> diagnostics;
 };
+struct VehicleFields {
+  std::wstring id,name,base,definition,ui;
+  std::uint32_t order=UINT32_MAX;
+  bool hasUi=false;
+};
+bool BuildVehicleDeclaration(const ModDescriptor& mod,const VehicleFields& fields,
+                             VehicleDeclaration* out,std::string* error);
+bool BuildVehicleDeclarationFromC(const ModDescriptor& mod,const cc2x_vehicle_declaration& fields,
+                                  VehicleDeclaration* out,std::string* error);
 
 // Executes schema-2 entry scripts in a restricted, disposable Lua VM. The
 // returned descriptors own all strings; no lua_State or Lua closure survives.

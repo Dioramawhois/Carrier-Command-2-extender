@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.7.0-client-beta.1 (2026-11-03)
+
+- Preserve C/C++ plugin development alongside Lua. Add the named framework C
+  extension over the same buttons, throttle, input, mailbox, asset catalog,
+  metadata and next-tick task backends, with paired real-Lua/native fixtures.
+  Add C11/C++17 examples and a capability/validation map. Offline evidence does
+  not imply full gameplay acceptance or completion of the Brake v15 port.
+
+- Keep gameplay behavior in separate Lua/content mods. Add generic synchronous
+  engine callbacks, bounded per-module screen request/state mailboxes, checked
+  wing throttle access, and staged named-button state transport to Lua.
+- Refuse stale/session-less requests, unsupported profiles, invalid values,
+  disabled controls and conflicting button batches. An empty module set issues
+  no gameplay commands in the host regression fixture.
+- Add native-free Lua/content packaging with source hashes and a separate
+  `lua_api` package requirement. Candidate outputs can be built outside `dist`
+  without replacing the published SDK DLL.
+- Update the cc2mods source lock to the author's a40d157 revision. Preserve the
+  prior extraction lock as history. New generic engine code retains upstream
+  attribution; no named Hold/Modes/Brake policy is compiled into the framework.
+- This is a framework client beta. Brake/Island Lua migrations, full feature
+  acceptance, remote multiplayer and dedicated-server support remain separate
+  work. This release does not bundle or silently enable those gameplay mods.
+
+
 ## 0.6.0-client-beta.1 (2026-11-03)
 
 - Publishes the same Windows API 8 runtime as Steam Workshop SDK item 3833014670.

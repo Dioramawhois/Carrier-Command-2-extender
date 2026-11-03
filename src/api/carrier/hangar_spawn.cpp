@@ -536,7 +536,7 @@ bool Host::DescribeHangarSlots(std::uint32_t carrierId,std::uint32_t chassisType
     std::vector<HangarSlotOption>* options,std::string* reason) {
   if(!options||!reason) return false;
   options->clear();
-  if(!InLuaContext()||!server_) { *reason="wrong_execution_context_or_no_session";return false; }
+  if(!InServerContext()) { *reason="wrong_execution_context_or_no_session";return false; }
   const auto* api=Api();
   if(!api||!api->find||!api->geti||!api->va) { *reason="world_api_unavailable";return false; }
   if(!SupportedImage(api,reason)) return false;

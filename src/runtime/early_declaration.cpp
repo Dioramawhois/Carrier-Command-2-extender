@@ -8,6 +8,7 @@ extern "C" {
 #include <Windows.h>
 #include <algorithm>
 #include <cstdlib>
+#include <cstring>
 #include <cstdint>
 #include <cwchar>
 #include <cwctype>
@@ -84,38 +85,11 @@ std::string RegisterVehicleImpl(lua_State* L,Context* context) {
     order=static_cast<std::uint32_t>(value);
   }
   lua_pop(L,1);
-  if (!SafeLocalId(id) || name.empty() || name.size()>128 ||
-      base.empty() || definition.empty()) return "invalid id, name, base or definition";
-  if (HasField(L,1,"ui") && (!SafeLocalId(ui) ||
-      std::none_of(context->mod->uiImages.begin(),context->mod->uiImages.end(),
-          [&](const UiImageDescriptor& image){return !image.weapon && image.identity==ui;})))
-    return "ui must reference a declared vehicle image";
-  std::uint32_t baseType=0;
-  if (base==L"wing_light") baseType=8;
-  else if (base==L"wing_heavy") baseType=10;
-  else return "unsupported base class (verified: wing_light, wing_heavy)";
-  std::wstring path;
-  if (definition.rfind(L"game_objects/",0)!=0 ||
-      definition.find(L'/',13)!=std::wstring::npos ||
-      !ResolveModAssetPath(*context->mod,definition,L".xml",&path))
-    return "definition must be an existing safe game_objects/*.xml path inside the mod";
   for (const auto& prior:context->pending)
     if (_wcsicmp(prior.localId.c_str(),id.c_str())==0) return "duplicate vehicle id";
-  auto basename=definition.substr(definition.find_last_of(L'/')==std::wstring::npos
-      ? 0 : definition.find_last_of(L'/')+1);
-  basename.resize(basename.size()-4);
-  if (!SafeLocalId(basename)) return "invalid definition resource name";
   VehicleDeclaration declared;
-  declared.owner=context->mod->id;
-  declared.localId=std::move(id);
-  declared.identity=declared.owner+L"."+declared.localId;
-  std::transform(declared.identity.begin(),declared.identity.end(),declared.identity.begin(),towlower);
-  declared.name=std::move(name);
-  declared.definitionPath=std::move(path);
-  declared.resourceName=std::move(basename);
-  declared.ui=std::move(ui);
-  declared.nativeBaseType=baseType;
-  declared.order=order;
+  std::string error;
+  if(!BuildVehicleDeclaration(*context->mod,{id,name,base,definition,ui,order,HasField(L,1,"ui")},&declared,&error))return error;
   context->pending.push_back(std::move(declared));
   return {};
 }
@@ -195,6 +169,28 @@ bool RunMod(const ModDescriptor& mod,std::vector<VehicleDeclaration>* output,std
 }
 
 }  // namespace
+
+bool BuildVehicleDeclaration(const ModDescriptor& mod,const VehicleFields& f,VehicleDeclaration* out,std::string* error) {
+  auto fail=[&](const char* reason){if(error)*error=reason;return false;};
+  if(!out||!SafeLocalId(f.id)||f.name.empty()||f.name.size()>128||f.base.empty()||f.definition.empty())return fail("invalid id, name, base or definition");
+  if(f.order!=UINT32_MAX&&f.order>65535)return fail("order must be an integer from 0 through 65535");
+  if(f.hasUi&&(!SafeLocalId(f.ui)||std::none_of(mod.uiImages.begin(),mod.uiImages.end(),[&](const auto& image){return !image.weapon&&image.identity==f.ui;})))return fail("ui must reference a declared vehicle image");
+  std::uint32_t base=0;
+  if(f.base==L"wing_light")base=8;else if(f.base==L"wing_heavy")base=10;else return fail("unsupported base class (verified: wing_light, wing_heavy)");
+  std::wstring path;
+  if(f.definition.rfind(L"game_objects/",0)!=0||f.definition.find(L'/',13)!=std::wstring::npos||!ResolveModAssetPath(mod,f.definition,L".xml",&path))return fail("definition must be an existing safe game_objects/*.xml path inside the mod");
+  auto resource=f.definition.substr(f.definition.find_last_of(L'/')+1);resource.resize(resource.size()-4);
+  if(!SafeLocalId(resource))return fail("invalid definition resource name");
+  VehicleDeclaration result;result.owner=mod.id;result.localId=f.id;result.identity=mod.id+L"."+f.id;
+  std::transform(result.identity.begin(),result.identity.end(),result.identity.begin(),towlower);
+  result.name=f.name;result.definitionPath=path;result.resourceName=resource;result.ui=f.ui;result.nativeBaseType=base;result.order=f.order;
+  *out=std::move(result);if(error)error->clear();return true;
+}
+bool BuildVehicleDeclarationFromC(const ModDescriptor& mod,const cc2x_vehicle_declaration& f,VehicleDeclaration* out,std::string* error) {
+  if(f.size!=sizeof(f)){if(error)*error="invalid C declaration size";return false;}
+  auto field=[](const char* value){if(!value||strnlen(value,1025)>1024)return std::wstring{};return Wide(value);};
+  return BuildVehicleDeclaration(mod,{field(f.id),field(f.name),field(f.base),field(f.definition),field(f.ui),f.order,f.ui!=nullptr},out,error);
+}
 
 DeclarationCatalog CollectEarlyDeclarations(const ModDiscovery& discovery) {
   DeclarationCatalog catalog;
