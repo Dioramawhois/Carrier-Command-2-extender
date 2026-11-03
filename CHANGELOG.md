@@ -2,6 +2,13 @@
 
 ## 0.6.0-dev (unreleased)
 
+- Added generic developer consumer packaging, preserving native provenance and
+  resource bytes, syntax-only Lua/XML validation, licensing and atomic new output.
+  Separate projects now prepare Hold UI, original Modes UI, Brake and aircraft
+  packages; config activation/native/game acceptance remain distinct gates.
+  Eight packaging regressions cover guarded sources, paths, PE data, unchanged
+  existing destinations, required Lua checker and data-only consumers.
+
 - Validate every independent module entry against game-owned stock scripts,
   including later scripts after a valid first entry. Added a failing regression
   before fixing discovery; the complete integrated SDK suite passes afterward.

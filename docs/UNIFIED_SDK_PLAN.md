@@ -34,6 +34,31 @@ The outputs are developer sources, not complete player mods. Tests:
 `python tests/test_source_extraction.py` checks modified upstream rejection before
 write, unsafe paths, preservation of existing outputs and exact valid copying.
 
+## Standalone developer packages
+
+`tools/mod_package.py` is a generic byte-copy/staging publisher shared by separate
+consumer repositories. It validates native build/source/header hashes and PE32,
+resource paths/types, XML and real Lua 5.3 syntax-only; it never executes a mod
+Lua/DLL, installs into the game or overwrites an existing output. It also builds
+data-only consumers without embedding a runtime. Licensing/provenance are kept
+with the package, and complete format is distinct from game acceptance.
+
+The separately maintained mod repositories now add their own package.py/metadata
+and resources. Hold's reviewed pure recipe inserts two buttons into a legitimate
+local carrier XML and checks that no original lines changed. Modes includes its
+original v2.1 library_custom_5.lua byte-for-byte. Brake gets a standalone wrapper;
+aircraft keeps its original owner/local IDs and source assets. No gameplay recipe
+or aircraft data enters the native runtime.
+
+Subsequent Hold/Modes/Brake source adaptations use the original API 4 prefix
+instead of requiring sizeof an expanded API 8 header. Original upstream hashes
+remain historical provenance; the modified consumer files must not be described
+as byte-identical. New tests reproduce the guard failure before the fix.
+Modes/Brake active default INIs are packaged as metadata; transactional GUI
+creation of missing settings and exact native approvals still require ModLoader
+integration. Existing user settings must be preserved. Player instructions must
+not require running these developer scripts or manually editing INIs.
+
 ## Required integration contracts
 
 - Preserve separate Lua code roots and manifests inside ModLoader's single

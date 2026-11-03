@@ -1,0 +1,59 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+"""Developer build/package entry point. Never installs or executes a game/mod."""
+import argparse
+import hashlib
+import importlib.util
+import json
+import os
+from pathlib import Path
+import subprocess
+import sys
+
+ROOT = Path(__file__).resolve().parent
+
+
+def load(name, path):
+    spec = importlib.util.spec_from_file_location(name, path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--sdk', type=Path)
+    parser.add_argument('--zig', type=Path)
+    parser.add_argument('--game', type=Path)
+    parser.add_argument('--luac', type=Path)
+    parser.add_argument('--output', type=Path)
+    args = parser.parse_args()
+    sdk = Path(args.sdk or os.environ.get('CC2X_SDK_DIR') or ROOT.parent.parent / 'cc2x').resolve(strict=True)
+    packager = load('cc2x_mod_package', sdk / 'tools/mod_package.py')
+    metadata = json.loads((ROOT / 'package.json').read_text())
+    command = [sys.executable, str(ROOT / 'build.py'), '--sdk', str(sdk)]
+    if args.zig:
+        command += ['--zig', str(args.zig.resolve())]
+    subprocess.run(command, check=True)
+    plugin = ROOT / 'dist' / metadata['plugin']
+    report = json.loads(plugin.with_suffix('.build.json').read_text())
+    resources = {}
+    for target, source in metadata.get('resources', {}).items():
+        resources[target] = packager.regular(ROOT, source)
+    provenance = {'project_commit': subprocess.check_output(
+        ['git', '-C', str(ROOT), 'rev-parse', 'HEAD'], text=True).strip(),
+        'project_dirty': bool(subprocess.check_output(
+            ['git', '-C', str(ROOT), 'status', '--porcelain'], text=True).strip()),
+        'package_spec_sha256': packager.sha((ROOT / 'package.json').read_bytes())}
+    recipe = ROOT / 'package_recipe.py'
+    if recipe.is_file():
+        # Reviewed project-owned Python data generator, never mod Lua or a DLL.
+        generated, origins = load('project_package_recipe', recipe).resources(
+            args.game.resolve(strict=True) if args.game else None, packager.regular)
+        if resources.keys() & generated.keys():
+            raise ValueError('Duplicate generated resource')
+        resources.update(generated)
+        provenance.update(origins)
+        provenance['recipe_sha256'] = packager.sha(recipe.read_bytes())
+    output = args.output or ROOT / 'dist' / metadata['id']
+    print(packager.package(ROOT, metadata, plugin, report, resources, output,
+                           provenance=provenance, luac=args.luac))
