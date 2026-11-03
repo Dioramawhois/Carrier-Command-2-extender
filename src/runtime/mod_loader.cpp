@@ -505,10 +505,14 @@ void ParsePackage(const std::wstring& package,ModSource source,std::vector<ModDe
     if (mod.id.empty()) return;
 
     mod.activation=source==ModSource::Workshop?ModActivation::WorkshopActive:ModActivation::StockActive;
-    std::wstring relative=CanonicalPath(mod.entryPath).substr(package.size()+1);
-    std::transform(relative.begin(),relative.end(),relative.begin(),towlower);
-    if(relative.rfind(L"content\\scripts\\",0)==0) {
-      diagnostics->push_back(mod.id+L": STOCK_SCRIPT_BLOCKED: use separate Native Bridge files");return;
+    for (const auto& script : mod.bridgeScripts) {
+      std::wstring full = scriptRoot + L"\\" + script;
+      std::replace(full.begin(),full.end(),L'/',L'\\');
+      std::wstring relative=CanonicalPath(full).substr(package.size()+1);
+      std::transform(relative.begin(),relative.end(),relative.begin(),towlower);
+      if(relative.rfind(L"content\\scripts\\",0)==0) {
+        diagnostics->push_back(mod.id+L": STOCK_SCRIPT_BLOCKED: use separate Native Bridge files");return;
+      }
     }
     if(IsReparsePath(manifestRoot) || IsReparsePath(scriptRoot)) {
       diagnostics->push_back(mod.id+L": unsafe manifest or script root");return;}

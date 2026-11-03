@@ -2,6 +2,10 @@
 
 ## 0.6.0-dev (unreleased)
 
+- Validate every independent module entry against game-owned stock scripts,
+  including later scripts after a valid first entry. Added a failing regression
+  before fixing discovery; the complete integrated SDK suite passes afterward.
+
 - Integrated the authorized team Native Bridge into this runtime: independent
   Lua host, generic definition/UI/resource registries, cc2 facade and one C core.
   Canonical API 8 preserves the API 4 prefix; named sessions do not occupy its tail.

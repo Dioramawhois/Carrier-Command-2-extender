@@ -55,6 +55,12 @@ int main(){
   CHECK(fs::equivalent(migrated.mods[0].entryPath,migratedLegacy/L"content/bridge/main.lua"));
   Write(modern/L"content/native_bridge/bridge.json",Manifest("legacy_shadow"));
   CHECK(cc2::host::DiscoverActiveBridgeMods({modern.wstring()}).mods[0].id==L"example.aircraft");
+  auto stockTail=root/L"mods/stock_tail";
+  Write(stockTail/L"mod.xml","<mod/>");
+  Write(stockTail/L"content/bridge/main.lua","return {}\n");
+  Write(stockTail/L"content/scripts/stock.lua","return {}\n");
+  Write(stockTail/L"content/bridge.json",R"({"id":"stock.tail","scripts":["bridge/main.lua","scripts/stock.lua"]})");
+  CHECK(cc2::host::DiscoverActiveBridgeMods({stockTail.wstring()}).mods.empty());
   auto unsafeUi=root/L"mods/unsafe_ui";
   Write(unsafeUi/L"mod.xml","<mod/>");Write(unsafeUi/L"content/bridge/main.lua","return {}\n");
   Write(unsafeUi/L"content/bridge.json",R"({"id":"unsafe.ui","scripts":["bridge/main.lua"],"ui":{"vehicles":{"f16":{"large":"../outside.png"}}}})");
