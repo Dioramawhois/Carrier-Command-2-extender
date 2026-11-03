@@ -186,4 +186,6 @@ if ui_hook_source:
                   "kScriptVectorHookBytes", "kVectorEmplaceBackPrefix",
                   "kStringReservePrefix", "kStringFreePrefix"):
         assert value in ui_hook_source, f"core UI script hook profile value missing: {value}"
-print("PASS SHA/PE identity, lifecycle/throttle vtables, Lua ABI, World API, all 26 animation sites/targets, hangar native entries and core UI injection helpers")
+assert read_va(0x005A2E70, 5) == bytes.fromhex("558bec6aff"), "definition loader entry mismatch"
+assert read_va(0x00853E10, 6) == bytes.fromhex("558bec515356"), "definition name-map resize mismatch"
+print("PASS SHA/PE identity, lifecycle/throttle vtables, Lua ABI, World API, all 26 animation sites/targets, hangar entries, UI helpers and definition loader/name-map entry guards")

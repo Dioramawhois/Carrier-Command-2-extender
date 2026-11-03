@@ -138,6 +138,9 @@ def main():
             ('resource_registry_test.cpp', src_objects(['api/ui/resource_registry.cpp']), []),
             ('weapon_ui_catalog_test.cpp', src_objects(['api/ui/resource_registry.cpp', 'api/ui/weapon_catalog.cpp']), []),
             ('definition_registry_test.cpp', src_objects(registry), []),
+            ('definition_adapter_hooks_test.cpp', src_objects([
+                'api/vehicle/definition_adapter.cpp', 'api/vehicle/definition_registry.cpp',
+                'platform/seh_guard.c']), []),
             ('entity_registry_test.c', src_objects(['entity_registry.c']), []),
             ('mod_loader_test.cpp', src_objects(['runtime/mod_loader.cpp']), []),
             ('early_declaration_test.cpp', src_objects(registry + ['runtime/mod_loader.cpp', 'runtime/early_declaration.cpp']) + lua_objects, []),

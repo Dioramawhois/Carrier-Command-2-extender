@@ -13,6 +13,8 @@ namespace cc2::api::vehicle::definition_adapter {
 namespace {
 
 constexpr std::uint32_t kLoaderRegisterSite = 0x005A5C0D;
+constexpr std::uint32_t kDefinitionLoaderSite = 0x005A2E70;
+constexpr std::uint32_t kNameMapResizeSite = 0x00853E10;
 constexpr std::uint32_t kXmlParseSuccessSite = 0x005A5FD5;
 constexpr std::uint32_t kXmlParseReturnSite = 0x005A5C42;
 constexpr std::uint32_t kServerClassSelector = 0x00734B60;
@@ -22,6 +24,8 @@ constexpr std::uint32_t kNameMapResizeReturn = 0x005A2EA1;
 constexpr std::uint32_t kExpectedBuildSize = 0x00AF7000;
 
 constexpr std::uint8_t kLoaderRegisterExpected[6] = {0xFF,0x76,0x04,0x8D,0x4E,0x08};
+constexpr std::uint8_t kDefinitionLoaderExpected[5] = {0x55,0x8B,0xEC,0x6A,0xFF};
+constexpr std::uint8_t kNameMapResizeExpected[6] = {0x55,0x8B,0xEC,0x51,0x53,0x56};
 constexpr std::uint8_t kXmlParseSuccessExpected[6] = {0x84,0xC0,0x74,0x14,0x56,0x51};
 constexpr std::uint8_t kXmlParseReturnExpected[6] = {0x8B,0x4D,0x0C,0x8B,0x55,0x08};
 constexpr std::uint8_t kServerSelectorExpected[5] = {0x55,0x8B,0xEC,0x6A,0xFF};
@@ -250,6 +254,14 @@ bool IsSteamBuild(const cc2x_api* api) {
   return api && api->game_build && std::strcmp(api->game_build, "1.5.18-win32-r2") == 0;
 }
 
+void __cdecl OnDefinitionLoaderEntry(cc2x_cpu*, void*) {
+  BeginDefinitionLoad();
+}
+
+void __cdecl OnNameMapResizeEntry(cc2x_cpu* cpu, void*) {
+  OnNameMapResize(cpu);
+}
+
 }  // namespace
 
 bool Install(const cc2x_api* api) {
@@ -259,6 +271,8 @@ bool Install(const cc2x_api* api) {
 
   if (!IsSteamBuild(api) || !api->module_base ||
       !HasBytes(api, kLoaderRegisterSite, kLoaderRegisterExpected, sizeof(kLoaderRegisterExpected)) ||
+      !HasBytes(api, kDefinitionLoaderSite, kDefinitionLoaderExpected, sizeof(kDefinitionLoaderExpected)) ||
+      !HasBytes(api, kNameMapResizeSite, kNameMapResizeExpected, sizeof(kNameMapResizeExpected)) ||
       !HasBytes(api, kXmlParseSuccessSite, kXmlParseSuccessExpected, sizeof(kXmlParseSuccessExpected)) ||
       !HasBytes(api, kXmlParseReturnSite, kXmlParseReturnExpected, sizeof(kXmlParseReturnExpected)) ||
       !HasBytes(api, kServerClassSelector, kServerSelectorExpected, sizeof(kServerSelectorExpected)) ||
@@ -273,6 +287,10 @@ bool Install(const cc2x_api* api) {
   g_api = api;
   api->patch_begin("cc2x_vehicle_definitions");
   const bool hooksInstalled =
+      api->patch_mid(kDefinitionLoaderSite, sizeof(kDefinitionLoaderExpected),
+          kDefinitionLoaderExpected, OnDefinitionLoaderEntry, nullptr) != 0 &&
+      api->patch_mid(kNameMapResizeSite, sizeof(kNameMapResizeExpected),
+          kNameMapResizeExpected, OnNameMapResizeEntry, nullptr) != 0 &&
       api->patch_mid(kLoaderRegisterSite, sizeof(kLoaderRegisterExpected),
           kLoaderRegisterExpected, OnRegisterDefinitionName, nullptr) != 0 &&
       api->patch_mid(kXmlParseSuccessSite, sizeof(kXmlParseSuccessExpected),

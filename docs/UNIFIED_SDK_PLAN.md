@@ -74,7 +74,7 @@ not require running these developer scripts or manually editing INIs.
 ## Current evidence and remaining gates
 
 `python build.py --zig PATH --test` builds the unified x86 DLL using only pinned
-Zig 0.15.2 and runs 18 native/SDK checks. They exercise actual SDK code with fake
+Zig 0.15.2 and runs 19 native/SDK checks. They exercise actual SDK code with fake
 game APIs and synthetic modules, trusted SDK Lua wrappers, session isolation and
 native SEH fault recovery. They do not execute actual author mods or load the DLL
 into a game. The production-artifact test rejects embedded aircraft scenario

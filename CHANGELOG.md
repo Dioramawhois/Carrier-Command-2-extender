@@ -2,6 +2,13 @@
 
 ## 0.6.0-dev (unreleased)
 
+- The production generic definition adapter now owns its loader/reset and guarded
+  name-map resize hooks. They were previously called only by an excluded research
+  probe, leaving custom types unready in the real game. A production-adapter fake
+  engine regression reproduces the missing hooks and verifies profile bytes,
+  all-or-nothing installation, relocated return address and arbitrary catalog size.
+  No research activation or aircraft-specific runtime branch is reintroduced.
+
 - Consumer packaging keeps the original lexical project boundary before Windows
   8.3 root canonicalization, fixing RUNNER~1 source paths without hiding DLL links.
 
