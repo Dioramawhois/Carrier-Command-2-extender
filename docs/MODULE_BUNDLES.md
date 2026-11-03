@@ -36,6 +36,11 @@ The module index is runtime metadata, not a game data file to three-way merge.
 The packager must preserve every module's files, validate Lua syntax, report
 source/output hashes and require the exact reviewed runtime with bundle support.
 The SDK reader alone does not add this behavior to an older ModLoader build.
+The companion ModLoader development publisher now writes these containers. Its
+cross-project roundtrip uses the real SDK reader (tools/inspect_module_bundle.cpp),
+real syntax-only luac and synthetic game/mod packages to check reorder/disable;
+it never executes module Lua or loads the runtime DLL. The released beta still
+requires an updated publisher and an exact reviewed runtime capability profile.
 Shared engine resources still need the normal ModLoader merge, independently of
 private module paths. No save/network catalog migration or client delivery is
 implied by packaging: host/client agreement and dedicated bootstrap remain open.
