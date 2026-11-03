@@ -1,7 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Developer build/package entry point. Never installs or executes a game/mod."""
 import argparse
-import hashlib
 import importlib.util
 import json
 import os
@@ -37,13 +36,16 @@ if __name__ == '__main__':
     plugin = ROOT / 'dist' / metadata['plugin']
     report = json.loads(plugin.with_suffix('.build.json').read_text())
     resources = {}
+    resource_sources = {}
     for target, source in metadata.get('resources', {}).items():
         resources[target] = packager.regular(ROOT, source)
+        resource_sources[target] = {'path': source, 'sha256': packager.sha(resources[target])}
     provenance = {'project_commit': subprocess.check_output(
         ['git', '-C', str(ROOT), 'rev-parse', 'HEAD'], text=True).strip(),
         'project_dirty': bool(subprocess.check_output(
             ['git', '-C', str(ROOT), 'status', '--porcelain'], text=True).strip()),
-        'package_spec_sha256': packager.sha((ROOT / 'package.json').read_bytes())}
+        'package_spec_sha256': packager.sha((ROOT / 'package.json').read_bytes()),
+        'resource_sources': resource_sources}
     recipe = ROOT / 'package_recipe.py'
     if recipe.is_file():
         # Reviewed project-owned Python data generator, never mod Lua or a DLL.
