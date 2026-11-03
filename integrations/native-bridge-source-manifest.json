@@ -1,0 +1,635 @@
+{
+  "schema_version": 1,
+  "origin": "team-provided CC2X-Native-Bridge snapshot 2026-11-02",
+  "authorization": "Project owner confirmed all team permissions for integration and publication in this conversation",
+  "project_license": "GPL-3.0-or-later; original third-party notices retained",
+  "changes": [
+    "Canonical game profile ID; one C core and API 8 with preserved API 4 prefix",
+    "Named session extension retained separately; Zig portable filesystem and isolated native SEH boundary",
+    "Removed aircraft-specific production branches and legacy resource discovery; research/policy moved to test references",
+    "Bounded ordered independent module bundles; original attribution and licenses preserved"
+  ],
+  "files": {
+    "include/cc2x.h": {
+      "source": "third_party/cc2x/include/cc2x.h",
+      "source_sha256": "73961457d944d2025070e7e8b40d256ff0f5f755c8c98d3dcdcbb094c9883019",
+      "merge_base": "7ab05c79357e0cdb5bfaa2866bd3a81a101a09da"
+    },
+    "src/cc2x.c": {
+      "source": "third_party/cc2x/src/cc2x.c",
+      "source_sha256": "833a7499b55fdd196e2af38c08a1da24f9ef0264b80bed3d58bb4debda34501a",
+      "merge_base": "7ab05c79357e0cdb5bfaa2866bd3a81a101a09da"
+    },
+    "src/world.c": {
+      "source": "third_party/cc2x/src/world.c",
+      "source_sha256": "492c923cb05fb4f7c9be2a102f157e1fd110fb0f3c2d4a1e7d8c9ea87f1e1800",
+      "merge_base": "7ab05c79357e0cdb5bfaa2866bd3a81a101a09da"
+    },
+    "src/lua_world.c": {
+      "source": "third_party/cc2x/src/lua_world.c",
+      "source_sha256": "183d96693479728e5092a0bb661190f32069d1e029c50abe5f5ed3e63e4e7139",
+      "merge_base": "7ab05c79357e0cdb5bfaa2866bd3a81a101a09da"
+    },
+    "src/internal.h": {
+      "source": "third_party/cc2x/src/internal.h",
+      "source_sha256": "f06e22e067b4fc9b0739a48c4db2846e9c08d8306fdd72e86bf5dfc62ed4203c",
+      "merge_base": "7ab05c79357e0cdb5bfaa2866bd3a81a101a09da"
+    },
+    "src/api/animation/animation_speed.cpp": {
+      "source": "src/api/animation/animation_speed.cpp",
+      "source_sha256": "9e0d7c1fa84c0e6e4b09f27117bbb8232059c87aa213c41f979ee60ac7f46579"
+    },
+    "src/api/animation/animation_speed.h": {
+      "source": "src/api/animation/animation_speed.h",
+      "source_sha256": "d6963813a7adc593ef320234ab1f68a7b357a0f6e81a4012699c995b00424575"
+    },
+    "src/api/carrier/hangar_spawn.cpp": {
+      "source": "src/api/carrier/hangar_spawn.cpp",
+      "source_sha256": "76aa6dbc262ed11729ef628620284d51f2be315059c7ae2e1d9c4a9ca43c32cb"
+    },
+    "src/api/carrier/hangar_spawn.h": {
+      "source": "src/api/carrier/hangar_spawn.h",
+      "source_sha256": "b4556561837d38b52c688833991ceece53b09370ad1102393f289fc8918c6c95"
+    },
+    "src/api/carrier/pe_relocation_guard.h": {
+      "source": "src/api/carrier/pe_relocation_guard.h",
+      "source_sha256": "5548531b41bd172c9b6c4e678ce4cbdc20616304cc545206b0ff161fc0c016e2"
+    },
+    "src/api/carrier/throttle_step.h": {
+      "source": "src/api/carrier/throttle_step.h",
+      "source_sha256": "dc399c8f2f7647523882971b9214dd67bd47c72a3a0eebafad1b09b3bb0a2d96"
+    },
+    "src/api/mods/workshop_upload.cpp": {
+      "source": "src/api/mods/workshop_upload.cpp",
+      "source_sha256": "afe2627044bc54e60c0ce86ec04e180e436c7f2d20f6141b885c60f0a9bca6b1"
+    },
+    "src/api/mods/workshop_upload.h": {
+      "source": "src/api/mods/workshop_upload.h",
+      "source_sha256": "fe4a14c2a4ea5ad7130e3a0f43ecbeb5d2863304ed45f459a122f9895b69c9bc"
+    },
+    "src/api/ui/atlas_factory.cpp": {
+      "source": "src/api/ui/atlas_factory.cpp",
+      "source_sha256": "c8fa7dee34ee7ae157ce32c924a8c43fd99271e99199a427aa8ff718ca0bad3d"
+    },
+    "src/api/ui/atlas_factory.h": {
+      "source": "src/api/ui/atlas_factory.h",
+      "source_sha256": "5b1bf20a8c1be2b679924bf0b51058f37edc35c8caf3eeced0f5f2c07d0d50b1"
+    },
+    "src/api/ui/resource_registry.cpp": {
+      "source": "src/api/ui/resource_registry.cpp",
+      "source_sha256": "895f6752f7e68b64361c4aaf1bd2a011a55db33162648abf26e075458534baa3"
+    },
+    "src/api/ui/resource_registry.h": {
+      "source": "src/api/ui/resource_registry.h",
+      "source_sha256": "ce2da3a17cb8a51857c85cbbeded6e49db351ed7267584ea0c9e23f2a382935b"
+    },
+    "src/api/ui/second_atlas.cpp": {
+      "source": "src/api/ui/second_atlas.cpp",
+      "source_sha256": "2ff4cf97222bb6764014d57b8b0c1367c45b996a709846694fa6eff9dfbfef08"
+    },
+    "src/api/ui/second_atlas.h": {
+      "source": "src/api/ui/second_atlas.h",
+      "source_sha256": "5826fbb649ccf66f0363ac4087384d42ec5fa6847b8a90488e2bd3a208ef8efe"
+    },
+    "src/api/ui/second_atlas_contract.h": {
+      "source": "src/api/ui/second_atlas_contract.h",
+      "source_sha256": "c06b3a2a2ee066cc3f5540008fee33279e00a98102cfdf9988bae1957a4378a2"
+    },
+    "src/api/ui/weapon_catalog.cpp": {
+      "source": "src/api/ui/weapon_catalog.cpp",
+      "source_sha256": "ba519c02a6c101c8613d4d0956809a828a5c1ef0987c196cb4bc1a5756602d97"
+    },
+    "src/api/ui/weapon_catalog.h": {
+      "source": "src/api/ui/weapon_catalog.h",
+      "source_sha256": "a633ec242543d68caa5f8d2b95b4569ae361dbb74d5c6c1e4d812e9dee764754"
+    },
+    "src/api/vehicle/definition_adapter.cpp": {
+      "source": "src/api/vehicle/definition_adapter.cpp",
+      "source_sha256": "b852417f4c29be5475c276770b262c0f6017b3ea0ddf02023ddeaca3b4d9beef"
+    },
+    "src/api/vehicle/definition_adapter.h": {
+      "source": "src/api/vehicle/definition_adapter.h",
+      "source_sha256": "d5359a1a621842ab4126584016460ea50459f020c7f1329cdc4393556d14a168"
+    },
+    "src/api/vehicle/definition_adapter_contract.h": {
+      "source": "src/api/vehicle/definition_adapter_contract.h",
+      "source_sha256": "9c0154493ce267d4446410ac91f779b401c08143c4d2b07fffeb6617bf212a20"
+    },
+    "src/api/vehicle/definition_registry.cpp": {
+      "source": "src/api/vehicle/definition_registry.cpp",
+      "source_sha256": "0d94054c8cebf69fae831f70ede8fc3a6df6c0d05dfbf6cf9221eb621864ab68"
+    },
+    "src/api/vehicle/definition_registry.h": {
+      "source": "src/api/vehicle/definition_registry.h",
+      "source_sha256": "6396b641dcf73512f22a0c86ce57b2b4201e30d614f067cbcdae6f5f003d7557"
+    },
+    "src/api/vehicle/lua_api.cpp": {
+      "source": "src/api/vehicle/lua_api.cpp",
+      "source_sha256": "268d6b703c152a889ea6873de3ed58eae3cf97fc34742b9d2f55f29ee27d7f19"
+    },
+    "src/api/vehicle/lua_api.h": {
+      "source": "src/api/vehicle/lua_api.h",
+      "source_sha256": "48cdbe6f6518fb29cacbee74274cb4bcebd779ae07b22117363e6ec344bae107"
+    },
+    "src/api/vehicle/ui_catalog.cpp": {
+      "source": "src/api/vehicle/ui_catalog.cpp",
+      "source_sha256": "8efc08b5f5aea25ade5c8b5a50ab20fc7465541800397a7cc3e525d656d4252d"
+    },
+    "src/api/vehicle/ui_catalog.h": {
+      "source": "src/api/vehicle/ui_catalog.h",
+      "source_sha256": "960d34a26e10c9db300fed74f4af21ace3e1c459203f574ffde8ecc7326c5d00"
+    },
+    "src/api/vehicle/ui_library_injection.cpp": {
+      "source": "src/api/vehicle/ui_library_injection.cpp",
+      "source_sha256": "5779ccb3e2b5c79a1c871a946cdf296e843a5e17d5d3a801acc6dbf2b3233109"
+    },
+    "src/api/vehicle/ui_library_injection.h": {
+      "source": "src/api/vehicle/ui_library_injection.h",
+      "source_sha256": "2eadfc229fd6a8ea29f5c4c60d0997efc8c4b62a212f0cc9281cc5d935321e44"
+    },
+    "src/api/vehicle/ui_library_shim.lua": {
+      "source": "src/api/vehicle/ui_library_shim.lua",
+      "source_sha256": "19f0282eda1fc5ec9a8042ec571502c5ff8ce14415af8d68952ed0449ee147ca"
+    },
+    "src/api/vehicle/ui_library_shim_source.h.in": {
+      "source": "src/api/vehicle/ui_library_shim_source.h.in",
+      "source_sha256": "3bad5b8b7b6b38ee803f89e7ce6fe544f21cef396e014e8b23ed79af1fe1bc53"
+    },
+    "src/api/vehicle/vehicle_hud_source_patch.h": {
+      "source": "src/api/vehicle/vehicle_hud_source_patch.h",
+      "source_sha256": "b509640560597e1ae3b8a07de234369f0d3c973b253798140f00c10afe6a3a5f"
+    },
+    "src/native_extensions.cpp": {
+      "source": "src/native_extensions.cpp",
+      "source_sha256": "ed51fdedb4e62f11dd955bccb51763632f85cff23ee06b7adeaf6663af2f1d2a"
+    },
+    "src/plugin.cpp": {
+      "source": "src/plugin.cpp",
+      "source_sha256": "37c5c4202f7104e83707bb0acedac1309095ad2c8fa0a9e0f4c2e4210fdd002e"
+    },
+    "src/runtime/early_declaration.cpp": {
+      "source": "src/runtime/early_declaration.cpp",
+      "source_sha256": "1948288a8faf7a4c32f4b91784002ab0910495bd01f64ac1e4f01dda900b2d36"
+    },
+    "src/runtime/early_declaration.h": {
+      "source": "src/runtime/early_declaration.h",
+      "source_sha256": "631d5c9bdb2db574d3a57a03ce40ad92ff6b2048748a544415d206e26da4eceb"
+    },
+    "src/runtime/host.cpp": {
+      "source": "src/runtime/host.cpp",
+      "source_sha256": "7e746865b0e0b79c44ffb6e2476584e27fcb198e47c57bcd199d8ce6b2e7aaa3"
+    },
+    "src/runtime/host.h": {
+      "source": "src/runtime/host.h",
+      "source_sha256": "fb530c89f0ba9f283ac0a247fb710eb79d2f43d0c276760f2f9617c24299e236"
+    },
+    "src/runtime/lifetime_policy.h": {
+      "source": "src/runtime/lifetime_policy.h",
+      "source_sha256": "ec4ff504e797119285f6ca748346f48e6d4a4b14b762ce8ddd0cbe90db31d262"
+    },
+    "src/runtime/mod_loader.cpp": {
+      "source": "src/runtime/mod_loader.cpp",
+      "source_sha256": "6f404f549b5b5b9413fd16e546c1413886d6cb24bf2146719a2f66723d0badec"
+    },
+    "src/runtime/mod_loader.h": {
+      "source": "src/runtime/mod_loader.h",
+      "source_sha256": "aab6ee1bb81f28bd50ecb9a4990bfc01e6a6447f7ee93cb098460663f0b1989f"
+    },
+    "src/runtime/sdk_data.h.in": {
+      "source": "src/runtime/sdk_data.h.in",
+      "source_sha256": "ca053f656335de0052b3e0672ee77bd7203f99a774f4cd04fa342fd9e5796483"
+    },
+    "src/runtime/world.cpp": {
+      "source": "src/runtime/world.cpp",
+      "source_sha256": "9fa1dc3b822d56e460c6be408bf091f456de795f01e193702dced38cbfc98abf"
+    },
+    "src/entity_registry.c": {
+      "source": "third_party/cc2x/src/entity_registry.c",
+      "source_sha256": "8f9b168a596f21accc71a5020c539c5eef3503427489e339361e08b17161a7fb"
+    },
+    "src/entity_registry.h": {
+      "source": "third_party/cc2x/src/entity_registry.h",
+      "source_sha256": "83228e4a5283b3acdb2fe961ec48a2198994528ee04a441559a7da5ca7029def"
+    },
+    "third_party/lua/.gitignore": {
+      "source": "third_party/lua/.gitignore",
+      "source_sha256": "21802c0ff282287b111748bf3a46e70e3f85b9d83e89ef4f88f0e6dd3b7ac2f9"
+    },
+    "third_party/lua/all": {
+      "source": "third_party/lua/all",
+      "source_sha256": "6ad407fbd95bb893b8f285c746911b0163eb9636713d09fea9c2c38e128daf9c"
+    },
+    "third_party/lua/lapi.c": {
+      "source": "third_party/lua/lapi.c",
+      "source_sha256": "45ff5659049780f3888354c281e29f291aeeaa8135f6a5063f7d644e889cfbb4"
+    },
+    "third_party/lua/lapi.h": {
+      "source": "third_party/lua/lapi.h",
+      "source_sha256": "d8e719507d09be29eee478a4374faaaacadfbd55c2e430a7de456c72dff47e45"
+    },
+    "third_party/lua/lauxlib.c": {
+      "source": "third_party/lua/lauxlib.c",
+      "source_sha256": "1bf7dd1bac084af2427077aeef8a19148d6dd5f98e0cfdca949ad1af5f6f9bfd"
+    },
+    "third_party/lua/lauxlib.h": {
+      "source": "third_party/lua/lauxlib.h",
+      "source_sha256": "c13296b0cc109db03206daf33a1c3eea3d8b292708cd3bd6e803199a155d0bab"
+    },
+    "third_party/lua/lbaselib.c": {
+      "source": "third_party/lua/lbaselib.c",
+      "source_sha256": "bdfce3a7aee35c889f27a913d34afa75a7d2c4f5d960dc70ae42dc54751232fd"
+    },
+    "third_party/lua/lbitlib.c": {
+      "source": "third_party/lua/lbitlib.c",
+      "source_sha256": "3aad559a4581dc0b5ed616f2690886ef8001668d4cedbfc45bc34f148c6852ef"
+    },
+    "third_party/lua/lcode.c": {
+      "source": "third_party/lua/lcode.c",
+      "source_sha256": "e536359bbd1e1e55cb047aba222a24a1525708d8bb56ac07020b8f3ee5270af3"
+    },
+    "third_party/lua/lcode.h": {
+      "source": "third_party/lua/lcode.h",
+      "source_sha256": "8c43a8c01acae41ecf2dec5a6aee5d39fe3b17781f51e88ea88192969b7a2f54"
+    },
+    "third_party/lua/lcorolib.c": {
+      "source": "third_party/lua/lcorolib.c",
+      "source_sha256": "e49b2d2abc95783460540e8de072b4c533ff23b56fc5b634cfba79956da1628d"
+    },
+    "third_party/lua/lctype.c": {
+      "source": "third_party/lua/lctype.c",
+      "source_sha256": "f91c39bd1ba19bad73aa9f05265ccdec5cf3562889610ce57456a3840f0521d8"
+    },
+    "third_party/lua/lctype.h": {
+      "source": "third_party/lua/lctype.h",
+      "source_sha256": "477529043d72f02bd7735891a1812ffcd3e6ad0556f2e85c0765f93668aa04f7"
+    },
+    "third_party/lua/ldblib.c": {
+      "source": "third_party/lua/ldblib.c",
+      "source_sha256": "ff1d4ab23285b3c0ef3214a3e3df1b0f8331ddb15a30e2b6a1d61490049b5d89"
+    },
+    "third_party/lua/ldebug.c": {
+      "source": "third_party/lua/ldebug.c",
+      "source_sha256": "2cfd538a649a641f9e5f9e8c956c474c619b2a5bfc48e0b69efa598de1b48420"
+    },
+    "third_party/lua/ldebug.h": {
+      "source": "third_party/lua/ldebug.h",
+      "source_sha256": "e29d442e8c8b5e1480f63c7ca4d052757b4c0feedd801fbedb898d8bf301c796"
+    },
+    "third_party/lua/ldo.c": {
+      "source": "third_party/lua/ldo.c",
+      "source_sha256": "96868b065fc1b2a994fb4c025364730f89eb837f952ffc42b9d6a0396918064e"
+    },
+    "third_party/lua/ldo.h": {
+      "source": "third_party/lua/ldo.h",
+      "source_sha256": "0a9d49ae2f1741af559349128745d874add536fa12888eb6d60961966e012d9c"
+    },
+    "third_party/lua/ldump.c": {
+      "source": "third_party/lua/ldump.c",
+      "source_sha256": "c353aac1556dd0e44c00f0ca84e36cc09750e446415f88c14cfaadf196fef716"
+    },
+    "third_party/lua/lfunc.c": {
+      "source": "third_party/lua/lfunc.c",
+      "source_sha256": "c6de70e0a953938de382eee3046901757874e8c2322530dffcd69fb8070db4ed"
+    },
+    "third_party/lua/lfunc.h": {
+      "source": "third_party/lua/lfunc.h",
+      "source_sha256": "e3e61f5b9c7ed81c86571fe48a171e1d88f7a2170889dc80760596e7f6744e96"
+    },
+    "third_party/lua/lgc.c": {
+      "source": "third_party/lua/lgc.c",
+      "source_sha256": "082198419451a43dfbc99dd1505819004b1e0a53f931d035dbb3c7e620c37ec7"
+    },
+    "third_party/lua/lgc.h": {
+      "source": "third_party/lua/lgc.h",
+      "source_sha256": "d9da4dc543cd3b03cf2d75cd5699bcf6c34772560ffc2d56183a5862a5a780f5"
+    },
+    "third_party/lua/linit.c": {
+      "source": "third_party/lua/linit.c",
+      "source_sha256": "1df5ee3059b73bd081497615fa1bb75b420646f5e87d747feded92389459ec7f"
+    },
+    "third_party/lua/liolib.c": {
+      "source": "third_party/lua/liolib.c",
+      "source_sha256": "549d631472ec3e3ec42bb5f05c912b1b89da64977f0f77200f72a175fbf5c69e"
+    },
+    "third_party/lua/llex.c": {
+      "source": "third_party/lua/llex.c",
+      "source_sha256": "a65b577c5435e89ed28229dd3928ef32eaa3972407e400badf4ff6b7a721fd3c"
+    },
+    "third_party/lua/llex.h": {
+      "source": "third_party/lua/llex.h",
+      "source_sha256": "c9c67a7ebf4bcc3055f846c9b61920cc2231321f6eb69908ebe8f539666a743c"
+    },
+    "third_party/lua/llimits.h": {
+      "source": "third_party/lua/llimits.h",
+      "source_sha256": "830ba7a0f8b1e7248ef14a5939c76f8192e8d45909a52ec1c7bcd25095de4f2c"
+    },
+    "third_party/lua/lmathlib.c": {
+      "source": "third_party/lua/lmathlib.c",
+      "source_sha256": "7fb0b7ffe2993e1131245e9a6ef181f92cb097faf64e8223e8e00cdd580d7948"
+    },
+    "third_party/lua/lmem.c": {
+      "source": "third_party/lua/lmem.c",
+      "source_sha256": "27ea7b99f4b41955f5e52a7036b7ce7909e81699719980f0e3f2285ada5817d7"
+    },
+    "third_party/lua/lmem.h": {
+      "source": "third_party/lua/lmem.h",
+      "source_sha256": "a6bad24621d6715a019c2e29140e90d20c88873c3bcd7acea991d3983c662b1f"
+    },
+    "third_party/lua/loadlib.c": {
+      "source": "third_party/lua/loadlib.c",
+      "source_sha256": "09c018ab8e696a012054839e682ff4dcea82843ee426d23f5eff309c7603dc4c"
+    },
+    "third_party/lua/lobject.c": {
+      "source": "third_party/lua/lobject.c",
+      "source_sha256": "b0e41dbacc8073a9c43b79cbb6408850cbcfdde8b554916e04ec0a227e08bf14"
+    },
+    "third_party/lua/lobject.h": {
+      "source": "third_party/lua/lobject.h",
+      "source_sha256": "b89a06ca27bb8a5084e586c8cd4fcacb9b348b1e2edfb5d61799c6ec3712c2d9"
+    },
+    "third_party/lua/lopcodes.c": {
+      "source": "third_party/lua/lopcodes.c",
+      "source_sha256": "6a15c38da60f51bb3811c64b92ac02dbb52d56509035259917200e201301eb19"
+    },
+    "third_party/lua/lopcodes.h": {
+      "source": "third_party/lua/lopcodes.h",
+      "source_sha256": "cb5478e0dbf91ddd5f7f55c857df14eeee9ea22aaaa82f66dfc323d9ca38db39"
+    },
+    "third_party/lua/loslib.c": {
+      "source": "third_party/lua/loslib.c",
+      "source_sha256": "5fba28f349719e224fced7eed2ac027013750f3ac61b0d4c6880bde90ac93d43"
+    },
+    "third_party/lua/lparser.c": {
+      "source": "third_party/lua/lparser.c",
+      "source_sha256": "a2e0f2686c3970194174076864a2572a1b943ce960c13132597bec5ad48de868"
+    },
+    "third_party/lua/lparser.h": {
+      "source": "third_party/lua/lparser.h",
+      "source_sha256": "1f487897cd078d6a668aa64960ad62da9bf46ea4b3dc92e5cf472f1a04107dba"
+    },
+    "third_party/lua/lprefix.h": {
+      "source": "third_party/lua/lprefix.h",
+      "source_sha256": "f7e5803dbefdabd3d2fa2252cd3127deb662dc16f65215fd0e41abcd031fefc1"
+    },
+    "third_party/lua/lstate.c": {
+      "source": "third_party/lua/lstate.c",
+      "source_sha256": "2529f392fe1a4c6783cebe779d553c4bfbc0842385c0008ed1486d34919fb23c"
+    },
+    "third_party/lua/lstate.h": {
+      "source": "third_party/lua/lstate.h",
+      "source_sha256": "91b6231dde9e042b8baff3be5c5d821f1b4c9a36606b84e5b572b5d550b0cc7a"
+    },
+    "third_party/lua/lstring.c": {
+      "source": "third_party/lua/lstring.c",
+      "source_sha256": "88f7d451e9a1d23bff678377026fd624cbc733aa6e3efbd9bcfd3a994619c79d"
+    },
+    "third_party/lua/lstring.h": {
+      "source": "third_party/lua/lstring.h",
+      "source_sha256": "75da4af83720f67551eef312478ee3efb80b89bc2f16dbd9ce920fbcc07f21ee"
+    },
+    "third_party/lua/lstrlib.c": {
+      "source": "third_party/lua/lstrlib.c",
+      "source_sha256": "e01ecabed90966c814b6b67de1b6d69425de2e1c4d0860630af2a8af2daed118"
+    },
+    "third_party/lua/ltable.c": {
+      "source": "third_party/lua/ltable.c",
+      "source_sha256": "e63992c2ce26168648649e0b9fa8faaf2df6127079ff61496e84c46ec6afb0dc"
+    },
+    "third_party/lua/ltable.h": {
+      "source": "third_party/lua/ltable.h",
+      "source_sha256": "6ca7b408bc3c7d01a9586e439bb33899bcea242d09a19a6aa2331602eeebd322"
+    },
+    "third_party/lua/ltablib.c": {
+      "source": "third_party/lua/ltablib.c",
+      "source_sha256": "7b9e8face76c32ffb1480cb5f654578c87dbe13185e8d912cde3f059a1b12591"
+    },
+    "third_party/lua/ltests.c": {
+      "source": "third_party/lua/ltests.c",
+      "source_sha256": "76d67b0a2b0dd5a49fcb1a8d909709de980fa9f3d03c5834373d0a9cf6434af4"
+    },
+    "third_party/lua/ltests.h": {
+      "source": "third_party/lua/ltests.h",
+      "source_sha256": "a29e79e659328020668248e8f2e29f042a02882fcb14d1c5e4271f1260ed129e"
+    },
+    "third_party/lua/ltm.c": {
+      "source": "third_party/lua/ltm.c",
+      "source_sha256": "de040d29e0fc2bed40acdd48b7844c39455195e78d250e6955ce3802dfd209bb"
+    },
+    "third_party/lua/ltm.h": {
+      "source": "third_party/lua/ltm.h",
+      "source_sha256": "236ffde2330ebc8926633f6c3c7747c60a5d114f183cd48f988e75c304b292d5"
+    },
+    "third_party/lua/lua.c": {
+      "source": "third_party/lua/lua.c",
+      "source_sha256": "e9c0e1a163f63427cec64bc2d34e01cd86f0311b6d2b3b03cc1cc07b8e984769"
+    },
+    "third_party/lua/lua.h": {
+      "source": "third_party/lua/lua.h",
+      "source_sha256": "f40a2ff93ad7c1f0cd22121dae4c1ebcc696eac4023ee3647cd24910f2ca1f2c"
+    },
+    "third_party/lua/luaconf.h": {
+      "source": "third_party/lua/luaconf.h",
+      "source_sha256": "40ec4c39f2f3d2885e99946c554a8790bf791d57c0e1fd1a3e11e29a5d879216"
+    },
+    "third_party/lua/lualib.h": {
+      "source": "third_party/lua/lualib.h",
+      "source_sha256": "244c960191731971aa6ccdce0d7588e8f506d997e23d7eb5b0a45c94d950e0fc"
+    },
+    "third_party/lua/lundump.c": {
+      "source": "third_party/lua/lundump.c",
+      "source_sha256": "7ba68de2298d074526cd3676af191771b669e2ef742922c38db68a233f3e7bb5"
+    },
+    "third_party/lua/lundump.h": {
+      "source": "third_party/lua/lundump.h",
+      "source_sha256": "7eaf0b70cc4969f515537c265894ae64a53704561a65ccf34f34a91fab51cbf8"
+    },
+    "third_party/lua/lutf8lib.c": {
+      "source": "third_party/lua/lutf8lib.c",
+      "source_sha256": "40f09764d7c498bd2b88d8fc2c3ebf95a5c7ca346e3385c04c68429ef8f0542f"
+    },
+    "third_party/lua/lvm.c": {
+      "source": "third_party/lua/lvm.c",
+      "source_sha256": "a05fa2c0f3194ced18dc780e04e3bde5f090c8473eabf829004e89811276283d"
+    },
+    "third_party/lua/lvm.h": {
+      "source": "third_party/lua/lvm.h",
+      "source_sha256": "b45b1fdf0afcb368e70ed00ff1df1094430e6a152c0e1238df207d9e3cb07242"
+    },
+    "third_party/lua/lzio.c": {
+      "source": "third_party/lua/lzio.c",
+      "source_sha256": "12a52852801fedd00cc604eef43576e40b76b505899d76b6f3dbdb2b9f8b197b"
+    },
+    "third_party/lua/lzio.h": {
+      "source": "third_party/lua/lzio.h",
+      "source_sha256": "cbdfb9427d0f26341d37ad849eeed42825b0d19e4b6b84268cf14028cda77f7e"
+    },
+    "third_party/lua/makefile": {
+      "source": "third_party/lua/makefile",
+      "source_sha256": "d72db1c6d9ebaba1450f131539d4d3c165eef30e7fc0a19c8e416dd065818d2a"
+    },
+    "third_party/Lua-LICENSE.txt": {
+      "source": "third_party/Lua-LICENSE.txt",
+      "source_sha256": "2c900706552b19a2b9c4e670f0b4abadb5b5f31b93725e8274e3651a101365a5"
+    },
+    "sdk/cc2.lua": {
+      "source": "sdk/cc2.lua",
+      "source_sha256": "e8b0af4af821af48c5e09f3c538b7c12bcef116e359a9beadbe8af5318a8a235"
+    },
+    "sdk/README.md": {
+      "source": "sdk/README.md",
+      "source_sha256": "31170008fb86f3b310beffe3f91d1b4a008b9ef9bf25ff0863422dd1202701b9"
+    },
+    "tests/bridge/animation_patch_test.cpp": {
+      "source": "tests/animation_patch_test.cpp",
+      "source_sha256": "96493f01ae8e34adb82a2cf999f5a018bca73f51b4fb93453a1b8b6eff910472"
+    },
+    "tests/bridge/atlas_factory_test.cpp": {
+      "source": "tests/atlas_factory_test.cpp",
+      "source_sha256": "983e7dbb5558409a5ca13f85619042f6b36e9d7c77ce368d643dc988b6018d07"
+    },
+    "tests/bridge/cc2x_api_layout_test.c": {
+      "source": "tests/cc2x_api_layout_test.c",
+      "source_sha256": "8c8ec9152ec54cac815713b705a0c28210b50f14d0fe02bd23b0dc1a1e61a422"
+    },
+    "tests/bridge/cc2x_atlas_asset_test.py": {
+      "source": "tests/cc2x_atlas_asset_test.py",
+      "source_sha256": "d499bb109c3d6348b366321c61cebabdae017faa2d937873c847eb1152d8fc6f"
+    },
+    "tests/bridge/cc2x_core_test.c": {
+      "source": "tests/cc2x_core_test.c",
+      "source_sha256": "eea0083371efb0178309c3c4a8fb64682161f8fbd757773496e7964607dd45d7"
+    },
+    "tests/bridge/custom_aircraft_selector_test.cpp": {
+      "source": "tests/custom_aircraft_selector_test.cpp",
+      "source_sha256": "9960c75623a70daa4deacd5dca314ba1bdabcd26d11fa37f599094ac94e141c2"
+    },
+    "tests/bridge/custom_registration_probe_contract_test.cpp": {
+      "source": "tests/custom_registration_probe_contract_test.cpp",
+      "source_sha256": "86e6c2934180aef4976f5a9966327cae81e98f6f818b3a88e78ea36e7e7b33b3"
+    },
+    "tests/bridge/deephack_runtime_test.cpp": {
+      "source": "tests/deephack_runtime_test.cpp",
+      "source_sha256": "aa9cb0b02801f27531e68e524a6b1d7555c94f3ae74392217f911141d51519cb"
+    },
+    "tests/bridge/definition_adapter_contract_test.cpp": {
+      "source": "tests/definition_adapter_contract_test.cpp",
+      "source_sha256": "938d579e5a3c9da08db30bc0f6db0b608cdd57a4f947cbe55942fa306244ec93"
+    },
+    "tests/bridge/definition_registry_test.cpp": {
+      "source": "tests/definition_registry_test.cpp",
+      "source_sha256": "0205889fb63466ef9ceb4c2c008368b5c21f97019e9b6cbdf410233a8b290d3b"
+    },
+    "tests/bridge/early_declaration_test.cpp": {
+      "source": "tests/early_declaration_test.cpp",
+      "source_sha256": "759bea9c4d7b2992ef077713cc785af235be35221d149ee7cb7a82be299c96c5"
+    },
+    "tests/bridge/entity_registry_test.c": {
+      "source": "tests/entity_registry_test.c",
+      "source_sha256": "3c55f0ddbca6b5ef77650d2f7f40f612701d75baffd5794e6fc15b8dd5df49a5"
+    },
+    "tests/bridge/entity_retirement_trace_plugin.c": {
+      "source": "tests/entity_retirement_trace_plugin.c",
+      "source_sha256": "d2d6b4a211ad7383edb825de6a8e939310e6ec123ab2bd3a47f4226932cef43a"
+    },
+    "tests/bridge/hangar_spawn_lua_syntax_test.cpp": {
+      "source": "tests/hangar_spawn_lua_syntax_test.cpp",
+      "source_sha256": "aee35d0ca86a1918157103c6f53ee4f8268d5d7d7625016ef1c77b2ea9ca1cfe"
+    },
+    "tests/bridge/independent_host_api_smoke_test.cpp": {
+      "source": "tests/independent_host_api_smoke_test.cpp",
+      "source_sha256": "42745268864902e0011a4086c913cac98b9900f17e2eea9cc3f4e8096fca516a"
+    },
+    "tests/bridge/lifetime_policy_test.cpp": {
+      "source": "tests/lifetime_policy_test.cpp",
+      "source_sha256": "b4f6dfbc2bc6cfa8f6c9f15389c1b56806cb2c91c7cb00cccf382aac2bcfe87e"
+    },
+    "tests/bridge/mod_incompatibility_patch_test.cpp": {
+      "source": "tests/mod_incompatibility_patch_test.cpp",
+      "source_sha256": "80032fa18c1cfd7d9823f3cb915c79e7d6a8e276a0c38f09bdba24b432342daa"
+    },
+    "tests/bridge/mod_loader_test.cpp": {
+      "source": "tests/mod_loader_test.cpp",
+      "source_sha256": "103892b16f6a4217f5891e4f87f1d933c959bfcddb765bfd01b6f76c3c10f584"
+    },
+    "tests/bridge/multi_mod_vehicle_identity_test.cpp": {
+      "source": "tests/multi_mod_vehicle_identity_test.cpp",
+      "source_sha256": "c6a8ff45b99b60b095667022cc38121f93d6cdfa69a2b91c11bd8b1a40a229c2"
+    },
+    "tests/bridge/multi_mod_vehicle_spawn_smoke_test.cpp": {
+      "source": "tests/multi_mod_vehicle_spawn_smoke_test.cpp",
+      "source_sha256": "24434f01b527c313f5c5bc186258167af3a5a12a45bb51d3f9526605945771fb"
+    },
+    "tests/bridge/pe_relocation_guard_test.cpp": {
+      "source": "tests/pe_relocation_guard_test.cpp",
+      "source_sha256": "0d9646fa4d961c5bb4cb32659141b8468c0b7b391f173885ee4258aa3f43e2f1"
+    },
+    "tests/bridge/resource_registry_test.cpp": {
+      "source": "tests/resource_registry_test.cpp",
+      "source_sha256": "6b18a0ce9e94a7c272dc1a0473839371e96962a01a51727c8e48f068d2c62ae8"
+    },
+    "tests/bridge/runtime_integration_test.cpp": {
+      "source": "tests/runtime_integration_test.cpp",
+      "source_sha256": "cbe14a55e543ba91e34ae86d2125ca64f1dd307dae2d86e865730fb65012be85"
+    },
+    "tests/bridge/second_atlas_contract_test.cpp": {
+      "source": "tests/second_atlas_contract_test.cpp",
+      "source_sha256": "121c34976c24d490d6fb85d3bd61f6e0f63314023f46086fe6e986ddf63c4a7e"
+    },
+    "tests/bridge/vehicle_spawn_sdk_test.cpp": {
+      "source": "tests/vehicle_spawn_sdk_test.cpp",
+      "source_sha256": "a5ec965979d0f456e84521c343c4f13994a819751def16904402d0b30fad069f"
+    },
+    "tests/bridge/vehicle_ui_library_shim_test.cpp": {
+      "source": "tests/vehicle_ui_library_shim_test.cpp",
+      "source_sha256": "c64adbc46dfbcb0db32bf6a7317b5cbc8be6b41c0f49b3775f1bfa30bad3d5fe"
+    },
+    "tests/bridge/vehicle_ui_lua_api_test.cpp": {
+      "source": "tests/vehicle_ui_lua_api_test.cpp",
+      "source_sha256": "535d194aad26642982321627d3b6bef579a0c1dc7d50dc51ae65d0d4b9d36e8a"
+    },
+    "tests/bridge/verify_new_build_profile.py": {
+      "source": "tests/verify_new_build_profile.py",
+      "source_sha256": "79cdd2d883a4e2988fa2c1cb52b18f3b5db46c54710da62554190a17ce2523d3"
+    },
+    "tests/bridge/verify_package.py": {
+      "source": "tests/verify_package.py",
+      "source_sha256": "49e300f501d6244454fdf5c35a366e8a9e9d1fc147f5e38dc11a64408f502651"
+    },
+    "tests/bridge/weapon_ui_catalog_test.cpp": {
+      "source": "tests/weapon_ui_catalog_test.cpp",
+      "source_sha256": "d1043be0b957bb2bc171323f3d10dafcc6e95b6af50d4a1a211bfde029dd4e32"
+    },
+    "tests/bridge/workshop_upload_patch_test.cpp": {
+      "source": "tests/workshop_upload_patch_test.cpp",
+      "source_sha256": "1c7bc0711365fb277d831ce43c36a8d8ab8e3b0893be4b06913cdd80437108ec"
+    },
+    "integrations/NativeBridge-NOTICE.original.md": {
+      "source": "NOTICE.md",
+      "source_sha256": "59479e8410eac6ffbdeb17efac05b5f19cacfa0ec8f23da3a8c654e84d2dabc5"
+    },
+    "integrations/NativeBridge-SOURCE_SNAPSHOT.original.json": {
+      "source": "SOURCE_SNAPSHOT.json",
+      "source_sha256": "1849e298fa56809fd1e210c1372a222a198796d406062b401402c448ee15065b"
+    },
+    "tests/bridge/reference/incompatibility.cpp": {
+      "source": "src/api/mods/incompatibility.cpp",
+      "source_sha256": "da1feb0bd11215502b2fc6ea0a177d65f5cb50019a7ac05907e76ed2ca133a10"
+    },
+    "tests/bridge/reference/incompatibility.h": {
+      "source": "src/api/mods/incompatibility.h",
+      "source_sha256": "3dc30843dbf2399e8ea37e08f34a998bab2d79b65d929f1597a3317756dbef02"
+    },
+    "tests/bridge/reference/custom_registration_probe.cpp": {
+      "source": "src/research/custom_registration_probe.cpp",
+      "source_sha256": "515ba624b51e0f64fb6f5889d9e86ffd5150229511a84cb52a0613ab2b159ac5"
+    },
+    "tests/bridge/reference/custom_registration_probe.h": {
+      "source": "src/research/custom_registration_probe.h",
+      "source_sha256": "78f38fac7966274dd78bb3c3d584807adb3b233cb7cf7129dfe674815045fbf4"
+    },
+    "tests/bridge/reference/custom_registration_probe_contract.h": {
+      "source": "src/research/custom_registration_probe_contract.h",
+      "source_sha256": "ae4f3a7492a8676ff1b3912271da4ecd42a6f5ee3b88eb441ee05d98be90d225"
+    }
+  }
+}

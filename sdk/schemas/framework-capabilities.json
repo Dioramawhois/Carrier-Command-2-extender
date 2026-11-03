@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "status": "client-beta",
+  "c_prefix_api": 8,
+  "framework_api": 1,
+  "lua_api": 2,
+  "validation": "real-lua-with-synthetic-engine",
+  "shared": [
+    {"name": "discovery", "c": ["capabilities"], "lua": ["events.available", "bridge.*", "has_game_api", "list_game_api"]},
+    {"name": "events", "c": ["subscribe", "unsubscribe"], "lua": ["events.on", "events.off"]},
+    {"name": "input", "c": ["key_down"], "lua": ["input.key_down"]},
+    {"name": "throttle", "c": ["throttle_get", "throttle_set"], "lua": ["world.selector.throttle"]},
+    {"name": "buttons", "c": ["button_count", "button_get", "buttons_set"], "lua": ["world.buttons", "world.set_buttons"]},
+    {"name": "messages", "c": ["mailbox_open", "mailbox_close", "mailbox_poll", "mailbox_publish", "mailbox_forget", "message_send", "message_read"], "lua": ["messages.*", "module_id", "module-lifecycle"]},
+    {"name": "vehicle-catalog", "c": ["declare_vehicle", "declare_ui", "vehicle_definition_count", "vehicle_definition_get", "vehicle_spawn"], "lua": ["vehicles.*", "bridge.json.ui_images"]},
+    {"name": "metadata", "c": ["entity_register", "entity_remove", "entity_clear", "entity_count", "entity_get"], "lua": ["entities.*"]},
+    {"name": "hangar", "c": ["hangar_slots", "hangar_result"], "lua": ["carrier.hangar_slots", "carrier.hangar_spawn_result", "carrier.spawn_in_hangar"]},
+    {"name": "session-tasks", "c": ["session_generation", "session_tick", "post", "cancel"], "lua": ["session.*"]},
+    {"name": "existing-native-primitives", "c_prefix": ["carrier_throttle", "animation_speed"], "lua": ["carrier.throttle", "carrier.helm_throttle_input", "animation.*"]}
+  ],
+  "native_binding_provider": {
+    "c": ["vm_bind", "vm_unbind"],
+    "lua": "cc2.native[owner][function]",
+    "reason": "C library supplies additional functions to Lua modules; game and independent VM handles are distinct"
+  },
+  "remaining_migrations": [
+    "Brake v15 private carrier-recovery hooks need checked shared C/Lua operations",
+    "Full Island Airfields Lua policy migration",
+    "Fresh real-game, remote multiplayer and dedicated-server acceptance"
+  ]
+}

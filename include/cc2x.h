@@ -29,7 +29,7 @@
 extern "C" {
 #endif
 
-#define CC2X_API_VERSION 4
+#define CC2X_API_VERSION 8
 
 #ifdef _WIN32
 #define CC2X_EXPORT __declspec(dllexport)
@@ -69,6 +69,14 @@ enum {
 };
 
 enum { CC2X_LOG_DEBUG = 0, CC2X_LOG_INFO = 1, CC2X_LOG_WARN = 2, CC2X_LOG_ERROR = 3 };
+
+/* CC2X API 6 integrated native primitives. */
+enum {
+    CC2X_ANIMATION_ROUTES = 0,
+    CC2X_ANIMATION_RUNWAY = 1,
+    CC2X_ANIMATION_LIFT = 2,
+    CC2X_ANIMATION_CRANE = 3
+};
 
 /* Snapshot records (copies; see api->vehicles / api->tiles). */
 typedef struct cc2x_vehicle_info {
@@ -170,6 +178,17 @@ enum {
     CC2X_DOCK_UNDOCKED = 0, CC2X_DOCK_DOCKING = 1, CC2X_DOCK_PENDING_UNDOCK = 2, CC2X_DOCK_UNDOCKING = 3,
     CC2X_DOCK_DOCKED = 4, CC2X_DOCK_QUEUED = 5, CC2X_DOCK_TAXI = 6, CC2X_DOCK_UNDOCK_HOLDING = 7
 };
+/* error_code values in the "hangar_spawn" event */
+enum {
+    CC2X_HANGAR_SPAWN_INVALID_CARRIER = 1,
+    CC2X_HANGAR_SPAWN_INVALID_SLOT = 2,
+    CC2X_HANGAR_SPAWN_SLOT_OCCUPIED = 3,
+    CC2X_HANGAR_SPAWN_UNSUPPORTED_VEHICLE_TYPE = 4,
+    CC2X_HANGAR_SPAWN_UNSUPPORTED_GAME_BUILD = 5,
+    CC2X_HANGAR_SPAWN_WORLD_NOT_READY = 6,
+    CC2X_HANGAR_SPAWN_SESSION_CHANGED = 7,
+    CC2X_HANGAR_SPAWN_NATIVE_OPERATION_FAILED = 8
+};
 /* CC2X_VEHICLE_FLIGHT_STATE */
 enum { CC2X_FLIGHT_PARKED = 0, CC2X_FLIGHT_GROUND = 1, CC2X_FLIGHT_FLYING = 2 };
 /* e_waypoint_type */
@@ -230,7 +249,8 @@ typedef struct cc2x_api {
     void (*on_lua_state)(void (*fn)(cc2x_lua *L, void *user), void *user);
     /* current logic server object (0 outside a session). Only meaningful on the server thread. */
     void *(*server)(void);
-    /* run fn on the server thread at the next tick (safe from Lua functions). 0 = queue full */
+    /* Run fn on the local server thread next tick. 0 = absent server / queue full. No network RPC.
+     * New plugins should query cc2x_session.h to reject a stale originating session. */
     int (*server_post)(void (*fn)(void *server, void *user), void *user);
 
     /* ---- Lua bridge ------------------------------------------------------------------------- */
@@ -328,7 +348,54 @@ typedef struct cc2x_api {
     /* an island controller is about to spawn the island's defence units (ai_team: the game counts
      * the owner as an AI team). Return 0 to skip the spawn. */
     int (*on_island_spawn)(int (*fn)(void *tile, int ai_team, void *user), void *user);
+
+    /* API 5 (Native Bridge integration): startup snapshot of enabled packages.
+     * -1 means unavailable/malformed activation state. UTF-16 absolute package
+     * paths, including Workshop items; no directory implies activation.
+     * Available before any plugin_load. No ownership transfer. */
+    int (*active_mod_count)(void);
+    int (*active_mod_path)(int index, wchar_t *out, uint32_t capacity);
+    /* Checked raw replacement in the existing transaction/overlap engine.
+     * For specialized instruction caves, not a second patch engine. */
+    int (*patch_bytes)(uint32_t site, uint32_t len, const uint8_t *expected, const uint8_t *replacement);
+
+    /* API 6: optional integrated native operations. These callbacks are
+     * process-lifetime adapters and are NULL when the integrated Bridge is absent.
+     * carrier_throttle queues one relative power-lever step (-1, 0, +1) for the
+     * current carrier update. 1 means accepted, not yet applied. The queued command
+     * is invalidated at session end. Thread-safe; it retains no game object pointer.
+     * animation_speed sets a process-wide uint32_t multiplier (1 restores
+     * stock arithmetic). A zero multiplier is invalid. The last successful
+     * write wins across all consumers; no module owns the global setting.
+     * These operations support only the audited game build selected by CC2X. */
+    int (*carrier_throttle)(int step);
+    int (*animation_speed)(uint32_t group, uint32_t multiplier);
+
+    /* Local API 6 extension: queue creation of a chassis in an explicitly
+     * selected, compatible empty carrier hangar slot. Returns a positive
+     * process-local request id, or 0 when it cannot be queued. Completion is
+     * reported through cc2x.events() as "hangar_spawn". The operation is
+     * deferred to the next server tick and revalidates carrier, slot,
+     * definition and supported game build. Workshop inventory is not debited.
+     * No engine object pointer is retained. */
+    int (*carrier_hangar_spawn)(uint32_t carrier_id, uint32_t slot, uint32_t chassis_type);
+    /* Subscribe to completion for queued carrier_hangar_spawn requests.
+     * Called on the logic-server thread; IDs and status are copied values. */
+    int (*on_hangar_spawn_result)(void (*fn)(uint32_t request_id, int success,
+        uint32_t vehicle_id, uint32_t error_code, void *user), void *user);
+
+    /* API 8: register/replace a Lua global in every game Lua state at the
+     * existing Lua-state integration point. Unlike lua_add(), this writes
+     * _G[name], not cc2x[name]. Intended for narrowly-scoped compatibility
+     * shims. The caller must use the verified Lua ABI and preserve stack
+     * discipline. Registration is process-lifetime. */
+    int (*lua_add_global)(const char *name, cc2x_lua_fn fn);
 } cc2x_api;
+
+/* Minimum stable prefix for consumers using only the API 1-4 callbacks.
+ * The canonical integrated table appends the team's matching API 5-8 fields.
+ * Session support remains a separately checked named extension. */
+#define CC2X_API_V4_SIZE (offsetof(cc2x_api, on_island_spawn) + sizeof(((cc2x_api *)0)->on_island_spawn))
 
 typedef int (*cc2x_plugin_load_fn)(const cc2x_api *api);
 

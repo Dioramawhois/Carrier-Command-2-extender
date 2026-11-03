@@ -12,7 +12,11 @@
 #include <string.h>
 #include "internal.h"
 
+#if defined(_MSC_VER) && !defined(CC2X_USE_GNU_ASM_ABI)
+#define THISCALL __thiscall
+#else
 #define THISCALL __attribute__((thiscall))
+#endif
 #define AT(T, p, o) (*(T *)((char *)(p) + (o)))
 #define LOG(level, ...) api_log("cc2x", level, __VA_ARGS__)
 
@@ -42,7 +46,6 @@ typedef struct {
         a_start_node, a_path, a_dock_queue, a_undock_queue, a_tile, env_nodes, node_size, node_pos;
 } Layout;
 
-/* object layout: the same in both 1.5.18 builds */
 #define LAYOUT_1_5_18 \
     .vt_rules_is_ai = 0x10, \
     .s_vehicle_map = 0x344, .s_vehicles = 0x37c, .s_tile_map = 0x42c, .s_tiles = 0x440, .s_broadcast = 0x514, \

@@ -1,0 +1,2 @@
+#pragma once
+inline constexpr char kBridgeSdk[] = R"CC2SDK(@CC2_SDK_SOURCE@)CC2SDK";

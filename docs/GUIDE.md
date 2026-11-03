@@ -81,7 +81,7 @@ mixed mod: its flight director is a C plugin, its map markers and orders are Lua
 ### 3.1 What you need
 
 - Carrier Command 2 (Steam), Windows.
-- CC2X: download [dinput8.dll](https://github.com/Dioramawhois/cc2x/releases/latest/download/dinput8.dll)
+- CC2X: download [dinput8.dll](https://github.com/Dioramawhois/Carrier-Command-2-extender/releases/download/0.6.0-client-beta.1/dinput8.dll)
   and put it into the game folder (Steam: right-click Carrier Command 2 > Manage > Browse local
   files). Version 0.5 or newer for everything in this guide.
 - A text editor. For C plugins also Python 3 and the CC2X repository (section 11.1).
@@ -131,7 +131,7 @@ My Mod/
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
-<data name="My Mod" author="me" description="What it does. Needs CC2X 0.5: https://github.com/Dioramawhois/cc2x/releases/latest/download/dinput8.dll">
+<data name="My Mod" author="me" description="What it does. Needs CC2X 0.5: https://github.com/Dioramawhois/Carrier-Command-2-extender/releases/download/0.6.0-client-beta.1/dinput8.dll">
 </data>
 ```
 

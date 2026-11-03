@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "release_tag": "0.6.0-client-beta.1",
+  "prerelease": true,
+  "runtime_version": "0.6.0-dev",
+  "sdk_api": 8,
+  "package_id": "cc2x.runtime",
+  "native_platform": "windows-x86",
+  "reviewed_game_profile": "1.5.18-win32-r2",
+  "compiled_source_commit": "2eecbd93c3555fed9a2b3f25e5b9c91abb55196f",
+  "runtime_sha256": "ce4fc1c883c70af6c40f5431003d17584e9b2becb502ac840d22f73be9d7a7f3",
+  "runtime_bytes": 1549824,
+  "github_repository": "Dioramawhois/Carrier-Command-2-extender",
+  "steam_app_id": "1489630",
+  "steam_workshop_item_id": "3833014670",
+  "steam_workshop_url": "https://steamcommunity.com/sharedfiles/filedetails/?id=3833014670",
+  "matching_modloader": "0.4.0b2",
+  "source_asset": "CC2X-SDK-0.6.0-client-beta.1-source.zip",
+  "source_asset_sha256": "326b9416e1eb393f816ec0fafc4e5f8755ba6b44cebe227d0c61f458f59ada83",
+  "toolchain_sources_asset": "CC2X-SDK-0.6.0-client-beta.1-toolchain-sources.zip",
+  "toolchain_sources_sha256": "1dd28806e97a809c8cce6e235046f98af8767ffe80180636bff6b86cf22e1d7c",
+  "verified_single_player_scope": [
+    "combined-native-and-independent-lua-loading",
+    "custom-aircraft-registration-and-hangar-creation",
+    "same-catalog-save-reload",
+    "post-reload-aircraft-creation"
+  ],
+  "incomplete_or_unverified": [
+    "remote-multiplayer",
+    "dedicated-server-profile-and-bootstrap",
+    "changed-catalog-save-migration",
+    "full-flight-and-island-landing",
+    "clean-machine-acceptance",
+    "macos-native-runtime"
+  ]
+}

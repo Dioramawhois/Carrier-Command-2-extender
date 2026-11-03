@@ -1,31 +1,72 @@
-CC2X - mod loader for Carrier Command 2 (Windows, game version 1.5.18)
+CC2X SDK - Shared Runtime for Carrier Command 2
+0.7.0-client-beta.1 / C API 8 / framework C API 1 / independent Lua API 2
 =======================================================================
 
-Some mods need CC2X to do more than the game allows (for example Island Airfields).
-CC2X is one file: dinput8.dll. You install it once.
+CC2X supplies common native engine access and Lua support for compatible mods.
+Install the SDK once; gameplay mods and their content are supplied separately.
+The SDK itself adds no aircraft, flight modes, brakes, button layouts or island rules.
 
-INSTALL
+INSTALL WITH A MATCHING CC2 MODLOADER
 
-1. Download dinput8.dll:
-   https://github.com/Dioramawhois/cc2x/releases/latest/download/dinput8.dll
-2. Steam: right-click Carrier Command 2 > Manage > Browse local files.
-3. Put dinput8.dll into that folder (next to carrier_command.exe).
+1. Subscribe to CC2X SDK and the compatible mods you want:
+   https://steamcommunity.com/sharedfiles/filedetails/?id=3833014670
+   Wait for Steam to finish downloading them.
+2. Place CC2ModLoader.exe next to carrier_command.exe in the game folder.
+3. Open ModLoader, enable CC2X SDK in Libraries, and select your mods.
+4. Wait until the selected set is ready, then click Launch.
 
-That's all. Mods that use CC2X come from the Steam Workshop like any other mod: subscribe,
-enable them in the game's Mods menu, restart the game.
+Automatic installation requires a ModLoader build that explicitly reviews
+this exact 0.7 runtime and its new API capabilities. ModLoader 0.4.0 beta 2
+uses an older 0.6 runtime and is not the matching build. Until the matching
+update is available, use the manual route below. Do not bypass DLL checks.
+ModLoader releases:
+https://github.com/Dioramawhois/CC2-Mod-Compatibility-Engine/releases
 
-If that folder already has a dinput8.dll, it belongs to another mod: keep a copy of it,
-the two cannot be used together.
+INSTALL MANUALLY
 
-REMOVE
+1. Close the game. Download dinput8.dll from this exact client beta:
+   https://github.com/Dioramawhois/Carrier-Command-2-extender/releases/download/0.7.0-client-beta.1/dinput8.dll
+   Or copy it from the SDK's downloaded Workshop folder inside your Steam library:
+   steamapps\workshop\content\1489630\3833014670\content\dinput8.dll
+2. In Steam, right-click Carrier Command 2 > Manage > Browse local files.
+3. Copy the DLL itself into that folder, next to carrier_command.exe:
+   steamapps\common\Carrier Command 2\dinput8.dll
+4. Start the game normally. Install and enable gameplay mods according to their
+   own instructions; installing the SDK does not merge conflicting mod files.
 
-Delete dinput8.dll from the game folder.
+If dinput8.dll already exists, identify it and keep a backup before replacing
+it. Do not overwrite an unrelated loader without checking compatibility.
+A Workshop subscription downloads files; it does not install the bootstrap.
+After a Workshop SDK update, repeat the manual copy while the game is closed.
 
-GOOD TO KNOW
+REMOVE A MANUAL INSTALLATION
 
-- CC2X changes nothing on disk: it only patches the running game in memory.
-- After a game update CC2X switches itself off until it is updated; the game runs normally.
-- cc2x.log in the game folder lists what was loaded. Attach it when reporting a problem.
-- Mods with CC2X plugins run their own code on your PC, like any mod loader. Use mods you trust;
-  all CC2X mods have to publish their source code (GPL).
-- Not supported: VR, dedicated server, macOS.
+Close the game, remove the CC2X dinput8.dll, or restore your previous loader
+backup. Disable gameplay mods that require CC2X.
+
+CURRENT SUPPORT AND REPORTING PROBLEMS
+
+This client beta targets the reviewed Windows Carrier Command 2 1.5.18-r2 build.
+Release assets identify the exact source commit, DLL hashes, offline test
+evidence and separately recorded runtime acceptance in RELEASE.json.
+Offline fixtures do not prove full gameplay compatibility.
+
+Remote multiplayer, dedicated servers, changed-catalog saves, full custom-aircraft
+flight/island landing and native macOS support remain unverified.
+The full Brake v15 and Island Airfields Lua ports are separate work; this
+framework beta does not claim to complete those gameplay mods.
+The runtime is shared infrastructure, not a guarantee that every mod combination
+will work together. ModLoader reports overlapping changes when preparing mods.
+
+CC2X writes startup and plugin information to cc2x.log beside the game executable.
+For bug reports include that log, game/SDK/ModLoader versions, enabled mods and
+load order, and the steps needed to reproduce the problem.
+
+SOURCE AND LICENSE
+
+CC2X is open source under GPL-3.0-or-later. Preserve the bundled LICENSE and
+third-party notices when redistributing the runtime.
+Exact compiled source and hashes: RELEASE.json and dinput8.build.json.
+Source and pinned compiler/library provider sources are separate GitHub release
+assets. They are not included in the Workshop payload.
+https://github.com/Dioramawhois/Carrier-Command-2-extender

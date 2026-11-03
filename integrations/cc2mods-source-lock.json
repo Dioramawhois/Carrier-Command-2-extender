@@ -1,0 +1,110 @@
+{
+  "schema_version": 1,
+  "upstream": "https://github.com/totolerigolo118/carrier-command-2-mods",
+  "commit": "a40d1572eabd6d9710e6d64aae431824ffc98790",
+  "projects": [
+    {
+      "directory": "cc2-hold-copies",
+      "name": "Hold copies",
+      "game_folder": "cc2_hold_copies",
+      "plugin_filename": "cc2x_hold.dll",
+      "plugin_source": "native/cc2x_hold.c",
+      "files": {
+        "LICENSE": {
+          "source": "LICENSE",
+          "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986"
+        },
+        "CREDITS_ET_LICENCE.md": {
+          "source": "CREDITS_ET_LICENCE.md",
+          "sha256": "e64c309f29f6c5152dda38e42ee7e91e0f2d70ed866b5700f43c0aa7a620f6ae"
+        },
+        "native/cc2x_hold.c": {
+          "source": "tour/etude_bouton_hold/plugin/cc2x_hold.c",
+          "sha256": "ebacc2ab37f0c467012fb4df43bb49351037398868f1933410c05af6474bc4a3"
+        },
+        "native/tests/test_hold.c": {
+          "source": "tour/etude_bouton_hold/plugin/tests/test_hold.c",
+          "sha256": "923611673ccc06afff839b537be31f415f4097354073d35cd8ec0bde8c277130"
+        },
+        "reference/build_ui.py": {
+          "source": "tour/etude_bouton_hold/fabriquer_mod_hold.py",
+          "sha256": "11c325ab40435ce697e37d58e3de3a008841181f602e23448ccd9d093cf80e3d"
+        },
+        "reference/UPSTREAM_STATUS.md": {
+          "source": "tour/etude_bouton_hold/PLUGIN_hold_v2.md",
+          "sha256": "2d567bd00050e043d322a00daf13dc384c52b87a4915f7d9210ecaaa27725ef6"
+        }
+      }
+    },
+    {
+      "directory": "cc2-flight-modes",
+      "name": "Modes CC2",
+      "game_folder": "cc2_modes",
+      "plugin_filename": "cc2x_modes.dll",
+      "plugin_source": "native/cc2x_modes.c",
+      "files": {
+        "LICENSE": {
+          "source": "LICENSE",
+          "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986"
+        },
+        "CREDITS_ET_LICENCE.md": {
+          "source": "CREDITS_ET_LICENCE.md",
+          "sha256": "e64c309f29f6c5152dda38e42ee7e91e0f2d70ed866b5700f43c0aa7a620f6ae"
+        },
+        "native/cc2x_modes.c": {
+          "source": "tour/etudes_modes_carburant/plugin/v3_1/cc2x_modes.c",
+          "sha256": "4909977dcdc16bc60f61de47d90db8b3eefa1b53028222b73f5d187141a82ba6"
+        },
+        "native/tests/test_modes.c": {
+          "source": "tour/etudes_modes_carburant/plugin/v3_1/tests/test_modes.c",
+          "sha256": "30e1dfe5d9440494097f65adaef30b4f3e100f9c7444a2b00017b8f6d5dea301"
+        },
+        "native/modes.ini.example": {
+          "source": "tour/etudes_modes_carburant/plugin/v3_1/modes.ini.example",
+          "sha256": "561bf9b76dfff29814b005f72e83502ce5bbfd472ec93c722c5b53b1f6c8a191"
+        },
+        "reference/build_ui.py": {
+          "source": "tour/etudes_modes_carburant/mod_modes.py",
+          "sha256": "186050331614d98964fdfe8e5a88a84c0fae00c96e76caf15dcad22854b97051"
+        },
+        "reference/UPSTREAM_STATUS.md": {
+          "source": "tour/etudes_modes_carburant/plugin/RISQUES_v3_1.md",
+          "sha256": "b4233fbbbcead976fb3ce5932eb707eebfb660c069e16b426a2ed429d4c7620d"
+        }
+      }
+    },
+    {
+      "directory": "cc2-manual-brake",
+      "name": "Manual landing brake",
+      "game_folder": "(upstream DLL had no standalone mod folder)",
+      "plugin_filename": "cc2x_frein.dll",
+      "plugin_source": "native/cc2x_frein.c",
+      "files": {
+        "LICENSE": {
+          "source": "LICENSE",
+          "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986"
+        },
+        "CREDITS_ET_LICENCE.md": {
+          "source": "CREDITS_ET_LICENCE.md",
+          "sha256": "e64c309f29f6c5152dda38e42ee7e91e0f2d70ed866b5700f43c0aa7a620f6ae"
+        },
+        "native/cc2x_frein.c": {
+          "source": "tour/atterrissage_manuel/frein/cc2x_frein.c",
+          "sha256": "cadf51341ceaf963f9f49db79cee5636ad84da96dd851f8e4ac48b80f51fae51"
+        },
+        "native/tests/test_frein.c": {
+          "source": "tour/atterrissage_manuel/frein/tests/test_frein.c",
+          "sha256": "bf2745dcd12229a8c8fe886dec6e9464e464f9fb806e247a3fcf79f023028fb3"
+        },
+        "native/frein.ini.example": {
+          "source": "tour/atterrissage_manuel/frein/frein.ini.example",
+          "sha256": "e4370e357d8b22c783d64320c0140c52ed84095acd0ed488391347c9232b7f31"
+        },
+        "reference/UPSTREAM_STATUS.md": {
+          "source": "tour/atterrissage_manuel/frein/RISQUES_v15.md",
+          "sha256": "1424fd6166969751076007641d32ef6a762b97f2dd8f97cbc3d3f370d0e2fafa"
+        }
+      }
+    }
+  ]
+}

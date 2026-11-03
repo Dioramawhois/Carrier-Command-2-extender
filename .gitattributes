@@ -2,3 +2,6 @@
 *.png -text
 *.cmd text eol=crlf
 *.ps1 text eol=crlf
+# Preserve archived upstream bytes, including their original whitespace/EOL.
+integrations/*.original.* -text -whitespace
+third_party/lua/** -text -whitespace

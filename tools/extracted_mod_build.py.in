@@ -1,0 +1,48 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+"""Build only this plugin against the external SDK. No game installation/execution."""
+import argparse
+import hashlib
+import importlib.util
+import json
+import os
+from pathlib import Path
+import subprocess
+
+ROOT = Path(__file__).resolve().parent
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--sdk', type=Path)
+    parser.add_argument('--zig', type=Path)
+    args = parser.parse_args()
+    sdk = Path(args.sdk or os.environ.get('CC2X_SDK_DIR') or ROOT.parent.parent / 'cc2x').resolve(strict=True)
+    spec = importlib.util.spec_from_file_location('cc2x_build', sdk / 'build.py')
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    if args.zig:
+        module.ZIG = args.zig.resolve(strict=True)
+    manifest = json.loads((ROOT / 'SOURCE_MANIFEST.json').read_text())
+    project = manifest['project']
+    source = ROOT / project['plugin_source']
+    output = ROOT / 'dist' / project['plugin_filename']
+    sha = lambda p: hashlib.sha256(p.read_bytes()).hexdigest()
+    inputs = {name: sha(ROOT / name) for name in project['files']}
+    header_hash = sha(sdk / 'include/cc2x.h')
+    public_headers = lambda: {p.name: sha(p) for p in sorted((sdk / 'include').glob('*.h'))}
+    header_hashes = public_headers()
+    compiler_hash = sha(module.ZIG)
+    module.plugin(source, output)
+    if inputs != {name: sha(ROOT / name) for name in project['files']} or header_hash != sha(sdk / 'include/cc2x.h') or compiler_hash != sha(module.ZIG) or header_hashes != public_headers():
+        raise ValueError('Build input changed during compilation; no provenance is certified')
+    report = {
+        'upstream_commit': manifest['upstream_commit'],
+        'source_sha256': inputs,
+        'sdk_header_sha256': header_hash,
+        'sdk_headers_sha256': header_hashes,
+        'sdk_source_commit': subprocess.check_output(['git', '-C', str(sdk), 'rev-parse', 'HEAD'], text=True).strip(),
+        'compiler_sha256': compiler_hash,
+        'artifact': output.name, 'artifact_sha256': sha(output),
+        'game_runtime_tested': False, 'complete_game_package': False,
+    }
+    output.with_suffix('.build.json').write_text(json.dumps(report, indent=2) + '\n')
+    print(json.dumps({'artifact': str(output), 'sha256': report['artifact_sha256'], 'game_runtime_tested': False}))
