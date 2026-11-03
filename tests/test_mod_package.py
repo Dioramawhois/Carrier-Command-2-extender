@@ -56,6 +56,19 @@ class PackageTest(unittest.TestCase):
         self.assertTrue(report['complete_game_package'])
         self.assertFalse(report['game_runtime_tested'])
 
+    @unittest.skipUnless(__import__('os').name == 'nt', 'Windows 8.3 path identity')
+    def test_short_windows_source_root_keeps_lexical_artifact_boundary(self):
+        import ctypes
+        api = ctypes.WinDLL('kernel32', use_last_error=True)
+        buffer = ctypes.create_unicode_buffer(32768)
+        count = api.GetShortPathNameW(str(self.project), buffer, len(buffer))
+        self.assertGreater(count, 0)
+        short = Path(buffer.value)
+        folder = module.package(short, self.metadata, short / self.plugin.name, self.report,
+                                {'content/a.txt': b'own data\n'}, self.root / 'short-output',
+                                provenance={'synthetic': True})
+        self.assertEqual((folder / 'content/cc2x/plugin.dll').read_bytes(), self.plugin.read_bytes())
+
     def test_data_consumer_has_no_embedded_native_runtime(self):
         folder = module.package(self.project, self.metadata, None, None,
                                 {'content/a.txt': b'own data\n'}, self.root / 'data-output',

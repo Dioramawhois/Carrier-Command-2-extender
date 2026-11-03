@@ -2,6 +2,9 @@
 
 ## 0.6.0-dev (unreleased)
 
+- Consumer packaging keeps the original lexical project boundary before Windows
+  8.3 root canonicalization, fixing RUNNER~1 source paths without hiding DLL links.
+
 - Added generic developer consumer packaging, preserving native provenance and
   resource bytes, syntax-only Lua/XML validation, licensing and atomic new output.
   Separate projects now prepare Hold UI, original Modes UI, Brake and aircraft

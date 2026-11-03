@@ -91,6 +91,7 @@ def validate_resource(name, data, luac):
 
 
 def package(project, metadata, plugin, build_report, resources, destination, *, provenance, luac=None):
+    source_project = project.absolute()
     project = project.resolve(strict=True)
     destination = destination.absolute()
     if destination.exists() or destination.is_symlink():
@@ -116,9 +117,16 @@ def package(project, metadata, plugin, build_report, resources, destination, *, 
         if '/' in filename or Path(filename).suffix.lower() != '.dll' or filename.casefold() == 'dinput8.dll':
             raise ValueError('Plugin filename must be a separate native DLL')
         plugin = plugin.absolute()
-        if not plugin.is_relative_to(project):
+        if plugin.is_relative_to(source_project):
+            source_name = plugin.relative_to(source_project).as_posix()
+        elif plugin.is_relative_to(project):
+            source_name = plugin.relative_to(project).as_posix()
+        else:
             raise ValueError('Native artifact must be inside the source project')
-        data = regular(project, plugin.relative_to(project).as_posix())
+        # Keep the lexical relative path for link checks; the root may expand a
+        # Windows 8.3 spelling (RUNNER~1) during resolve(). Never resolve the DLL
+        # itself first, which would hide source symlinks from regular().
+        data = regular(project, source_name)
         if sha(data) != build_report['artifact_sha256'] or build_report['artifact'] != filename:
             raise ValueError('Native artifact mismatch')
         if build_report['sdk_header_sha256'] != sha((ROOT / 'include/cc2x.h').read_bytes()):
