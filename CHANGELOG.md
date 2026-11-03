@@ -2,6 +2,14 @@
 
 ## 0.6.0-dev (unreleased)
 
+- Native consumer packages preserve MinGW/Zig redistribution notices; a packaging
+  regression prevents their omission. Linked C++ runtime notices are preserved.
+- Real Windows 1.5.18 client acceptance with AI Bridge, Island Airfields v46,
+  Hold, Modes, Brake and separate aircraft: concurrent plugin load, isolated Lua
+  updates, F-16/F-15 spawn, save/reload of unchanged catalog and subsequent spawn.
+  Original game state/saves restored. Flight/landing, changed-catalog saves,
+  remote multiplayer and dedicated acceptance remain open.
+
 - The production generic definition adapter now owns its loader/reset and guarded
   name-map resize hooks. They were previously called only by an excluded research
   probe, leaving custom types unready in the real game. A production-adapter fake

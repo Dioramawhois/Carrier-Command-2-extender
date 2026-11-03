@@ -56,6 +56,15 @@ class PackageTest(unittest.TestCase):
         self.assertTrue(report['complete_game_package'])
         self.assertFalse(report['game_runtime_tested'])
 
+    def test_native_package_keeps_compiler_runtime_redistribution_notices(self):
+        folder = self.package()
+        for name in ('mingw-COPYING.txt', 'Zig-LICENSE.txt'):
+            expected = (ROOT / 'licenses' / name).read_bytes()
+            self.assertEqual((folder / 'LICENSES' / name).read_bytes(), expected)
+            report = json.loads((folder / 'BUILD_CHECK.json').read_text())
+            self.assertEqual(report['output_sha256']['LICENSES/' + name],
+                             hashlib.sha256(expected).hexdigest())
+
     @unittest.skipUnless(__import__('os').name == 'nt', 'Windows 8.3 path identity')
     def test_short_windows_source_root_keeps_lexical_artifact_boundary(self):
         import ctypes

@@ -144,6 +144,8 @@ def package(project, metadata, plugin, build_report, resources, destination, *, 
                 or struct.unpack_from('<H', data, pe + 24)[0] != 0x10b):
             raise ValueError('Native artifact must be PE32 x86 DLL')
         output['content/cc2x/' + filename] = data
+        for notice in ('mingw-COPYING.txt', 'Zig-LICENSE.txt'):
+            output['LICENSES/' + notice] = regular(ROOT, 'licenses/' + notice)
     elif build_report is not None:
         raise ValueError('Native build report without a native artifact')
     if (project / 'CREDITS_ET_LICENCE.md').is_file():

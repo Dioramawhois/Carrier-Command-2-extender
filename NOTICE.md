@@ -18,6 +18,12 @@ is distributed under the MIT license in `third_party/Lua-LICENSE.txt`.
 The linked runtime incorporates Lua; keep that notice with binary distributions.
 Zig 0.15.2 is an external build tool; its downloaded distribution contains its
 own notices and is not vendored in this source tree.
+Linked compiler runtimes and standard libraries retain their original licenses:
+MinGW and Zig notices are in licenses/mingw-COPYING.txt and Zig-LICENSE.txt;
+libc++, libc++abi and libunwind notices are in the corresponding licenses/*-LICENSE.txt
+files (Apache-2.0 WITH LLVM-exception). Binary redistributions retain these notices.
+The ModLoader client-candidate asset set provides matching SDK source and Zig
+provider library sources alongside the exact reviewed binary.
 
 Aircraft models, registration scripts and gameplay mods are separate consumers;
 they are not bundled into the SDK runtime. Research fixtures are not release
