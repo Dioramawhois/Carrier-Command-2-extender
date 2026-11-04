@@ -5,6 +5,7 @@
 #include "../api/animation/animation_speed.h"
 #include "../api/carrier/hangar_spawn.h"
 #include "internal.h"
+#include "order_context.h"
 #include "../api/carrier/throttle_step.h"
 #include "../api/ui/atlas_factory.h"
 #include "../api/ui/resource_registry.h"
@@ -191,6 +192,19 @@ void Budget(lua_State*L,lua_Debug*) {
 void SetBudget(Module&m){m.budget=2000000;lua_sethook(m.L,Budget,LUA_MASKCOUNT,10000);}
 int SessionGeneration(lua_State* L){lua_pushinteger(L,Current(L)->host->ActiveGeneration());return 1;}
 int SessionTick(lua_State* L){lua_pushinteger(L,Current(L)->host->ActiveTick());return 1;}
+int OrdersAvailable(lua_State* L){lua_pushboolean(L,cc2x_orders_available());return 1;}
+int OrdersCurrent(lua_State* L) {
+  cc2x_waypoint_order order{sizeof(order)};
+  if(!Current(L)->host->InLuaContext()||!cc2x_orders_current(&order)) {
+    lua_pushnil(L);lua_pushliteral(L,"no_verified_incoming_order");return 2;
+  }
+  lua_createtable(L,0,4);
+  lua_pushinteger(L,order.vehicle_id);lua_setfield(L,-2,"vehicle_id");
+  lua_pushinteger(L,order.peer_id);lua_setfield(L,-2,"peer_id");
+  lua_pushinteger(L,order.generation);lua_setfield(L,-2,"generation");
+  lua_pushboolean(L,(order.flags&CC2X_ORDER_BROADCAST_PENDING)!=0);lua_setfield(L,-2,"broadcast_pending");
+  return 1;
+}
 int SessionPost(lua_State* L) {
   auto* m=Current(L);
   if(lua_gettop(L)!=1||!lua_isfunction(L,1)||!m->host->InLuaContext()){lua_pushnil(L);lua_pushliteral(L,"expected_function_in_active_session");return 2;}
@@ -695,6 +709,7 @@ void Host::Register(Module& m) {
   add("cc2_bridge_event_subscription",EventSubscribe);
   if(m.rules) {
     add("print",Print);add("loadfile",LoadFile);add("dofile",DoFile);
+    add("cc2_bridge_orders_available",OrdersAvailable); // read-only profile capability
     lua_pushinteger(m.L,2);lua_setglobal(m.L,"cc2_bridge_lua_api_version");
     lua_pushstring(m.L,m.id.c_str());lua_setglobal(m.L,"cc2_bridge_module_id");
     lua_newtable(m.L);
@@ -716,6 +731,7 @@ void Host::Register(Module& m) {
   add("cc2_bridge_messages_send",MessageSend);
   add("cc2_bridge_messages_read",MessageRead);
   add("cc2_bridge_session_generation",SessionGeneration);add("cc2_bridge_session_tick",SessionTick);
+  add("cc2_bridge_orders_available",OrdersAvailable);add("cc2_bridge_orders_current",OrdersCurrent);
   add("cc2_bridge_session_post",SessionPost);add("cc2_bridge_session_cancel",SessionCancel);
   lua_pushstring(m.L,m.id.c_str());lua_setglobal(m.L,"cc2_bridge_module_id");
   lua_pushinteger(m.L,2);lua_setglobal(m.L,"cc2_bridge_lua_api_version");

@@ -3,8 +3,69 @@
 #include <assert.h>
 static int failures;
 #define CHECK(x) do {if(!(x)){printf("FAIL line %d: %s\n",__LINE__,#x);++failures;}}while(0)
+static int dispatch_calls, tick_calls, replacement_calls, engine_ticks, fifo;
+static void CC2X_THISCALL fake_tick(void *server) { (void)server; ++engine_ticks; }
+static void count_tick(void *server, void *user) { (void)server; (void)user; ++tick_calls; }
+static void repost(void *server, void *user) {
+    (void)server; (void)user;
+    ++dispatch_calls;
+    /* Finite so the unfixed production loop fails without hanging the fixture. */
+    if (dispatch_calls < 3) CHECK(server_post(repost, NULL));
+}
+static void replacement(void *server, void *user) { (void)server; (void)user; ++replacement_calls; }
+static void replace_session(void *server, void *user) {
+    (void)user;
+    session_change(server, 0);
+    session_change(server, 1); /* same address, different session */
+    CHECK(server_post_session(session_generation(), replacement, NULL));
+}
+static void refill(void *server, void *user) {
+    (void)server;
+    CHECK((uintptr_t)user == (uintptr_t)fifo++);
+    CHECK(server_post(replacement, NULL));
+}
+static void queue_dispatch_test(void) {
+    void *server = (void *)(uintptr_t)1;
+    o_tick = fake_tick;
+    on_server_tick(count_tick, NULL);
+    session_change(server, 1);
+    CHECK(server_post(repost, NULL));
+    tick_once(server);
+    CHECK(dispatch_calls == 1 && tick_calls == 1 && g_posts.count == 1);
+    tick_once(server);
+    CHECK(dispatch_calls == 2 && tick_calls == 2 && g_posts.count == 1);
+    tick_once(server);
+    CHECK(dispatch_calls == 3 && tick_calls == 3 && g_posts.count == 0);
+    CHECK(server_post(replace_session, NULL));
+    CHECK(server_post(replacement, NULL)); /* belongs to the old session */
+    tick_once(server);
+    CHECK(replacement_calls == 0 && tick_calls == 3 && g_posts.count == 1);
+    tick_once(server);
+    CHECK(replacement_calls == 1 && tick_calls == 4 && g_posts.count == 0);
+    for (uintptr_t i = 0; i < CC2X_POST_MAX; ++i) CHECK(server_post(refill, (void *)i));
+    tick_once(server);
+    CHECK(fifo == CC2X_POST_MAX && replacement_calls == 1 && g_posts.count == CC2X_POST_MAX);
+    tick_once(server);
+    CHECK(replacement_calls == 1 + CC2X_POST_MAX && g_posts.count == 0);
+    /* A session-changing subscriber must stop later subscribers and time_scale
+     * iterations as well, even when its new server reuses the old pointer. */
+    g_ntick = 0;
+    on_server_tick(replace_session, NULL); on_server_tick(count_tick, NULL);
+    int before_ticks = tick_calls, before_engine = engine_ticks, before_replacements = replacement_calls;
+    g_time_scale = 4;
+    h_tick(server);
+    CHECK(tick_calls == before_ticks && engine_ticks == before_engine + 1);
+    CHECK(replacement_calls == before_replacements && g_posts.count == 1);
+    g_time_scale = 1; g_ntick = 0;
+    tick_once(server);
+    CHECK(replacement_calls == before_replacements + 1 && g_posts.count == 0);
+    session_change(server, 0);
+    g_ntick = 0;
+    puts("PASS bounded production dispatch: nested posts, FIFO refill, reused session address, subscriber replacement and accelerated ticks");
+}
 int main(void) {
     InitializeCriticalSection(&g_log_cs);InitializeCriticalSection(&g_post_cs);
+    queue_dispatch_test();
     uint8_t *image=VirtualAlloc(NULL,4096,MEM_RESERVE|MEM_COMMIT,PAGE_READWRITE);
     g_base=(uintptr_t)image;memset(image,0x90,4096);
     uint8_t before[5]={0x90,0x90,0x90,0x90,0x90},after[5]={1,2,3,4,5};

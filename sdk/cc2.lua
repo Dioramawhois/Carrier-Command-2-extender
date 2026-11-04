@@ -12,6 +12,7 @@ local M = {
     animation = {},
     entities = {},
     session = {},
+    orders = {},
     vehicles = {},
     messages = {},
     events = {},
@@ -36,6 +37,17 @@ end
 function M.session.tick()
     local native = rawget(_G, "cc2_bridge_session_tick")
     return type(native) == "function" and native() or 0
+end
+-- The current engine waypoint receiver, not a general RPC or permission grant.
+-- Generation is the core's local epoch, distinct from cc2.session.generation().
+function M.orders.available()
+    local native = rawget(_G, "cc2_bridge_orders_available")
+    return type(native) == "function" and native() == true
+end
+function M.orders.current()
+    local native = rawget(_G, "cc2_bridge_orders_current")
+    if type(native) ~= "function" then return nil, "unavailable" end
+    return native()
 end
 function M.session.post(callback)
     local native = rawget(_G, "cc2_bridge_session_post")

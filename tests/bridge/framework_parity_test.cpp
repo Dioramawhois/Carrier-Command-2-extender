@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Paired public C / real Lua over a synthetic game. No plugin DLL is loaded.
 #include "runtime/host.h"
+#include "order_context.h"
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -19,6 +20,8 @@ namespace {
 std::vector<std::wstring> roots;std::vector<std::string> logs;
 const cc2x_framework_api* nativeFramework=nullptr;cc2x_vm* savedVm=nullptr;
 int team=1,nativeEvents=0,nativeTasks=0;
+std::uint64_t originEpoch=19;
+std::uint64_t OriginGeneration(){return originEpoch;}
 double hp=100;
 alignas(16) unsigned char aircraft[0x400]{};
 unsigned char throttleCode[]{0xf3,0x0f,0x11,0x87,0x14,0x03,0,0};
@@ -38,7 +41,13 @@ int Count(const void*,int){return 0;}
 void* Ref(const void*,int,int){return nullptr;}
 int SubscribeWaypoints(void(*)(void*,void*),void*){return 1;}
 bool KeySample(int key){return key==65;}
-std::int32_t NativeWaypoint(const cc2x_framework_event* event,void*){if(std::strcmp(event->name,"waypoints")==0&&event->a==7)++nativeEvents;return CC2X_FRAMEWORK_DEFAULT;}
+std::int32_t NativeWaypoint(const cc2x_framework_event* event,void*){
+  if(std::strcmp(event->name,"waypoints")==0&&event->a==7) {
+    const auto* orders=cc2x_orders_resolve(cc2x_query_orders_v1);cc2x_waypoint_order order{sizeof(order)};
+    if(orders&&orders->available()&&orders->current(&order)&&order.vehicle_id==7&&order.peer_id==23&&
+       order.generation==originEpoch&&order.flags==CC2X_ORDER_BROADCAST_PENDING)++nativeEvents;
+  }return CC2X_FRAMEWORK_DEFAULT;
+}
 std::int32_t NativeTask(const cc2x_framework_event* event,void*){
   if(std::strcmp(event->name,"task")==0&&event->generation==nativeFramework->session_generation()){
     ++nativeTasks;if(nativeTasks==1)nativeFramework->post("native.parity",event->generation,NativeTask,nullptr);
@@ -80,7 +89,12 @@ return {on_load=function()
   assert(cc2.input.key_down(65) and not cc2.input.key_down(66))
   assert(cc2.entities.register('fixture:lua',{base='wing_light',definition='native_plane'}))
   assert(not cc2.entities.register('bad\0:hidden',{base='wing_light',definition='native_plane'}))
-  assert(cc2.events.on('waypoints',function(id) assert(id==7);print('LUA_WAYPOINT_PASS') end))
+  assert(cc2.events.on('waypoints',function(id)
+    assert(id==7 and cc2.orders.available())
+    local order=assert(cc2.orders.current())
+    assert(order.vehicle_id==7 and order.peer_id==23 and order.generation==19 and order.broadcast_pending)
+    print('LUA_WAYPOINT_PASS')
+  end))
   original_generation=cc2.session.generation();assert(original_generation>0)
   assert(cc2.session.post(function()
     deferred=1;assert(cc2.session.post(function() deferred=2 end))
@@ -174,7 +188,10 @@ end}
     CHECK(nativeFramework->message_read("native.consumer","state",7,&value)&&value==17);
     cc2x_message messages[64]{};CHECK(nativeFramework->mailbox_poll(mailbox,messages,64)==1);
     CHECK(std::strcmp(messages[0].topic,"reply")==0&&messages[0].value==13);
+    cc2x_orders_profile(1);cc2x_waypoint_order origin{sizeof(origin),7,23,CC2X_ORDER_BROADCAST_PENDING,originEpoch};cc2x_order_scope previous;
+    cc2x_orders_enter(&origin,OriginGeneration,&previous);
     declarations.WorldEvent("waypoints",7);CHECK(nativeEvents==1&&Has("LUA_WAYPOINT_PASS"));
+    cc2x_orders_leave(&previous);cc2x_waypoint_order outside{sizeof(outside)};CHECK(!cc2x_orders_current(&outside));
     CHECK(nativeFramework->unsubscribe(event)&&!nativeFramework->unsubscribe(event));
     CHECK(nativeFramework->entity_clear("native.parity")==1&&nativeFramework->entity_count()==0);
     std::uint64_t workerTask=0;bool workerRead=true;
