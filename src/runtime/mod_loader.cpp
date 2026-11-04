@@ -11,6 +11,12 @@
 #include <string_view>
 #include <cwctype>
 #include <cwchar>
+#include <cstdlib>
+#include <cstdint>
+extern "C" {
+#include "lua.h"
+#include "lauxlib.h"
+}
 
 namespace cc2::host {
 namespace {
@@ -248,6 +254,72 @@ bool SafeLuaName(const std::wstring& value) {
     needsComponent = false;
   }
   return !needsComponent;
+}
+
+bool SafeScreenPath(const std::wstring& value, const wchar_t* prefix) {
+  if (!SafeEntry(value) || value.rfind(prefix, 0) != 0) return false;
+  for (const wchar_t c : value)
+    if (!((c >= L'a' && c <= L'z') || (c >= L'A' && c <= L'Z') ||
+          (c >= L'0' && c <= L'9') || c == L'_' || c == L'-' || c == L'.' || c == L'/'))
+      return false;
+  return true;
+}
+
+bool ScreenSourceSyntax(const std::string& source) {
+  struct Budget { std::size_t used = 0; } budget;
+  auto allocate = [](void* context, void* pointer, std::size_t oldSize,
+                     std::size_t newSize) -> void* {
+    auto& state = *static_cast<Budget*>(context);
+    if (!pointer) oldSize = 0;  // Lua uses osize as a type tag for new objects.
+    if (newSize == 0) { state.used -= oldSize; std::free(pointer); return nullptr; }
+    if (newSize > 8 * 1024 * 1024 || state.used - oldSize > 8 * 1024 * 1024 - newSize)
+      return nullptr;
+    void* replacement = std::realloc(pointer, newSize);
+    if (replacement) state.used = state.used - oldSize + newSize;
+    return replacement;
+  };
+  lua_State* state = lua_newstate(allocate, &budget);
+  if (!state) return false;
+  const bool valid = luaL_loadbufferx(state, source.data(), source.size(),
+      "screen_extension_syntax", "t") == LUA_OK;
+  lua_close(state);
+  return valid;  // No libraries opened and no Lua function executed.
+}
+
+bool ReadScreenSource(const std::wstring& path, std::size_t* remainingBytes, std::string* source) {
+  const HANDLE file = CreateFileW(path.c_str(), GENERIC_READ, FILE_SHARE_READ,
+      nullptr, OPEN_EXISTING, FILE_FLAG_OPEN_REPARSE_POINT, nullptr);
+  if (file == INVALID_HANDLE_VALUE) return false;
+  struct Close { HANDLE handle; ~Close() { CloseHandle(handle); } } close{file};
+  BY_HANDLE_FILE_INFORMATION info{};
+  LARGE_INTEGER size{};
+  if (!GetFileInformationByHandle(file, &info) ||
+      (info.dwFileAttributes & (FILE_ATTRIBUTE_REPARSE_POINT | FILE_ATTRIBUTE_DIRECTORY)) ||
+      !GetFileSizeEx(file, &size) || size.QuadPart <= 0 || size.QuadPart > 256 * 1024 ||
+      static_cast<std::uint64_t>(size.QuadPart) > *remainingBytes)
+    return false;
+  wchar_t finalPath[32768]{};
+  const DWORD length = GetFinalPathNameByHandleW(file, finalPath, 32768, FILE_NAME_NORMALIZED);
+  if (!length || length >= 32768) return false;
+  // GetFullPathName preserves DOS 8.3 aliases (including GitHub's RUNNER~1
+  // temporary directory), while the file handle returns the long spelling.
+  // Expand spelling only; reparse resolution must still match the final handle.
+  wchar_t expanded[32768]{};
+  const DWORD expandedLength = GetLongPathNameW(path.c_str(), expanded, 32768);
+  if (!expandedLength || expandedLength >= 32768) return false;
+  const std::wstring longPath(expanded, expandedLength);
+  const std::wstring expected = longPath.rfind(L"\\\\?\\", 0) == 0 ? longPath :
+      longPath.rfind(L"\\\\", 0) == 0 ? L"\\\\?\\UNC\\" + longPath.substr(2) : L"\\\\?\\" + longPath;
+  if (_wcsicmp(finalPath, expected.c_str()) != 0) return false;
+  // Count attempted reads too: invalid packages cannot repeatedly consume the
+  // full accepted-output budget and force unbounded parsing at startup.
+  *remainingBytes -= static_cast<std::size_t>(size.QuadPart);
+  source->resize(static_cast<std::size_t>(size.QuadPart));
+  DWORD read = 0;
+  if (!ReadFile(file, source->data(), static_cast<DWORD>(source->size()), &read, nullptr) ||
+      read != source->size() || source->find('\0') != std::string::npos ||
+      Utf8ToWide(*source).empty()) return false;
+  return ScreenSourceSyntax(*source);
 }
 
 bool IsReparsePath(const std::wstring& path) {
@@ -569,6 +641,97 @@ bool ParseHook(const JsonValue& json, HookDescriptor* hook) {
 }
 
 }  // namespace
+
+bool ScreenExtensionMatches(const ScreenExtensionDescriptor& extension, std::string_view screen) {
+  return screen == extension.screen;
+}
+
+ScreenExtensionDiscovery DiscoverActiveScreenExtensions(const std::vector<std::wstring>& activePackages) {
+  ScreenExtensionDiscovery result;
+  if (activePackages.size() > 256) {
+    result.diagnostics.push_back(L"SCREEN_EXTENSION_FAIL: too many active packages");
+    return result;
+  }
+  std::set<std::wstring> seen;
+  std::size_t totalBytes = 0;
+  std::size_t remainingReadBytes = 4 * 1024 * 1024;
+  for (const auto& package : activePackages) {
+    const auto canonical = CanonicalPath(package);
+    if (canonical.empty()) continue;
+    auto key = canonical;
+    std::transform(key.begin(), key.end(), key.begin(), towlower);
+    if (!seen.insert(key).second) continue;
+    const std::wstring relativeManifest = L"content/cc2x/screen_extensions.json";
+    const auto manifest = canonical + L"\\content\\cc2x\\screen_extensions.json";
+    if (GetFileAttributesW(manifest.c_str()) == INVALID_FILE_ATTRIBUTES) continue;
+    auto reject = [&](const wchar_t* reason) {
+      result.diagnostics.push_back(canonical + L": SCREEN_EXTENSION_FAIL: " + reason);
+    };
+    JsonValue root;
+    std::wstring error;
+    if (IsReparsePath(canonical) || IsReparsePath(canonical + L"\\content") ||
+        !ValidateEntryPath(canonical, L"mod.xml") ||
+        !ValidateEntryPath(canonical, relativeManifest) ||
+        !ReadManifest(manifest, &root, &error) || !UniqueJsonKeys(root) ||
+        root.kind != JsonValue::Kind::Object || root.object.size() != 2) {
+      reject(L"invalid or unsafe descriptor"); continue;
+    }
+    const auto* schema = Field(root, L"schema");
+    const auto* entries = Field(root, L"extensions");
+    if (!schema || schema->kind != JsonValue::Kind::Other || schema->primitive != L"1" ||
+        !entries || entries->kind != JsonValue::Kind::Array || entries->array.size() > 16) {
+      reject(L"unsupported schema or extension count"); continue;
+    }
+    std::vector<ScreenExtensionDescriptor> pending;
+    std::set<std::wstring> targets;
+    std::size_t pendingBytes = 0;
+    bool valid = true;
+    ModDescriptor content;
+    content.rootPath = canonical + L"\\content";
+    for (const auto& entry : entries->array) {
+      if (result.extensions.size() + pending.size() >= 128 || remainingReadBytes == 0) {
+        valid = false; break;
+      }
+      const auto* screen = Field(entry, L"screen");
+      const auto* source = Field(entry, L"source");
+      if (entry.kind != JsonValue::Kind::Object || entry.object.size() != 2 ||
+          !screen || !source || screen->kind != JsonValue::Kind::String ||
+          source->kind != JsonValue::Kind::String ||
+          !SafeScreenPath(screen->string, L"scripts/") ||
+          !SafeScreenPath(source->string, L"cc2x/ui/") ||
+          !targets.insert(screen->string).second) {
+        valid = false; break;
+      }
+      std::wstring absolute;
+      std::string sourceBytes;
+      if (!ResolveModAssetPath(content, source->string, L".lua", &absolute) ||
+          !ReadScreenSource(absolute, &remainingReadBytes, &sourceBytes)) {
+        valid = false; break;
+      }
+      auto utf8 = [](const std::wstring& value) {
+        const int size = WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS,
+            value.data(), static_cast<int>(value.size()), nullptr, 0, nullptr, nullptr);
+        std::string bytes(size > 0 ? size : 0, '\0');
+        if (size > 0) WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS,
+            value.data(), static_cast<int>(value.size()), bytes.data(), size, nullptr, nullptr);
+        return bytes;
+      };
+      ScreenExtensionDescriptor descriptor{utf8(screen->string), utf8(source->string), std::move(sourceBytes)};
+      if (descriptor.screen.empty() || descriptor.sourcePath.empty() || descriptor.source.empty()) {
+        valid = false; break;
+      }
+      pendingBytes += descriptor.source.size();
+      pending.push_back(std::move(descriptor));
+    }
+    if (!valid || result.extensions.size() + pending.size() > 128 ||
+        totalBytes + pendingBytes > 4 * 1024 * 1024) {
+      reject(L"unsafe source, duplicate target or aggregate limit"); continue;
+    }
+    totalBytes += pendingBytes;
+    for (auto& extension : pending) result.extensions.push_back(std::move(extension));
+  }
+  return result;
+}
 
 ModDiscovery DiscoverActiveBridgeMods(const std::vector<std::wstring>& activePackages) {
   ModDiscovery result;

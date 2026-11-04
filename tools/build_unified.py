@@ -104,7 +104,7 @@ def main():
         'src/runtime/sdk_data.h.in', 'src/api/vehicle/ui_library_shim_source.h.in',
         'integrations/native-bridge-source-manifest.json', 'integrations/cc2mods-source-lock.json',
         'integrations/waypoint-origin-profile.json',
-        'sdk/schemas/framework-capabilities.json', 'NOTICE.md',
+        'sdk/schemas/framework-capabilities.json', 'sdk/schemas/screen_extensions.schema.json', 'NOTICE.md',
         'LICENSE', 'third_party/Lua-LICENSE.txt')]
     input_hashes = {p.relative_to(ROOT).as_posix(): sha(p) for p in inputs}
     compiler_hash = sha(compiler)
@@ -145,7 +145,8 @@ def main():
               'artifact_sha256': sha(output), 'compiler_sha256': compiler_hash,
               'source_commit': revision, 'source_dirty': dirty,
               'capabilities': ['independent-lua-v1', 'ordered-module-bundles-v1', 'session-query-v1',
-                               'lua-mod-api-v2', 'framework-c-api-v1', 'waypoint-origin-v1'],
+                               'lua-mod-api-v2', 'framework-c-api-v1', 'waypoint-origin-v1',
+                               'screen-extensions-v1'],
               'lua_api': 2,
               'framework_api': 1,
               'source_sha256': input_hashes,
@@ -177,7 +178,10 @@ def main():
                 'api/vehicle/definition_adapter.cpp', 'api/vehicle/definition_registry.cpp',
                 'platform/seh_guard.c']), []),
             ('entity_registry_test.c', src_objects(['entity_registry.c']), []),
-            ('mod_loader_test.cpp', src_objects(['runtime/mod_loader.cpp']), []),
+            ('mod_loader_test.cpp', src_objects(['runtime/mod_loader.cpp']) + lua_objects, []),
+            ('screen_extensions_test.cpp', src_objects(['runtime/mod_loader.cpp']) + lua_objects, []),
+            ('screen_extension_hook_test.cpp', src_objects(registry + [
+                'runtime/mod_loader.cpp', 'api/vehicle/ui_library_injection.cpp']) + lua_objects, []),
             ('early_declaration_test.cpp', src_objects(registry + ['runtime/mod_loader.cpp', 'runtime/early_declaration.cpp']) + lua_objects, []),
             ('vehicle_ui_lua_api_test.cpp', src_objects(registry + ['api/vehicle/lua_api.cpp', 'api/ui/weapon_catalog.cpp']) + lua_objects, []),
             ('vehicle_spawn_sdk_test.cpp', lua_objects, [ROOT / 'sdk/cc2.lua']),

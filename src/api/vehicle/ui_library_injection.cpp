@@ -4,12 +4,14 @@
 #include "api/vehicle/definition_registry.h"
 #include "api/vehicle/vehicle_hud_source_patch.h"
 #include "ui_library_shim_source.h"
+#include "runtime/mod_loader.h"
 
 #include <Windows.h>
 
 #include <cstdint>
 #include <cstring>
 #include <limits>
+#include <mutex>
 #include <string>
 #include <string_view>
 
@@ -55,6 +57,41 @@ volatile LONG g_installState = 0;
 volatile LONG g_injectedLog = 0;
 volatile LONG g_failureLog = 0;
 volatile LONG g_hudPatchLog = 0;
+std::once_flag g_extensionSnapshot;
+std::vector<host::ScreenExtensionDescriptor> g_screenExtensions;
+
+void PrepareScreenExtensions() {
+  // This first runs when the engine compiles screens, after load_mod_plugins()
+  // completed the enabled-package snapshot. Hook installation happens earlier.
+  std::call_once(g_extensionSnapshot, [] {
+    if (!g_api || !g_api->active_mod_count || !g_api->active_mod_path) return;
+    const int count = g_api->active_mod_count();
+    if (count < 0 || count > 256) {
+      g_api->log("cc2x_screen_extensions", CC2X_LOG_WARN,
+          "event=SCREEN_EXTENSIONS_UNAVAILABLE reason=invalid_activation_snapshot");
+      return;
+    }
+    std::vector<std::wstring> packages;
+    for (int i = 0; i < count; ++i) {
+      wchar_t path[32768]{};
+      if (!g_api->active_mod_path(i, path, 32768)) {
+        g_api->log("cc2x_screen_extensions", CC2X_LOG_WARN,
+            "event=SCREEN_EXTENSIONS_UNAVAILABLE reason=invalid_activation_path");
+        return;
+      }
+      packages.emplace_back(path);
+    }
+    auto discovered = host::DiscoverActiveScreenExtensions(packages);
+    for (const auto& diagnostic : discovered.diagnostics)
+      g_api->log("cc2x_screen_extensions", CC2X_LOG_WARN,
+          "event=SCREEN_EXTENSION_REJECTED detail=%ls", diagnostic.c_str());
+    g_screenExtensions = std::move(discovered.extensions);
+    g_api->log("cc2x_screen_extensions", CC2X_LOG_INFO,
+        "event=SCREEN_EXTENSIONS_READY active_packages=%d extensions=%lu diagnostics=%lu",
+        count, static_cast<unsigned long>(g_screenExtensions.size()),
+        static_cast<unsigned long>(discovered.diagnostics.size()));
+  });
+}
 
 bool MemoryRange(const void* address, std::size_t length, bool writable) {
   if (!address || length == 0) return false;
@@ -187,7 +224,15 @@ void RollBackAppendedScript(GameScriptVector* vector, GameScript* script,
 }
 
 void OnScreenScriptsReady(cc2x_cpu* cpu, void*) {
-  if (!cpu || !g_api || Registry().Count() == 0) return;
+  if (!cpu || !g_api) return;
+  try {
+    PrepareScreenExtensions();
+  } catch (...) {
+    LogFailure("screen_extension_snapshot_failed");
+    return;
+  }
+  const bool hasVehicles = Registry().Count() != 0;
+  if (!hasVehicles && g_screenExtensions.empty()) return;
   if (cpu->ebp < 0x1000u + 0x3Cu) {
     LogFailure("invalid_screen_frame");
     return;
@@ -216,26 +261,52 @@ void OnScreenScriptsReady(cc2x_cpu* cpu, void*) {
     return;
   }
 
-  PatchVehicleHudScripts(vector, vector->size, reserveString, freeString);
+  const auto originalSize = vector->size;
+  auto append = [&](const char* label, const char* source, std::uint32_t sourceLength) {
+    GameScript* script = emplaceBack(vector);
+    if (!script) { LogFailure("game_script_vector_append_failed"); return false; }
+    if (!WritableRange(script, sizeof(*script))) {
+      if (vector->size > 0) --vector->size;
+      LogFailure("game_script_record_unwritable"); return false;
+    }
+    if (!SetGameString(&script->name, label, static_cast<std::uint32_t>(std::strlen(label)), reserveString) ||
+        !SetGameString(&script->source, source, sourceLength, reserveString)) {
+      RollBackAppendedScript(vector, script, freeString);
+      LogFailure("game_script_record_initialization_failed"); return false;
+    }
+    return true;
+  };
 
-  GameScript* script = emplaceBack(vector);
-  if (!script) {
-    LogFailure("game_script_vector_append_failed");
-    return;
+  // Match only the original chunks, never an extension appended above another.
+  // A screen package needs no custom vehicles or Bridge gameplay manifest.
+  for (const auto& extension : g_screenExtensions) {
+    bool matches = false;
+    for (std::uint32_t i = 0; i < originalSize; ++i) {
+      const auto index = static_cast<std::uint32_t>(
+          (static_cast<std::uint64_t>(vector->first) + i) % vector->capacity);
+      const auto* candidate = vector->data + index;
+      if (!MemoryRange(candidate, sizeof(*candidate), false)) continue;
+      const auto& name = candidate->name;
+      if (name.data && name.size == extension.screen.size() &&
+          MemoryRange(name.data, name.size, false) &&
+          host::ScreenExtensionMatches(extension, std::string_view(name.data, name.size))) {
+        matches = true; break;
+      }
+    }
+    if (matches && append(extension.sourcePath.c_str(), extension.source.data(),
+            static_cast<std::uint32_t>(extension.source.size()))) {
+      g_api->log("cc2x_screen_extensions", CC2X_LOG_INFO,
+          "event=SCREEN_EXTENSION_SOURCE_QUEUED screen=%s source=%s bytes=%lu",
+          extension.screen.c_str(), extension.sourcePath.c_str(),
+          static_cast<unsigned long>(extension.source.size()));
+    }
   }
-  if (!WritableRange(script, sizeof(*script))) {
-    if (vector->size > 0) --vector->size;
-    LogFailure("game_script_record_unwritable");
-    return;
-  }
-  constexpr auto labelLength = static_cast<std::uint32_t>(sizeof(kScriptLabel) - 1);
+
+  if (!hasVehicles) return;
+  PatchVehicleHudScripts(vector, originalSize, reserveString, freeString);
+
   constexpr auto sourceLength = static_cast<std::uint32_t>(sizeof(kUiLibraryShimSource) - 1);
-  if (!SetGameString(&script->name, kScriptLabel, labelLength, reserveString) ||
-      !SetGameString(&script->source, kUiLibraryShimSource, sourceLength, reserveString)) {
-    RollBackAppendedScript(vector, script, freeString);
-    LogFailure("game_script_record_initialization_failed");
-    return;
-  }
+  if (!append(kScriptLabel, kUiLibraryShimSource, sourceLength)) return;
 
   if (InterlockedCompareExchange(&g_injectedLog, 1, 0) == 0 && g_api->log) {
     g_api->log("cc2x_vehicle_ui", CC2X_LOG_INFO,
@@ -275,6 +346,7 @@ bool InstallStockUiLibraryInjection(const cc2x_api* api) {
   }
 
   InterlockedExchange(&g_installState, 2);
+  if (api->lua_feature) api->lua_feature("screen_extensions_v1");
   api->log("cc2x_vehicle_ui", CC2X_LOG_INFO,
       "event=UI_SHIM_INJECTION_HOOK_INSTALLED build=%s hook_va=0x%08lX",
       api->game_build, static_cast<unsigned long>(kScriptVectorHook));
