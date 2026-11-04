@@ -22,7 +22,29 @@ sizeof the expanded header. Existing API 4 consumers can remain prefix-only;
 earlier draft binaries with session fields appended as API 5 must be rebuilt.
 Existing native hash/profile review gates still apply.
 
+## Dispatch and session replacement
+
+Both legacy `server_post` and named session `post` use the same bounded FIFO.
+At dispatch entry the runtime captures its epoch and current queue length. Only
+that prefix runs in this tick. Work enqueued by those callbacks waits until a
+later dispatch; capacity exhaustion returns 0 and does not discard old work.
+Ending or replacing the session invalidates the prefix and prevents later tick
+subscribers or accelerated sub-ticks from running for that obsolete session.
+Pointer equality does not establish session identity: epochs must match too.
+Callbacks execute outside the queue lock and retain ownership of their user data.
+
+This fixes the dispatch behavior without changing the C prefix, extension table,
+Lua API, IDs or remote transport. The framework C/Lua next-tick task queue remains
+its existing separate implementation. Local epochs are process-local counters;
+they must never be treated as shared network session IDs or peer authentication.
+
 Tests run before any game test: stable API prefix static assertions, absent
 query, wrong interface ID/version/size, missing callbacks, queue/session reuse,
 native DLL compilation and read-only PE export inspection. These are offline
 checks. Do not install a development runtime over an unknown existing DLL.
+
+The actual-core fixture also checks nested posts, full-capacity FIFO refill,
+same-address session replacement and replacement from a tick subscriber with
+accelerated ticks enabled. Optimized test builds explicitly undefine `NDEBUG`.
+Earlier assert-based test results must be reevaluated with assertions enabled;
+an old PASS line alone does not establish that those checks executed.

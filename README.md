@@ -5,7 +5,11 @@ CC2X is a shared framework for **C/C++ plugins and Lua mods**. Install one
 optional packages. The SDK itself adds no aircraft, flight modes, brakes,
 button layouts or island gameplay rules.
 
-## Current client beta: 0.7.0-client-beta.1
+## Current client beta: 0.8.0-client-beta.1
+
+Adds guarded incoming waypoint origin and bounded session-safe dispatch.
+[Waypoint origin](docs/ORDER_ORIGIN.md), [private runtime fixtures](docs/RUNTIME_SANDBOX.md)
+and [multiplayer validation scope](MULTIPLAYER.md) describe the evidence.
 
 This release provides the stable **C API 8** prefix, the new **framework C API
 1**, and **independent Lua API 2**. Both languages use the same checked engine
@@ -22,15 +26,15 @@ cast. [C/Lua capability map and examples](docs/C_LUA_PARITY.md).
 - **Game-owned screen Lua:** the existing `cc2x` bridge and module request/state
   channel remain available. Independent and game-owned VM handles are distinct.
 
-The full Brake v15 and Island Airfields Lua ports are separate work; the SDK
-beta does not claim to complete them. Remote multiplayer, dedicated servers,
+Gameplay mods are separate releases. Island Airfields now has a separate Lua
+implementation; the full Brake v15 port remains separate work. Remote multiplayer, dedicated servers,
 full flight/landing, changed-catalog saves, clean-machine acceptance and native
 macOS support remain unverified. Offline tests are not gameplay acceptance.
 See the exact release's `RELEASE.json` and test evidence for its verified scope.
 
 ## Install the runtime
 
-Download [the client beta release](https://github.com/Dioramawhois/Carrier-Command-2-extender/releases/tag/0.7.0-client-beta.1)
+Download [the client beta release](https://github.com/Dioramawhois/Carrier-Command-2-extender/releases/tag/0.8.0-client-beta.1)
 or subscribe to the existing [SDK Workshop item](https://steamcommunity.com/sharedfiles/filedetails/?id=3833014670).
 A subscription downloads the files; it does not copy the bootstrap into the
 game installation.
@@ -44,7 +48,7 @@ game installation.
 
 [Detailed player instructions](docs/README_PLAYERS.txt) include the exact Steam
 folder. Automatic installation requires a ModLoader build that explicitly
-reviews this 0.7 runtime and its new API capabilities. **ModLoader 0.4.0 beta 2
+reviews this 0.8 runtime and its new API capabilities. **ModLoader 0.4.0 beta 2
 and its bundled 0.6 runtime do not provide that support.** Use the manual route
 until the matching ModLoader update is available. Do not bypass its DLL checks.
 
@@ -119,6 +123,8 @@ not evidence for a different 0.7 DLL.
 
 ## Limits / next steps
 
+- [Isolated multiplayer development](MULTIPLAYER.md) records the session-safety
+  changes, current host audit and the remaining network/dedicated gates.
 - Known game builds only (1.5.18 Windows: the original exe and the Steam rebuild of 2026-10-28). A new
   build needs a new `PROFILES` entry (core addresses) and a `LAYOUTS` entry in `src/world.c`.
 - No multiplayer transport: Lua functions see the local server only.

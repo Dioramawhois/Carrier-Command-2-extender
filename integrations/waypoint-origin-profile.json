@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "profile": "1.5.18-win32-r2",
+  "exe_sha256": "461e12623bacb7de29ca27b4614425c87e8df2c8327a5e958a957c850effe42a",
+  "validation": "static-receive-path-inspection; remote runtime unverified",
+  "sender_stack_offset": 876,
+  "vehicle_id_offset": 128,
+  "guards": [
+    {
+      "address": 7829403,
+      "bytes": "8dbe480c0000"
+    },
+    {
+      "address": 7829910,
+      "bytes": "8d8d84fcffff518d86480100008d8d94fcffff89857cfcffff518bc8e8297bdfff"
+    },
+    {
+      "address": 7831672,
+      "bytes": "8b8584fcffff8bcfffb594fcffff89859cfcffffe8afa1dfff85c00f847c0e"
+    },
+    {
+      "address": 5710400,
+      "bytes": "558bec51538bd933c0565739432c74298b4b288b53248d34018bce3bca72022bca8b7b208b0c8f8b7d0839398b7b2c74"
+    },
+    {
+      "address": 7832260,
+      "bytes": "ffb0500100008b96140500008d8e140500000540010000508b85b4fcffff0530020000508b85b4fcffffffb080000000ff12"
+    }
+  ],
+  "server_peer_manager_offset": 3144,
+  "peer_deque_offset": 32
+}

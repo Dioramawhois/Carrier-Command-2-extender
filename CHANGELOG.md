@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.8.0-client-beta.1 (2026-11-04)
+
+- Runtime identifies itself as `0.8.0-client-beta.1`. Add the optional
+  named C order-origin interface and matching public Lua operations over one
+  scoped backend. Check the actual source peer roster, callback thread and core
+  epoch; expose no guessed team/admin identity. Pin the r2 receive/broadcast
+  windows and preserve the stable prefix and existing named interfaces.
+- Add native and paired C/real-Lua regressions, including a manager whose first
+  deque is empty: the receiver's peer lookup uses its second deque at +0x20.
+- Add an explicitly test-only private-game staging/isolation probe. The game
+  uses a Windows folder query rather than the APPDATA environment alone; no
+  redirection or test gameplay is compiled into the production runtime.
+- Bound the legacy server-post dispatcher to the FIFO prefix present when
+  dispatch begins. Commands posted by a callback wait for another tick, so a
+  repeating callback cannot starve tick subscribers. Preserve the originating
+  epoch across dispatch, subscribers and accelerated ticks; replacement sessions
+  cannot consume the preceding session's tick even when addresses are reused.
+- Enable C/C++ assertions explicitly in optimized native regressions. Zig's
+  optimized defaults previously compiled out `assert` checks. Invalidate cached
+  test objects on production-source changes, including direct C/C++ inclusions.
+- Add actual-core regressions for nested posts, full-queue FIFO refill, session
+  replacement and subscriber/time-scale termination. This is offline evidence;
+  no remote transport, host capability handshake or dedicated support is added.
+
 ## 0.7.0-client-beta.1 (2026-11-03)
 
 - Preserve C/C++ plugin development alongside Lua. Add the named framework C

@@ -61,6 +61,18 @@ def generate():
     header = (ROOT / 'include/cc2x.h').read_text()
     constants = sorted(set(re.findall(r'CC2X_(?:WORLD|VEHICLE|WAYPOINT|TILE|ISLAND|AIRFIELD|DOCK|FLIGHT|BODY|RAY)_[A-Z0-9_]+', header)))
     (GENERATED / 'world_constants.inc').write_text(''.join('CC2_WORLD_CONSTANT(' + name + ')\n' for name in constants))
+    origin = json.loads((ROOT / 'integrations/waypoint-origin-profile.json').read_text())
+    if origin['schema'] != 1 or origin['profile'] != '1.5.18-win32-r2' or len(origin['guards']) != 5:
+        raise ValueError('Unsupported waypoint origin profile')
+    guards = []
+    for guard in origin['guards']:
+        data = bytes.fromhex(guard['bytes'])
+        if not 1 <= len(data) <= 64 or not 0x400000 <= guard['address'] < 0x1000000:
+            raise ValueError('Unsafe waypoint origin signature')
+        guards.append('{0x%x,%d,{%s}}' % (guard['address'], len(data), ','.join('0x%02x' % b for b in data)))
+    (GENERATED / 'waypoint_origin_profile.h').write_text(
+        'static const struct {uint32_t address,size; unsigned char bytes[64];} origin_guards[]={\n'
+        + ',\n'.join(guards) + '\n};\n')
 
 
 def main():
@@ -81,7 +93,7 @@ def main():
     common = ['-target', 'x86-windows-gnu', '-O2', '-fno-strict-aliasing', '-fms-extensions',
               '-DWIN32_LEAN_AND_MEAN', '-DNOMINMAX', '-U_WIN32_WINNT', '-D_WIN32_WINNT=0x0601',
               '-I', ROOT / 'include', '-I', ROOT / 'src', '-I', ROOT / 'third_party/lua', '-I', GENERATED]
-    core = [ROOT / 'src' / name for name in ('cc2x.c', 'world.c', 'lua_world.c', 'entity_registry.c')]
+    core = [ROOT / 'src' / name for name in ('cc2x.c', 'world.c', 'lua_world.c', 'entity_registry.c', 'order_context.c')]
     lua = [p for p in sorted((ROOT / 'third_party/lua').glob('*.c'))
            if p.name not in ('lua.c', 'luac.c', 'onelua.c', 'ltests.c')]
     runtime = [ROOT / 'src' / name for name in CPP_SOURCES]
@@ -91,6 +103,7 @@ def main():
         'src/api/vehicle/ui_library_shim.lua', 'src/dinput8.def',
         'src/runtime/sdk_data.h.in', 'src/api/vehicle/ui_library_shim_source.h.in',
         'integrations/native-bridge-source-manifest.json', 'integrations/cc2mods-source-lock.json',
+        'integrations/waypoint-origin-profile.json',
         'sdk/schemas/framework-capabilities.json', 'NOTICE.md',
         'LICENSE', 'third_party/Lua-LICENSE.txt')]
     input_hashes = {p.relative_to(ROOT).as_posix(): sha(p) for p in inputs}
@@ -106,7 +119,12 @@ def main():
         if path.name == 'seh_guard.c':
             flags = ['-target', 'x86-windows-msvc', '-O2', '-std=c11', '-nostdlib', '-nostdinc',
                      '-ffreestanding', '-fno-stack-protector', '-fms-extensions']
-        included_source = sha(ROOT / 'src/api/vehicle/buttons.cpp') if path.name == 'framework_buttons_parity_test.cpp' else ''
+        # Native fixtures can include production .c/.cpp directly. Invalidate all
+        # test objects on production changes, not only a named special case.
+        is_test = path.is_relative_to(ROOT / 'tests')
+        if is_test:
+            flags += ['-UNDEBUG']  # Zig's optimized C modes otherwise erase assert().
+        included_source = ''.join(sha(p) for p in core + runtime) if is_test else ''
         key = hashlib.sha256((sha(path) + included_source + header_hash + compiler_hash + str(flags)).encode()).hexdigest()
         stamp = output.with_suffix('.key')
         if not output.exists() or not stamp.exists() or stamp.read_text() != key:
@@ -127,7 +145,7 @@ def main():
               'artifact_sha256': sha(output), 'compiler_sha256': compiler_hash,
               'source_commit': revision, 'source_dirty': dirty,
               'capabilities': ['independent-lua-v1', 'ordered-module-bundles-v1', 'session-query-v1',
-                               'lua-mod-api-v2', 'framework-c-api-v1'],
+                               'lua-mod-api-v2', 'framework-c-api-v1', 'waypoint-origin-v1'],
               'lua_api': 2,
               'framework_api': 1,
               'source_sha256': input_hashes,
@@ -165,10 +183,10 @@ def main():
             ('vehicle_spawn_sdk_test.cpp', lua_objects, [ROOT / 'sdk/cc2.lua']),
             ('lua_policy_fixture.cpp', lua_objects, []),
             ('vehicle_ui_library_shim_test.cpp', lua_objects, [ROOT / 'src/api/vehicle/ui_library_shim.lua']),
-            ('runtime_integration_test.cpp', src_objects(CPP_SOURCES + ['entity_registry.c', 'platform/seh_guard.c']) + lua_objects, []),
-            ('framework_parity_test.cpp', src_objects(CPP_SOURCES + ['entity_registry.c', 'platform/seh_guard.c']) + lua_objects, []),
-            ('framework_buttons_parity_test.cpp', src_objects([p for p in CPP_SOURCES if p != 'api/vehicle/buttons.cpp'] + ['entity_registry.c', 'platform/seh_guard.c']) + lua_objects, []),
-            ('cc2x_core_test.c', src_objects(['world.c', 'lua_world.c', 'entity_registry.c']), []),
+            ('runtime_integration_test.cpp', src_objects(CPP_SOURCES + ['entity_registry.c', 'order_context.c', 'platform/seh_guard.c']) + lua_objects, []),
+            ('framework_parity_test.cpp', src_objects(CPP_SOURCES + ['entity_registry.c', 'order_context.c', 'platform/seh_guard.c']) + lua_objects, []),
+            ('framework_buttons_parity_test.cpp', src_objects([p for p in CPP_SOURCES if p != 'api/vehicle/buttons.cpp'] + ['entity_registry.c', 'order_context.c', 'platform/seh_guard.c']) + lua_objects, []),
+            ('cc2x_core_test.c', src_objects(['world.c', 'lua_world.c', 'entity_registry.c', 'order_context.c']), []),
         ]
         results = []
         test_hashes = {}
@@ -188,6 +206,7 @@ def main():
             if completed.returncode:
                 raise RuntimeError('SDK regression failed: ' + test_source.stem)
         for filename, extra in [('session_api_test.c', []), ('session_queue_test.c', []),
+                                ('order_context_test.c', src_objects(['order_context.c'])),
                                 ('seh_guard_test.c', src_objects(['platform/seh_guard.c']))]:
             test_source = ROOT / 'tests' / filename
             test_hashes[test_source.relative_to(ROOT).as_posix()] = sha(test_source)
