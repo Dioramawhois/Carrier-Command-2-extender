@@ -48,7 +48,7 @@ game installation.
 
 [Detailed player instructions](docs/README_PLAYERS.txt) include the exact Steam
 folder. Automatic installation requires a ModLoader build that explicitly
-reviews this 0.7 runtime and its new API capabilities. **ModLoader 0.4.0 beta 2
+reviews this 0.8 runtime and its new API capabilities. **ModLoader 0.4.0 beta 2
 and its bundled 0.6 runtime do not provide that support.** Use the manual route
 until the matching ModLoader update is available. Do not bypass its DLL checks.
 
