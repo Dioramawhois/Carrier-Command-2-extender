@@ -301,8 +301,15 @@ bool ReadScreenSource(const std::wstring& path, std::size_t* remainingBytes, std
   wchar_t finalPath[32768]{};
   const DWORD length = GetFinalPathNameByHandleW(file, finalPath, 32768, FILE_NAME_NORMALIZED);
   if (!length || length >= 32768) return false;
-  const std::wstring expected = path.rfind(L"\\\\", 0) == 0 ?
-      L"\\\\?\\UNC\\" + path.substr(2) : L"\\\\?\\" + path;
+  // GetFullPathName preserves DOS 8.3 aliases (including GitHub's RUNNER~1
+  // temporary directory), while the file handle returns the long spelling.
+  // Expand spelling only; reparse resolution must still match the final handle.
+  wchar_t expanded[32768]{};
+  const DWORD expandedLength = GetLongPathNameW(path.c_str(), expanded, 32768);
+  if (!expandedLength || expandedLength >= 32768) return false;
+  const std::wstring longPath(expanded, expandedLength);
+  const std::wstring expected = longPath.rfind(L"\\\\?\\", 0) == 0 ? longPath :
+      longPath.rfind(L"\\\\", 0) == 0 ? L"\\\\?\\UNC\\" + longPath.substr(2) : L"\\\\?\\" + longPath;
   if (_wcsicmp(finalPath, expected.c_str()) != 0) return false;
   // Count attempted reads too: invalid packages cannot repeatedly consume the
   // full accepted-output budget and force unbounded parsing at startup.

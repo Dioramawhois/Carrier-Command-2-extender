@@ -8,6 +8,8 @@
 - Read only enabled packages, preserve declared order, and reject malformed,
   unsafe, oversized or syntactically invalid sources before engine execution.
   Add activation/path/syntax regression fixtures and author documentation.
+- Accept valid Windows 8.3 path spellings while retaining strict final-handle
+  containment checks; cover short temporary-directory aliases used by CI.
 - This candidate needs fresh game acceptance for the consuming screen policy;
   native regression checks do not imply visual, gameplay or multiplayer proof.
 

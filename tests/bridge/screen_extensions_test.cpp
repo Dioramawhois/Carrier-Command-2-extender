@@ -36,6 +36,9 @@ int main() {
   CHECK(result.extensions.size() == 1 && result.diagnostics.empty());
   CHECK(result.extensions[0].screen == "scripts/screen_menu_main.lua");
   CHECK(result.extensions[0].source == "error('a syntax check must never execute this')\n");
+  wchar_t shortPath[32768]{};
+  CHECK(GetShortPathNameW(active.c_str(), shortPath, 32768));
+  CHECK(discover(fs::path(shortPath)).extensions.size() == 1);
   CHECK(cc2::host::ScreenExtensionMatches(result.extensions[0], "scripts/screen_menu_main.lua"));
   CHECK(!cc2::host::ScreenExtensionMatches(result.extensions[0], "scripts/screen_menu_options.lua"));
   CHECK(!cc2::host::ScreenExtensionMatches(result.extensions[0], "screen_menu_main.lua"));
