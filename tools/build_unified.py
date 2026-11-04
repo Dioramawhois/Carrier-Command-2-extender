@@ -146,7 +146,7 @@ def main():
               'source_commit': revision, 'source_dirty': dirty,
               'capabilities': ['independent-lua-v1', 'ordered-module-bundles-v1', 'session-query-v1',
                                'lua-mod-api-v2', 'framework-c-api-v1', 'waypoint-origin-v1',
-                               'screen-extensions-v1'],
+                               'screen-extensions-v1', 'screen-source-edits-v1'],
               'lua_api': 2,
               'framework_api': 1,
               'source_sha256': input_hashes,
@@ -180,6 +180,7 @@ def main():
             ('entity_registry_test.c', src_objects(['entity_registry.c']), []),
             ('mod_loader_test.cpp', src_objects(['runtime/mod_loader.cpp']) + lua_objects, []),
             ('screen_extensions_test.cpp', src_objects(['runtime/mod_loader.cpp']) + lua_objects, []),
+            ('screen_source_edits_test.cpp', src_objects(['runtime/mod_loader.cpp']) + lua_objects, []),
             ('screen_extension_hook_test.cpp', src_objects(registry + [
                 'runtime/mod_loader.cpp', 'api/vehicle/ui_library_injection.cpp']) + lua_objects, []),
             ('early_declaration_test.cpp', src_objects(registry + ['runtime/mod_loader.cpp', 'runtime/early_declaration.cpp']) + lua_objects, []),

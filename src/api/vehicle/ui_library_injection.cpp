@@ -281,6 +281,7 @@ void OnScreenScriptsReady(cc2x_cpu* cpu, void*) {
   // A screen package needs no custom vehicles or Bridge gameplay manifest.
   for (const auto& extension : g_screenExtensions) {
     bool matches = false;
+    std::uint32_t logicalIndex=0,matchCount=0;
     for (std::uint32_t i = 0; i < originalSize; ++i) {
       const auto index = static_cast<std::uint32_t>(
           (static_cast<std::uint64_t>(vector->first) + i) % vector->capacity);
@@ -290,15 +291,53 @@ void OnScreenScriptsReady(cc2x_cpu* cpu, void*) {
       if (name.data && name.size == extension.screen.size() &&
           MemoryRange(name.data, name.size, false) &&
           host::ScreenExtensionMatches(extension, std::string_view(name.data, name.size))) {
-        matches = true; break;
+        matches = true;logicalIndex=i;++matchCount;
+      }
+    }
+    if(!matches)continue;
+    GameString replacement{};
+    if(!extension.profiles.empty()) {
+      if(matchCount!=1) {
+        g_api->log("cc2x_screen_extensions",CC2X_LOG_WARN,"event=SCREEN_SOURCE_EDIT_SKIPPED reason=ambiguous_target screen=%s",extension.screen.c_str());
+        continue;
+      }
+      auto* target=vector->data+((static_cast<std::uint64_t>(vector->first)+logicalIndex)%vector->capacity);
+      if(!WritableRange(target,sizeof(*target))||target->source.size==0||target->source.size>2*1024*1024||
+         target->source.capacity<target->source.size||!MemoryRange(target->source.data,target->source.size,false))continue;
+      std::string transformed;
+      const auto result=host::TransformScreenSource(extension.profiles,
+          std::string_view(target->source.data,target->source.size),&transformed);
+      if(result!=host::ScreenSourceEditResult::Applied) {
+        g_api->log("cc2x_screen_extensions",CC2X_LOG_WARN,"event=SCREEN_SOURCE_EDIT_SKIPPED reason=%s screen=%s",
+            result==host::ScreenSourceEditResult::NoProfile?"source_hash_mismatch":"rejected_edits_or_syntax",extension.screen.c_str());
+        continue;
+      }
+      if(!SetGameString(&replacement,transformed.data(),static_cast<std::uint32_t>(transformed.size()),reserveString)) {
+        if(replacement.data)freeString(replacement.data);
+        continue;
       }
     }
     if (matches && append(extension.sourcePath.c_str(), extension.source.data(),
             static_cast<std::uint32_t>(extension.source.size()))) {
+      if(replacement.data) {
+        // Appending can grow/rebase the engine ring; reacquire by logical index.
+        auto* target=vector->data+((static_cast<std::uint64_t>(vector->first)+logicalIndex)%vector->capacity);
+        if(!WritableRange(target,sizeof(*target))) {
+          const auto last=(static_cast<std::uint64_t>(vector->first)+vector->size-1)%vector->capacity;
+          RollBackAppendedScript(vector,vector->data+last,freeString);
+          freeString(replacement.data);continue;
+        }
+        auto* previous=target->source.data;target->source=replacement;
+        if(previous)freeString(previous);
+        g_api->log("cc2x_screen_extensions",CC2X_LOG_INFO,
+            "event=SCREEN_SOURCE_EDIT_APPLIED screen=%s",extension.screen.c_str());
+      }
       g_api->log("cc2x_screen_extensions", CC2X_LOG_INFO,
           "event=SCREEN_EXTENSION_SOURCE_QUEUED screen=%s source=%s bytes=%lu",
           extension.screen.c_str(), extension.sourcePath.c_str(),
           static_cast<unsigned long>(extension.source.size()));
+    } else if(replacement.data) {
+      freeString(replacement.data);
     }
   }
 
@@ -347,6 +386,7 @@ bool InstallStockUiLibraryInjection(const cc2x_api* api) {
 
   InterlockedExchange(&g_installState, 2);
   if (api->lua_feature) api->lua_feature("screen_extensions_v1");
+  if (api->lua_feature) api->lua_feature("screen_source_edits_v1");
   api->log("cc2x_vehicle_ui", CC2X_LOG_INFO,
       "event=UI_SHIM_INJECTION_HOOK_INSTALLED build=%s hook_va=0x%08lX",
       api->game_build, static_cast<unsigned long>(kScriptVectorHook));

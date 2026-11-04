@@ -12,6 +12,8 @@ from 0.8.0 with the package-owned screen extensions from 0.7.1.
 One current runtime supports both capabilities. The SDK supplies the extension
 mechanism; enabled mods supply their own UI policy. See
 [screen extensions](docs/SCREEN_EXTENSIONS.md).
+Optional hash-pinned source edits let addons integrate into reviewed screens
+without bundling or rewriting another mod's files. Unknown sources are skipped.
 [Waypoint origin](docs/ORDER_ORIGIN.md), [private runtime fixtures](docs/RUNTIME_SANDBOX.md)
 and [multiplayer validation scope](MULTIPLAYER.md) describe the evidence.
 

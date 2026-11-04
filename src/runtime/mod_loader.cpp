@@ -1,6 +1,7 @@
 #include "mod_loader.h"
 
 #include <Windows.h>
+#include <bcrypt.h>
 
 #include <algorithm>
 #include <fstream>
@@ -646,6 +647,65 @@ bool ScreenExtensionMatches(const ScreenExtensionDescriptor& extension, std::str
   return screen == extension.screen;
 }
 
+namespace {
+std::string CanonicalScreenSource(std::string_view source) {
+  if(source.substr(0,3)=="\xef\xbb\xbf")source.remove_prefix(3);
+  std::string result; result.reserve(source.size());
+  for(std::size_t i=0;i<source.size();++i) {
+    if(source[i]=='\r'&&i+1<source.size()&&source[i+1]=='\n')continue;
+    result.push_back(source[i]);
+  }
+  return result;
+}
+}
+
+std::string ScreenSourceSha256(std::string_view source) {
+  if(source.size()>2*1024*1024)return {};
+  const auto canonical=CanonicalScreenSource(source);
+  BCRYPT_ALG_HANDLE algorithm=nullptr; BCRYPT_HASH_HANDLE hash=nullptr;
+  if(BCryptOpenAlgorithmProvider(&algorithm,BCRYPT_SHA256_ALGORITHM,nullptr,0)<0)return {};
+  struct Close {BCRYPT_ALG_HANDLE a;BCRYPT_HASH_HANDLE* h;std::vector<unsigned char> object;
+    ~Close(){if(*h)BCryptDestroyHash(*h);BCryptCloseAlgorithmProvider(a,0);}} close{algorithm,&hash,{}};
+  DWORD length=0,written=0;
+  if(BCryptGetProperty(algorithm,BCRYPT_OBJECT_LENGTH,reinterpret_cast<PUCHAR>(&length),sizeof(length),&written,0)<0||length>65536)return {};
+  close.object.resize(length);unsigned char digest[32]{};
+  if(BCryptCreateHash(algorithm,&hash,close.object.data(),length,nullptr,0,0)<0||
+      BCryptHashData(hash,reinterpret_cast<PUCHAR>(const_cast<char*>(canonical.data())),static_cast<ULONG>(canonical.size()),0)<0||
+      BCryptFinishHash(hash,digest,sizeof(digest),0)<0)return {};
+  constexpr char hex[]="0123456789abcdef";std::string result;
+  for(auto c:digest){result.push_back(hex[c>>4]);result.push_back(hex[c&15]);}
+  return result;
+}
+
+ScreenSourceEditResult TransformScreenSource(const std::vector<ScreenSourceProfile>& profiles,
+                                            std::string_view source,std::string* output) {
+  if(!output||source.size()>2*1024*1024||profiles.empty()||profiles.size()>8)return ScreenSourceEditResult::Rejected;
+  const auto digest=ScreenSourceSha256(source);
+  if(digest.empty())return ScreenSourceEditResult::Rejected;
+  const ScreenSourceProfile* selected=nullptr;
+  for(const auto& profile:profiles)if(profile.sha256==digest) {
+    if(selected)return ScreenSourceEditResult::Rejected;
+    selected=&profile;
+  }
+  if(!selected)return ScreenSourceEditResult::NoProfile;
+  if(selected->edits.empty()||selected->edits.size()>64)return ScreenSourceEditResult::Rejected;
+  const auto canonical=CanonicalScreenSource(source);
+  std::string result;std::size_t cursor=0,inserted=0;bool first=true;
+  std::size_t previousOffset=0;
+  for(const auto& edit:selected->edits) {
+    if(edit.offset<cursor||(!first&&edit.offset<=previousOffset)||edit.offset>canonical.size()||
+       edit.remove>canonical.size()-edit.offset||edit.insert.size()>256*1024-inserted)
+      return ScreenSourceEditResult::Rejected;
+    inserted+=edit.insert.size();previousOffset=edit.offset;first=false;
+    result.append(canonical,cursor,edit.offset-cursor);result+=edit.insert;
+    cursor=edit.offset+edit.remove;
+  }
+  result.append(canonical,cursor,std::string::npos);
+  if(result.size()>2*1024*1024||result.find('\0')!=std::string::npos||
+     Utf8ToWide(result).empty()||!ScreenSourceSyntax(result))return ScreenSourceEditResult::Rejected;
+  *output=std::move(result);return ScreenSourceEditResult::Applied;
+}
+
 ScreenExtensionDiscovery DiscoverActiveScreenExtensions(const std::vector<std::wstring>& activePackages) {
   ScreenExtensionDiscovery result;
   if (activePackages.size() > 256) {
@@ -678,7 +738,7 @@ ScreenExtensionDiscovery DiscoverActiveScreenExtensions(const std::vector<std::w
     }
     const auto* schema = Field(root, L"schema");
     const auto* entries = Field(root, L"extensions");
-    if (!schema || schema->kind != JsonValue::Kind::Other || schema->primitive != L"1" ||
+    if (!schema || schema->kind != JsonValue::Kind::Other || (schema->primitive != L"1" && schema->primitive != L"2") ||
         !entries || entries->kind != JsonValue::Kind::Array || entries->array.size() > 16) {
       reject(L"unsupported schema or extension count"); continue;
     }
@@ -694,7 +754,9 @@ ScreenExtensionDiscovery DiscoverActiveScreenExtensions(const std::vector<std::w
       }
       const auto* screen = Field(entry, L"screen");
       const auto* source = Field(entry, L"source");
-      if (entry.kind != JsonValue::Kind::Object || entry.object.size() != 2 ||
+      const auto* profiles = Field(entry, L"profiles");
+      if (entry.kind != JsonValue::Kind::Object || entry.object.size() != (profiles?3:2) ||
+          (profiles && schema->primitive != L"2") ||
           !screen || !source || screen->kind != JsonValue::Kind::String ||
           source->kind != JsonValue::Kind::String ||
           !SafeScreenPath(screen->string, L"scripts/") ||
@@ -717,6 +779,48 @@ ScreenExtensionDiscovery DiscoverActiveScreenExtensions(const std::vector<std::w
         return bytes;
       };
       ScreenExtensionDescriptor descriptor{utf8(screen->string), utf8(source->string), std::move(sourceBytes)};
+      if(profiles) {
+        auto natural=[](const JsonValue* value,std::size_t* number) {
+          if(!value||value->kind!=JsonValue::Kind::Other||value->primitive.empty()||
+             (value->primitive.size()>1&&value->primitive[0]==L'0'))return false;
+          std::size_t result=0;
+          for(auto c:value->primitive) {
+            if(c<L'0'||c>L'9'||result>(2*1024*1024-static_cast<std::size_t>(c-L'0'))/10)return false;
+            result=result*10+(c-L'0');
+          }
+          *number=result;return true;
+        };
+        std::set<std::wstring> hashes;
+        std::size_t insertBytes=0;
+        valid=profiles->kind==JsonValue::Kind::Array&&!profiles->array.empty()&&profiles->array.size()<=8;
+        if(valid)for(const auto& profile:profiles->array) {
+          const auto* digest=Field(profile,L"sha256");const auto* edits=Field(profile,L"edits");
+          if(profile.kind!=JsonValue::Kind::Object||profile.object.size()!=2||!digest||
+             digest->kind!=JsonValue::Kind::String||digest->string.size()!=64||
+             digest->string.find_first_not_of(L"0123456789abcdef")!=std::wstring::npos||
+             !hashes.insert(digest->string).second||!edits||edits->kind!=JsonValue::Kind::Array||
+             edits->array.empty()||edits->array.size()>64){valid=false;break;}
+          ScreenSourceProfile parsed;parsed.sha256=utf8(digest->string);
+          std::size_t previousOffset=0,previousEnd=0;bool first=true;
+          for(const auto& edit:edits->array) {
+            ScreenSourceEdit item;
+            const auto* insert=Field(edit,L"insert");
+            if(edit.kind!=JsonValue::Kind::Object||edit.object.size()!=3||
+               !natural(Field(edit,L"offset"),&item.offset)||!natural(Field(edit,L"remove"),&item.remove)||
+               !insert||insert->kind!=JsonValue::Kind::String||
+               item.remove>2*1024*1024-item.offset||item.offset<previousEnd||
+               (!first&&item.offset<=previousOffset)){valid=false;break;}
+            item.insert=utf8(insert->string);
+            if((!insert->string.empty()&&item.insert.empty())||item.insert.find('\0')!=std::string::npos||item.insert.size()>256*1024-insertBytes){valid=false;break;}
+            insertBytes+=item.insert.size();previousOffset=item.offset;previousEnd=item.offset+item.remove;first=false;
+            parsed.edits.push_back(std::move(item));
+          }
+          if(!valid)break;
+          descriptor.profiles.push_back(std::move(parsed));
+        }
+        if(!valid)break;
+        pendingBytes+=insertBytes;
+      }
       if (descriptor.screen.empty() || descriptor.sourcePath.empty() || descriptor.source.empty()) {
         valid = false; break;
       }

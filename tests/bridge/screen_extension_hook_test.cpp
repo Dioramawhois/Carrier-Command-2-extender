@@ -3,6 +3,7 @@
 #include "api/vehicle/definition_registry.h"
 #include "api/vehicle/ui_library_injection.h"
 #include "cc2x.h"
+#include "runtime/mod_loader.h"
 #include <Windows.h>
 #include <algorithm>
 #include <cstdint>
@@ -141,7 +142,7 @@ void Invoke(GameScriptVector& vector) {
   cpu.ebp = static_cast<std::uint32_t>(reinterpret_cast<std::uintptr_t>(&vector) + 0x3C);
   hook(&cpu, nullptr);
 }
-bool ExecuteOwnedChunks(GameScriptVector& vector) {
+bool ExecuteOwnedChunks(GameScriptVector& vector,const char* expected="stock:first:second") {
   lua_State* state = luaL_newstate();
   if (!state) return false;
   bool valid = true;
@@ -152,7 +153,7 @@ bool ExecuteOwnedChunks(GameScriptVector& vector) {
   }
   lua_getglobal(state, "fixture_sequence");
   const char* sequence = lua_tostring(state, -1);
-  valid = valid && sequence && std::strcmp(sequence, "stock:first:second") == 0;
+  valid = valid && sequence && std::strcmp(sequence, expected) == 0;
   lua_close(state); return valid;
 }
 } // namespace
@@ -184,6 +185,14 @@ int main() {
     activePackages.push_back(package.wstring());
   }
   cc2x_api api{};
+  const auto profiledPackage=root/L"profiled";
+  Write(profiledPackage/"mod.xml","<data/>");
+  const std::string stock="fixture_sequence = 'stock'\nfunction begin() end\n";
+  Write(profiledPackage/"content/cc2x/screen_extensions.json",
+      R"({"schema":2,"extensions":[{"screen":"scripts/screen_vehicle_control.lua","source":"cc2x/ui/owned.lua","profiles":[{"sha256":")"+
+      cc2::host::ScreenSourceSha256(stock)+R"(","edits":[{"offset":0,"remove":0,"insert":"fixture_profiled=true\n"}]}]}]})");
+  Write(profiledPackage/"content/cc2x/ui/owned.lua","fixture_sequence = fixture_sequence .. ':profiled'\n");
+  activePackages.push_back(profiledPackage.wstring());
   api.api_version = 8; api.size = sizeof(api); api.module_base = 0x00400000;
   api.game_build = "1.5.18-win32-r2"; api.va = Va; api.log = Log;
   api.patch_begin = Begin; api.patch_mid = Mid; api.patch_commit = Commit; api.patch_abort = Abort;
@@ -213,6 +222,20 @@ int main() {
   CHECK(std::strcmp(At(main, 2).source.data, "fixture_sequence = fixture_sequence .. ':first'\n") == 0);
   CHECK(std::strcmp(At(main, 3).source.data, "fixture_sequence = fixture_sequence .. ':second'\n") == 0);
   CHECK(ExecuteOwnedChunks(main)); Release(main);
+  auto profiled=Scripts("scripts/screen_vehicle_control.lua");
+  // Force growth while the hook owns a replacement source buffer.
+  profiled.size=3;
+  Set(&At(profiled,2).name,"scripts/another_fixture.lua");
+  Set(&At(profiled,2).source,"another_fixture=true\n");
+  Invoke(profiled);
+  CHECK(profiled.size==4&&profiled.capacity==6);
+  CHECK(std::string(At(profiled,1).source.data).find("fixture_profiled=true\n")==0);
+  CHECK(ExecuteOwnedChunks(profiled,"stock:profiled"));Release(profiled);
+  auto changed=Scripts("scripts/screen_vehicle_control.lua");
+  std::free(At(changed,1).source.data);At(changed,1).source={};
+  Set(&At(changed,1).source,"fixture_sequence = 'updated by another mod'\n");
+  Invoke(changed);CHECK(changed.size==2);
+  CHECK(std::string(At(changed,1).source.data)=="fixture_sequence = 'updated by another mod'\n");Release(changed);
 
   // Files are copied for the process snapshot; no per-frame file execution/read.
   std::filesystem::remove_all(root);

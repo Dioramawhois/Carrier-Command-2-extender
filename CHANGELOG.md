@@ -2,6 +2,13 @@
 
 ## 0.8.1-client-beta.1 (2026-11-04)
 
+- Add optional schema-2 screen source profiles: canonical SHA-256, bounded
+  ordered byte edits, syntax-only validation and atomic in-memory delivery with
+  the owned helper. Unknown sources keep their original code. No third-party
+  screen is shipped or rewritten, and no gameplay profile is built into the SDK.
+- Add native hash/range/overlap/syntax and actual-hook ring-growth fixtures,
+  plus descriptor/package validation for separate screen addons.
+
 - Unify 0.8.0 waypoint-origin/session safety and 0.7.1 optional screen extensions
   in one current runtime. Keep C API 8, framework C API 1 and Lua API 2 intact.
 - Preserve the reviewed screen hook and bounded source/path validation, together

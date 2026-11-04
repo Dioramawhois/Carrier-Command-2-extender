@@ -71,6 +71,21 @@ int main() {
   Write(active / source, "--" + std::string(256 * 1024 - 2, ' '));
   CHECK(discover().extensions.size() == 1); // Inclusive source limit.
   Write(active / source, "return true\n");
+  const std::string edit=R"({"offset":0,"remove":0,"insert":"-- owned\n"})";
+  const std::string profile=R"({"sha256":")"+std::string(64,'a')+R"(","edits":[)"+edit+"]}";
+  auto withProfile=[&](const std::string& value) {
+    return R"({"schema":2,"extensions":[{"screen":"scripts/a.lua","source":"cc2x/ui/owned.lua","profiles":[)"+value+"]}]}";
+  };
+  Write(active / manifest,withProfile(profile));
+  result=discover();CHECK(result.extensions.size()==1&&result.extensions[0].profiles.size()==1);
+  Write(active / manifest,withProfile(profile+","+profile));CHECK(discover().extensions.empty());
+  Write(active / manifest,withProfile(R"({"sha256":"bad","edits":[)"+edit+"]}"));CHECK(discover().extensions.empty());
+  for(const auto& invalidEdit:{std::string(R"({"offset":-1,"remove":0,"insert":""})"),
+      std::string(R"({"offset":0,"remove":0,"insert":"\u0000"})"),
+      std::string(R"({"offset":2097153,"remove":0,"insert":""})")}) {
+    Write(active / manifest,withProfile(R"({"sha256":")"+std::string(64,'a')+R"(","edits":[)"+invalidEdit+"]}"));
+    CHECK(discover().extensions.empty());
+  }
   Write(active / manifest,
       "{\"schema\":1,\"extensions\":[{\"screen\":\"scripts/a.lua\",\"source\":\"cc2x/ui/owned.lua\"},"
       "{\"screen\":\"scripts/b.lua\",\"source\":\"cc2x/ui/missing.lua\"}]}");

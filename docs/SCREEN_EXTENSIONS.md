@@ -3,6 +3,39 @@
 The current unified runtime is **0.8.1-client-beta.1**. It includes both this
 mechanism and the 0.8 waypoint-origin/session-safety capabilities.
 
+## Hash-pinned source edits (schema 2)
+
+Schema 2 may add `profiles` to an extension. This lets a separate addon integrate
+with an installed screen without shipping that source or editing its files.
+The SDK contains no mod-specific profiles or gameplay policy.
+
+```json
+{"schema":2,"extensions":[{"screen":"scripts/example.lua","source":"cc2x/ui/owned.lua","profiles":[{"sha256":"64 lowercase hexadecimal digits","edits":[{"offset":0,"remove":0,"insert":"-- owned addition\n"}]}]}]}
+```
+
+Hashes and byte offsets refer to UTF-8 source with an optional leading BOM
+removed and CRLF normalized to LF. There are at most eight profiles per screen
+and 64 ordered, non-overlapping edits per profile. Offsets/removal lengths are
+nonnegative integers; repeated offsets are rejected. Inserted text across an
+extension's profiles is bounded to 256 KiB. The descriptor retains its 64 KiB
+limit. Input and transformed screens are bounded to 2 MiB each.
+
+The actual engine source must match exactly one SHA-256 profile. Unknown or
+ambiguous screens keep their source and receive no matching helper. Modified
+source is syntax-checked in private Lua 5.3 under the existing 8 MiB allocation
+budget, without opening libraries or executing Lua. The hook then appends the
+owned helper and atomically replaces the in-memory source buffer. Allocation or
+append failure preserves the original screen. Disk files are never rewritten.
+
+`screen-source-edits-v1` is the capability; detect it in screen Lua with
+`cc2x.has("screen_source_edits_v1")`. `SCREEN_SOURCE_EDIT_APPLIED` and
+`SCREEN_SOURCE_EDIT_SKIPPED` record delivery or refusal. Profiles follow
+activation order; a subsequent profile must match the source produced by earlier
+edits. This is deterministic source editing, not automatic conflict resolution
+or a resource-merging API. Schema 1 retains append-only behavior.
+
+## Append-only extensions
+
 CC2X 0.7.1-client-beta.1 adds `screen-extensions-v1` on the reviewed Windows
 1.5.18-win32-r2 profile. It lets an enabled package append its own Lua code to
 an exact game screen, after the stock screen chunks execute and before `begin`.

@@ -26,7 +26,16 @@ struct ModDescriptor {
 struct ModDiscovery {std::vector<ModDescriptor> mods;std::vector<std::wstring> diagnostics;};
 // Explicit screen-VM extensions are independent of Bridge gameplay modules.
 // Sources are copied once from enabled packages; no file is executed here.
-struct ScreenExtensionDescriptor {std::string screen,sourcePath,source;};
+struct ScreenSourceEdit {std::size_t offset=0,remove=0;std::string insert;};
+struct ScreenSourceProfile {std::string sha256;std::vector<ScreenSourceEdit> edits;};
+enum class ScreenSourceEditResult {NoProfile,Applied,Rejected};
+std::string ScreenSourceSha256(std::string_view source);
+ScreenSourceEditResult TransformScreenSource(const std::vector<ScreenSourceProfile>& profiles,
+                                            std::string_view source,std::string* output);
+struct ScreenExtensionDescriptor {
+  std::string screen,sourcePath,source;
+  std::vector<ScreenSourceProfile> profiles;
+};
 struct ScreenExtensionDiscovery {
   std::vector<ScreenExtensionDescriptor> extensions;
   std::vector<std::wstring> diagnostics;
