@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CC2X screen extensions v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "extensions"],
+  "properties": {
+    "schema": {"const": 1},
+    "extensions": {
+      "type": "array", "maxItems": 16,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["screen", "source"],
+        "properties": {
+          "screen": {"type": "string", "maxLength": 240, "pattern": "^scripts/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_.\\-/]+\\.lua$"},
+          "source": {"type": "string", "maxLength": 240, "pattern": "^cc2x/ui/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_.\\-/]+\\.lua$"}
+        }
+      }
+    }
+  }
+}

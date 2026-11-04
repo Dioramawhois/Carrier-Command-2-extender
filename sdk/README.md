@@ -13,6 +13,11 @@ they do not need a C compiler or changes to the SDK core. Gameplay behavior and
 interfaces stay in separate mods. The older 0.6 client beta does not
 implement these new calls; do not label a new mod compatible with that binary.
 
+The 0.7.1 client candidate also supports optional package-owned
+[screen extensions](../docs/SCREEN_EXTENSIONS.md), including stock menus.
+This package contract is separate from the independent Lua API and adds no
+default screen policy to the SDK.
+
 The independent Host automatically installs sdk/cc2.lua as cc2 and require('cc2')
 in every active Bridge VM. Do not inject it into game screen templates.
 

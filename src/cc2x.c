@@ -16,7 +16,7 @@
 #include "cc2x_post_queue.h"
 #include "cc2x_session.h"
 
-#define CC2X_VERSION "0.7.0-client-beta.1"
+#define CC2X_VERSION "0.7.1-client-beta.1"
 
 #if defined(_MSC_VER) && !defined(CC2X_USE_GNU_ASM_ABI)
 #define CC2X_THISCALL __thiscall

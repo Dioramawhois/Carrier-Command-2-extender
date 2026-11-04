@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.7.1-client-beta.1 (2026-11-04)
+
+- Add optional `screen-extensions-v1` packages for exact game screen VMs,
+  including stock menus. Reuse the reviewed single screen hook; no SDK menu or
+  gameplay policy is enabled by default, and no custom vehicles are required.
+- Read only enabled packages, preserve declared order, and reject malformed,
+  unsafe, oversized or syntactically invalid sources before engine execution.
+  Add activation/path/syntax regression fixtures and author documentation.
+- This candidate needs fresh game acceptance for the consuming screen policy;
+  native regression checks do not imply visual, gameplay or multiplayer proof.
+
 ## 0.7.0-client-beta.1 (2026-11-03)
 
 - Preserve C/C++ plugin development alongside Lua. Add the named framework C

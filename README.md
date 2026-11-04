@@ -5,7 +5,15 @@ CC2X is a shared framework for **C/C++ plugins and Lua mods**. Install one
 optional packages. The SDK itself adds no aircraft, flight modes, brakes,
 button layouts or island gameplay rules.
 
-## Current client beta: 0.7.0-client-beta.1
+## Screen-extension candidate: 0.7.1-client-beta.1
+
+The source adds optional, package-owned screen Lua extensions for the reviewed
+Windows 1.5.18 build. This reaches stock menus without modifying vanilla files
+or enabling an SDK gameplay policy. See [the author contract](docs/SCREEN_EXTENSIONS.md).
+The candidate requires its own runtime acceptance; the published release below
+retains its original validation scope.
+
+## Published client beta: 0.7.0-client-beta.1
 
 This release provides the stable **C API 8** prefix, the new **framework C API
 1**, and **independent Lua API 2**. Both languages use the same checked engine

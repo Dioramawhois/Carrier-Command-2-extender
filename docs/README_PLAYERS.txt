@@ -1,5 +1,5 @@
 CC2X SDK - Shared Runtime for Carrier Command 2
-0.7.0-client-beta.1 / C API 8 / framework C API 1 / independent Lua API 2
+0.7.1-client-beta.1 / C API 8 / framework C API 1 / independent Lua API 2
 =======================================================================
 
 CC2X supplies common native engine access and Lua support for compatible mods.
@@ -16,7 +16,7 @@ INSTALL WITH A MATCHING CC2 MODLOADER
 4. Wait until the selected set is ready, then click Launch.
 
 Automatic installation requires a ModLoader build that explicitly reviews
-this exact 0.7 runtime and its new API capabilities. ModLoader 0.4.0 beta 2
+this exact 0.7.1 runtime and its new API capabilities. ModLoader 0.4.0 beta 2
 uses an older 0.6 runtime and is not the matching build. Until the matching
 update is available, use the manual route below. Do not bypass DLL checks.
 ModLoader releases:
@@ -25,7 +25,7 @@ https://github.com/Dioramawhois/CC2-Mod-Compatibility-Engine/releases
 INSTALL MANUALLY
 
 1. Close the game. Download dinput8.dll from this exact client beta:
-   https://github.com/Dioramawhois/Carrier-Command-2-extender/releases/download/0.7.0-client-beta.1/dinput8.dll
+   https://github.com/Dioramawhois/Carrier-Command-2-extender/releases/download/0.7.1-client-beta.1/dinput8.dll
    Or copy it from the SDK's downloaded Workshop folder inside your Steam library:
    steamapps\workshop\content\1489630\3833014670\content\dinput8.dll
 2. In Steam, right-click Carrier Command 2 > Manage > Browse local files.
