@@ -10,10 +10,13 @@ same implementation for supported engine operations. Gameplay rules, button
 names, timers, key assignments and user interfaces belong to optional mods.
 The framework does not select or activate a gameplay feature by itself.
 
-The unreleased 0.8 network branch additionally provides [waypoint origin](ORDER_ORIGIN.md):
+Since 0.8.0-client-beta.1 the runtime additionally provides [waypoint origin](ORDER_ORIGIN.md):
 the separately named `cc2x_orders_api.available/current` and `cc2.orders.*`
-read one checked backend. This optional extension is not in the published 0.7
-binary and cannot be inferred from C API 8 or Lua API 2 alone.
+read one checked backend. This optional extension is not in the 0.7 binaries
+and cannot be inferred from C API 8 or Lua API 2 alone.
+
+The remaining Brake v15 gaps (carrier dock request, deck recovery gates and
+persistent module settings) are described in [BRAKE_V15_LUA_PORT.md](BRAKE_V15_LUA_PORT.md).
 
 ## Capability map
 
