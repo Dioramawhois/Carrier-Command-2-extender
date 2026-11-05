@@ -107,6 +107,7 @@ def main():
         'integrations/waypoint-origin-profile.json',
         'sdk/schemas/framework-capabilities.json', 'sdk/schemas/screen_extensions.schema.json', 'NOTICE.md',
         'sdk/schemas/carrier-recovery.schema.json', 'sdk/schemas/module-settings.schema.json',
+        'sdk/schemas/equipment.schema.json',
         'LICENSE', 'third_party/Lua-LICENSE.txt')]
     input_hashes = {p.relative_to(ROOT).as_posix(): sha(p) for p in inputs}
     compiler_hash = sha(compiler)
@@ -166,6 +167,7 @@ def main():
             return [by_source[ROOT / 'src' / name] for name in names]
         registry = ['api/vehicle/definition_registry.cpp', 'api/vehicle/ui_catalog.cpp', 'api/ui/resource_registry.cpp']
         tests = [
+            ('attachment_rules_test.cpp', [], []),
             ('carrier_recovery_test.cpp', src_objects(['api/carrier/recovery.cpp', 'platform/seh_guard.c']), []),
             ('module_settings_test.cpp', src_objects(['runtime/module_settings.cpp']), []),
             ('module_extensions_parity_test.cpp', src_objects(CPP_SOURCES + ['entity_registry.c', 'order_context.c', 'platform/seh_guard.c']) + lua_objects, []),

@@ -2,6 +2,12 @@
 
 ## 0.9.0-dev (unreleased, 2026-11-05)
 
+- Add optional equipment C API 1 and matching independent Lua functions for
+  free compatible stock attachments on parked, stationary vehicles. Reuse the
+  native setter and stock state/peer notifications; no carrier inventory is touched.
+  Exact executable and relocation-aware entries are checked; faults disable this
+  operation until the next session. Gameplay and remote-client acceptance are pending.
+
 - Add optional named C carrier API 1 and equivalent independent Lua operations:
   checked, next-tick carrier recall, bounded owner-scoped completion records,
   and a lazy transactional deck-recovery mechanism for planes and helicopters.

@@ -47,6 +47,8 @@ class Host {
   void ProcessHangarSpawn(void* server);
   void CompleteHangarSpawn();
   void LogHangarSpawn(const char* event,const char* detail="");
+  bool EquipmentAvailable();
+  bool SetVehicleAttachment(std::uint32_t vehicle,std::uint32_t slot,std::int32_t definition,bool fill,std::string* reason);
   bool KeyDown(int key) const;
   void RequestReload();
   void ObserveGameResourceInit();
@@ -101,6 +103,8 @@ class Host {
   void Register(Module& m);
   void RegisterNativeBindings(Module& m);
   cc2x_api api_{};
+  unsigned long long equipmentGeneration_=0;
+  bool equipmentEnabled_=false,equipmentFault_=false;
   api::carrier::Recovery recovery_;
   std::map<std::string,std::unique_ptr<ModuleSettings>> settings_;
   struct SettingsBudget {ULONGLONG second=0;unsigned count=0;};

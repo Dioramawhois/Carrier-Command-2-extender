@@ -169,6 +169,15 @@
       "lua": [
         "settings.*"
       ]
+    },
+    {
+      "name": "vehicle-equipment",
+      "c": [],
+      "c_extension": "cc2x_equipment_api (cc2x_query_equipment_v1)",
+      "lua": [
+        "equipment.available",
+        "equipment.set_attachment"
+      ]
     }
   ],
   "native_binding_provider": {

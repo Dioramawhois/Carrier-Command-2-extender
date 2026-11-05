@@ -14,6 +14,7 @@ local M = {
     session = {},
     orders = {},
     settings = {},
+    equipment = {},
     vehicles = {},
     messages = {},
     events = {},
@@ -26,6 +27,16 @@ local M = {
 -- Screen/UI scripts use cc2x.modules.send(owner, topic, subject, value).
 -- Optional additive interfaces. Older runtimes return unavailable; API 2 and
 -- all pre-existing selectors keep their contracts.
+function M.equipment.available()
+    local native = rawget(_G, "cc2_bridge_equipment_available")
+    return type(native) == "function" and native() == true
+end
+function M.equipment.set_attachment(vehicle_id, slot, definition, fill)
+    local native = rawget(_G, "cc2_bridge_equipment_set")
+    if type(native) ~= "function" then return false, "unavailable" end
+    if fill == nil then fill = true end
+    return native(vehicle_id, slot, definition, fill)
+end
 function M.carrier.dock_available()
     local native = rawget(_G, "cc2_bridge_carrier_available")
     return type(native) == "function" and native("dock") == true
