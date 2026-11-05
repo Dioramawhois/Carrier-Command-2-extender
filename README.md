@@ -5,6 +5,15 @@ CC2X is a shared framework for **C/C++ plugins and Lua mods**. Install one
 optional packages. The SDK itself adds no aircraft, flight modes, brakes,
 button layouts or island gameplay rules.
 
+## Development candidate: 0.9.0-dev
+
+Adds optional [carrier docking and deck recovery](docs/CARRIER_RECOVERY.md)
+and [persistent module settings](docs/MODULE_SETTINGS.md), shared by C and Lua.
+The published 0.8.1 release does not contain these interfaces. Stable C API 8,
+framework API 1, Lua API 2 and existing screen extensions remain supported.
+The candidate is for offline validation and subsequent game acceptance; it is
+not installed into a game or published by the build process.
+
 ## Current client beta: 0.8.1-client-beta.1
 
 Unifies guarded incoming waypoint origin and bounded session-safe dispatch

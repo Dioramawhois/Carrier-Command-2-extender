@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:cc2x:carrier-recovery:1",
+  "title": "Optional carrier recovery window options (0.9.0 development)",
+  "type": "object",
+  "properties": {
+    "window_ticks": {"type": "integer", "minimum": 1, "maximum": 600, "default": 300, "description": "Simulation ticks. Helicopters additionally require <=300 at runtime."},
+    "grants": {"type": "integer", "minimum": 1, "maximum": 3, "default": 3},
+    "touch_jumps": {"type": "integer", "minimum": 1, "maximum": 30, "default": 30}
+  },
+  "additionalProperties": true,
+  "description": "Unknown keys are ignored. Runtime also checks ownership, one window per continuous recall, session, thread, exact engine profile, parked aircraft, bay and hook availability. Capability: carrier-recovery-v1. No gameplay policy is enabled by this object."
+}

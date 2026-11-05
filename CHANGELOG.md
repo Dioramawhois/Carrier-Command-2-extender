@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.9.0-dev (unreleased, 2026-11-05)
+
+- Add optional named C carrier API 1 and equivalent independent Lua operations:
+  checked, next-tick carrier recall, bounded owner-scoped completion records,
+  and a lazy transactional deck-recovery mechanism for planes and helicopters.
+- Enforce one armed aircraft, one bounded window per continuous recall, same
+  team, parked/wheel/bay guards, session/thread checks, hook-side budgets,
+  an abort loop breaker and explicit XMM preservation. Legacy hook ownership
+  is retained; capability queries never install hooks. Gameplay policy remains
+  in separately distributed mods.
+- Add optional named C settings API 1 and `cc2.settings.get/set/reload`:
+  bounded numbers/booleans, cached reads, clamped numeric reads, owner isolation,
+  atomic persistence, path/reparse/hardlink guards and bounded write/reload rate.
+  Lua retains no arbitrary filesystem or OS access.
+- Preserve all earlier ABI layouts and version requirements. Add paired C/real
+  Lua and native regressions, contracts and author documentation. Full Brake
+  gameplay, multiplayer, dedicated-server and macOS acceptance remain unverified.
+
 ## 0.8.1-client-beta.1 (2026-11-04)
 
 - Add optional schema-2 screen source profiles: canonical SHA-256, bounded

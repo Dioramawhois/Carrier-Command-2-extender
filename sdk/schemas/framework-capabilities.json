@@ -147,6 +147,28 @@
         "carrier.helm_throttle_input",
         "animation.*"
       ]
+    },
+    {
+      "name": "carrier-recovery",
+      "c": [],
+      "c_extension": "cc2x_carrier_api (cc2x_query_carrier_v1)",
+      "lua": [
+        "carrier.dock_available",
+        "carrier.recovery_available",
+        "carrier.dock_request",
+        "carrier.dock_result",
+        "carrier.recovery_arm",
+        "carrier.recovery_disarm",
+        "carrier.recovery_status"
+      ]
+    },
+    {
+      "name": "module-settings",
+      "c": [],
+      "c_extension": "cc2x_settings_api (cc2x_query_settings_v1)",
+      "lua": [
+        "settings.*"
+      ]
     }
   ],
   "native_binding_provider": {
@@ -158,7 +180,7 @@
     "reason": "C library supplies additional functions to Lua modules; game and independent VM handles are distinct"
   },
   "remaining_migrations": [
-    "Brake v15 private carrier-recovery hooks need checked shared C/Lua operations",
+    "Separate Brake Lua gameplay policy must adopt and validate the optional carrier primitives",
     "Fresh real-game, remote multiplayer and dedicated-server acceptance"
   ]
 }

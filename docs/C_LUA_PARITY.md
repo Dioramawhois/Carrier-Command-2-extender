@@ -1,5 +1,12 @@
 # C, C++ and Lua capability parity
 
+The 0.9.0 development candidate adds the separately named
+[`cc2x_carrier_api`](CARRIER_RECOVERY.md) and
+[`cc2x_settings_api`](MODULE_SETTINGS.md), with matching `cc2.carrier.*` and
+`cc2.settings.*` functions over shared backends. They do not change the existing
+C prefix/framework layouts or independent Lua API 2. Discover each optional
+extension; the published 0.8.1 binary does not provide them.
+
 CC2X 0.7.0-client-beta.1 provides stable C prefix API 8, named framework C API 1
 and independent Lua API 2. These additions are **not** in the older
 0.6.0-client-beta.1 runtime. See the release assets for the exact source,
@@ -10,7 +17,7 @@ same implementation for supported engine operations. Gameplay rules, button
 names, timers, key assignments and user interfaces belong to optional mods.
 The framework does not select or activate a gameplay feature by itself.
 
-The unreleased 0.8 network branch additionally provides [waypoint origin](ORDER_ORIGIN.md):
+The published 0.8/0.8.1 runtime additionally provides [waypoint origin](ORDER_ORIGIN.md):
 the separately named `cc2x_orders_api.available/current` and `cc2.orders.*`
 read one checked backend. This optional extension is not in the published 0.7
 binary and cannot be inferred from C API 8 or Lua API 2 alone.
@@ -137,13 +144,11 @@ those powers are not exposed to Lua. Independent Lua has no `io`, `os`, native
 library loader or arbitrary memory-patching API. New engine research should
 become a checked shared primitive with public C and Lua access and paired tests.
 
-The existing Brake v15 native mod still contains private carrier recovery hook
-logic. Its complete Lua port needs additional generic engine gates / carrier
-docking operations. Those operations are not yet in either shared interface.
-The existing native mod therefore cannot yet be used as evidence that every
-one of its behaviors can already be recreated through public Lua. The full
-Brake/Island migrations and fresh gameplay acceptance remain gates for those
-gameplay-mod releases; this framework beta does not claim to complete them.
+The 0.9.0 candidate adapts Brake v15's private carrier engine mechanisms into
+the optional shared carrier interface; its gameplay policy remains a separate
+Lua-mod migration. Paired synthetic tests do not establish that the native
+mod's historical game outcomes carry over to this new runtime. Full migration
+and fresh gameplay acceptance remain gates for the gameplay-mod releases.
 
 Do not reclassify a C gameplay implementation as a framework capability merely
 by giving it a Lua enable switch. Shared engine mechanisms belong here; each

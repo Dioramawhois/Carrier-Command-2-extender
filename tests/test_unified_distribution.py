@@ -41,6 +41,7 @@ class DistributionTest(unittest.TestCase):
                          'cc2x_query_session_v1'} <= names)
         if os.environ.get('CC2X_TEST_RUNTIME'):
             self.assertIn('cc2x_query_framework_v1', names)
+        self.assertTrue({'cc2x_query_carrier_v1', 'cc2x_query_settings_v1'} <= names)
 
     def test_runtime_does_not_embed_aircraft_scenarios_or_research_activation(self):
         binary = RUNTIME.read_bytes()

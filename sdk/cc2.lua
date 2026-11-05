@@ -13,6 +13,7 @@ local M = {
     entities = {},
     session = {},
     orders = {},
+    settings = {},
     vehicles = {},
     messages = {},
     events = {},
@@ -23,6 +24,60 @@ local M = {
 }
 
 -- Screen/UI scripts use cc2x.modules.send(owner, topic, subject, value).
+-- Optional additive interfaces. Older runtimes return unavailable; API 2 and
+-- all pre-existing selectors keep their contracts.
+function M.carrier.dock_available()
+    local native = rawget(_G, "cc2_bridge_carrier_available")
+    return type(native) == "function" and native("dock") == true
+end
+function M.carrier.recovery_available()
+    local native = rawget(_G, "cc2_bridge_carrier_available")
+    return type(native) == "function" and native("recovery") == true
+end
+function M.carrier.dock_request(carrier_id, vehicle_id)
+    local native = rawget(_G, "cc2_bridge_carrier_dock_request")
+    if type(native) ~= "function" then return false, "unavailable" end
+    return native(carrier_id, vehicle_id)
+end
+function M.carrier.dock_result(request_id)
+    local native = rawget(_G, "cc2_bridge_carrier_dock_result")
+    if type(native) ~= "function" then return nil, "unavailable" end
+    return native(request_id)
+end
+function M.carrier.recovery_arm(carrier_id, vehicle_id, options)
+    local native = rawget(_G, "cc2_bridge_carrier_recovery_arm")
+    if type(native) ~= "function" then return false, "unavailable" end
+    return native(carrier_id, vehicle_id, options or {})
+end
+function M.carrier.recovery_disarm(vehicle_id)
+    local native = rawget(_G, "cc2_bridge_carrier_recovery_disarm")
+    if type(native) ~= "function" then return false, "unavailable" end
+    return native(vehicle_id)
+end
+function M.carrier.recovery_status(vehicle_id)
+    local native = rawget(_G, "cc2_bridge_carrier_recovery_status")
+    if type(native) ~= "function" then return nil, "unavailable" end
+    return native(vehicle_id)
+end
+function M.settings.get(key, default, minimum, maximum)
+    local native = rawget(_G, "cc2_bridge_settings_get")
+    if type(native) ~= "function" then return default, "unavailable" end
+    if type(default) == "boolean" and minimum == nil and maximum == nil then
+        return native(key, default)
+    end
+    return native(key, default, minimum, maximum)
+end
+function M.settings.set(key, value)
+    local native = rawget(_G, "cc2_bridge_settings_set")
+    if type(native) ~= "function" then return false, "unavailable" end
+    return native(key, value)
+end
+function M.settings.reload()
+    local native = rawget(_G, "cc2_bridge_settings_reload")
+    if type(native) ~= "function" then return false, "unavailable" end
+    return native()
+end
+
 -- Only this module may drain its queue or publish its reply/state. Requests
 -- are not trusted orders: each mod checks its own permissions and arguments.
 function M.messages.poll()

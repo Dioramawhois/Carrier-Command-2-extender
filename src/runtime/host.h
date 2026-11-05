@@ -6,6 +6,8 @@
 #include "early_declaration.h"
 #include "module_mailbox.h"
 #include "api/vehicle/buttons.h"
+#include "api/carrier/recovery.h"
+#include "module_settings.h"
 #include <Windows.h>
 #include <cstdint>
 #include <memory>
@@ -27,7 +29,7 @@ struct WorldReadMetrics {
 };
 class Host {
  public:
-  explicit Host(bool(*inputSampler)(int)=nullptr);
+  explicit Host(bool(*inputSampler)(int)=nullptr,api::carrier::Recovery::DockInvoker dockInvoker=nullptr);
   ~Host();
   bool Attach(const cc2x_api* api, bool installNative=true,bool deferCatalog=false);
   void PrepareStartupCatalog(); // startup worker; fixtures may explicitly finish a deferred catalog
@@ -84,6 +86,9 @@ class Host {
   void DropTasks(const std::string& owner);
   bool ReadVehicleThrottle(std::uint32_t vehicle,double* value);
   bool WriteVehicleThrottle(std::uint32_t vehicle,double value);
+  api::carrier::Recovery& Carrier(){return recovery_;}
+  ModuleSettings* Settings(const std::string& owner);
+  bool SettingsIo(const std::string& owner);
   bool DescribeNativePackage(const std::string& owner,const std::wstring& pluginDirectory,host::ModDescriptor* package);
   bool CommitNativeDeclarations(const std::vector<host::ModDescriptor>& packages,const std::vector<host::VehicleDeclaration>& declarations);
   api::vehicle::ButtonContext* CurrentButtons(){return InLuaContext()?buttonsContext_:nullptr;}
@@ -96,6 +101,10 @@ class Host {
   void Register(Module& m);
   void RegisterNativeBindings(Module& m);
   cc2x_api api_{};
+  api::carrier::Recovery recovery_;
+  std::map<std::string,std::unique_ptr<ModuleSettings>> settings_;
+  struct SettingsBudget {ULONGLONG second=0;unsigned count=0;};
+  std::map<std::string,SettingsBudget> settingsBudgets_;
   std::recursive_mutex mutex_;
   std::vector<std::unique_ptr<Module>> modules_;
   std::vector<std::unique_ptr<Module>> ruleModules_;
