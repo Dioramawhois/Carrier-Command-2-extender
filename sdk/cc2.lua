@@ -15,6 +15,7 @@ local M = {
     orders = {},
     settings = {},
     equipment = {},
+    tiles = {},
     vehicles = {},
     messages = {},
     events = {},
@@ -27,6 +28,11 @@ local M = {
 -- Screen/UI scripts use cc2x.modules.send(owner, topic, subject, value).
 -- Optional additive interfaces. Older runtimes return unavailable; API 2 and
 -- all pre-existing selectors keep their contracts.
+function M.tiles.sites(tile_id, kind, definition)
+    local native = rawget(_G, "cc2_bridge_tile_sites")
+    if type(native) ~= "function" then return nil, "unavailable" end
+    return native(tile_id, kind, definition)
+end
 function M.equipment.available()
     local native = rawget(_G, "cc2_bridge_equipment_available")
     return type(native) == "function" and native() == true
