@@ -5,16 +5,23 @@ CC2X is a shared framework for **C/C++ plugins and Lua mods**. Install one
 optional packages. The SDK itself adds no aircraft, flight modes, brakes,
 button layouts or island gameplay rules.
 
-## Development candidate: 0.9.0-dev
+## Current development preview: 0.9.0-dev
 
 Adds optional [carrier docking and deck recovery](docs/CARRIER_RECOVERY.md)
 and [persistent module settings](docs/MODULE_SETTINGS.md), shared by C and Lua.
+Also adds [parked-vehicle equipment changes](docs/VEHICLE_EQUIPMENT.md), used
+by the separate Island Airfields 2.2 addon. The exact tested runtime is released
+without changing its embedded version or native code; this is a prerelease.
 The published 0.8.1 release does not contain these interfaces. Stable C API 8,
 framework API 1, Lua API 2 and existing screen extensions remain supported.
-The candidate is for offline validation and subsequent game acceptance; it is
-not installed into a game or published by the build process.
+The owner tested Island Airfields equipment changes and three-arrival save/reload
+in an ordinary Windows host game. New native interfaces are not a blanket claim
+of full Brake, remote-client or dedicated-server acceptance. The optional CPU
+tile-site preview currently refuses the tested world's definitions; distant
+unstreamed map coordinates are not a supported feature of this preview.
+Build and packaging commands do not install or publish the runtime.
 
-## Current client beta: 0.8.1-client-beta.1
+## Previous client beta: 0.8.1-client-beta.1
 
 Unifies guarded incoming waypoint origin and bounded session-safe dispatch
 from 0.8.0 with the package-owned screen extensions from 0.7.1.

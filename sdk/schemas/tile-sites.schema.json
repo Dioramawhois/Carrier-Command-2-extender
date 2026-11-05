@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:cc2x:tile-sites:1",
+  "title": "Optional CPU tile site query",
+  "type": "object",
+  "required": ["tile_id", "kind", "definition"],
+  "properties": {
+    "tile_id": {"type": "integer", "minimum": 1, "maximum": 4294967295},
+    "kind": {"type": "integer", "minimum": 0, "maximum": 63},
+    "definition": {"type": "integer", "minimum": 0, "maximum": 63}
+  },
+  "additionalProperties": false,
+  "description": "Server-thread, session-scoped and profile-checked. One uncached query per tick, 128 cached selectors and 64 result matrices per query. Capability: tile-sites-v1."
+}

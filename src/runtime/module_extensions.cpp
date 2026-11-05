@@ -3,6 +3,8 @@
 #include "host.h"
 #include "cc2x_carrier.h"
 #include "cc2x_settings.h"
+#include "cc2x_equipment.h"
+#include "cc2x_tile_sites.h"
 extern "C" {
 #include "lua.h"
 }
@@ -68,6 +70,29 @@ int Status(lua_State* L){
  Field(L,"grants",state.grants);Field(L,"touch_jumps",state.touch_jumps);Field(L,"remaining_ticks",state.remaining_ticks);Field(L,"reason",state.reason);
  lua_pushboolean(L,state.armed);lua_setfield(L,-2,"armed");return 1;
 }
+int EquipmentAvailable(lua_State* L){lua_pushboolean(L,Context(L)&&lua_gettop(L)==0&&H(L)->EquipmentAvailable());return 1;}
+int EquipmentSet(lua_State* L){
+ std::uint64_t vehicle=0,slot=0;int exact=0;std::string reason;
+ const auto definition=lua_type(L,3)==LUA_TNUMBER?lua_tointegerx(L,3,&exact):0;
+ if(!Context(L)||lua_gettop(L)!=4||!Integer(L,1,&vehicle)||!Integer(L,2,&slot,63)||!exact||definition< -1||definition>=102||lua_type(L,4)!=LUA_TBOOLEAN)
+ return Result(L,false,"invalid_equipment_arguments_or_context");
+ const bool ok=H(L)->SetVehicleAttachment(static_cast<std::uint32_t>(vehicle),static_cast<std::uint32_t>(slot),static_cast<std::int32_t>(definition),lua_toboolean(L,4)!=0,&reason);
+ return Result(L,ok,reason.c_str());
+}
+int TileSites(lua_State* L){
+ std::uint64_t tile=0,kind=0,definition=0;std::string reason;
+ std::vector<cc2::api::world::TileSite> sites;
+ if(!Context(L)||lua_gettop(L)!=3||!Integer(L,1,&tile)||!Integer(L,2,&kind,63)||!Integer(L,3,&definition,63)||
+ !H(L)->ReadTileSites(static_cast<std::uint32_t>(tile),static_cast<std::uint32_t>(kind),static_cast<std::uint32_t>(definition),&sites,&reason)){
+ lua_pushnil(L);lua_pushstring(L,reason.empty()?"invalid_tile_site_arguments":reason.c_str());return 2;}
+ lua_newtable(L);int i=1;
+ for(const auto& site:sites){lua_newtable(L);lua_newtable(L);int j=1;
+ for(double value:site.transform){lua_pushnumber(L,value);lua_rawseti(L,-2,j++);}lua_setfield(L,-2,"transform");
+ Field(L,"flags_low",site.flags_low);Field(L,"flags_high",site.flags_high);
+ lua_pushnumber(L,site.transform[9]);lua_setfield(L,-2,"x");lua_pushnumber(L,site.transform[10]);lua_setfield(L,-2,"y");
+ lua_pushnumber(L,site.transform[11]);lua_setfield(L,-2,"z");lua_rawseti(L,-2,i++);}
+ return 1;
+}
 int SettingGet(lua_State* L){
  std::string key;auto* h=H(L);const auto args=lua_gettop(L);
  if(!Context(L)||args<2||args>4||!Text(L,1,&key)||!ModuleSettings::SafeName(key)){lua_pushnil(L);lua_pushliteral(L,"invalid_setting_arguments_or_context");return 2;}
@@ -96,6 +121,8 @@ void RegisterModuleExtensions(lua_State* L,Host* host,const std::string& owner){
  auto add=[&](const char* name,lua_CFunction fn){lua_pushlightuserdata(L,host);lua_pushlstring(L,owner.data(),owner.size());lua_pushcclosure(L,fn,2);lua_setglobal(L,name);};
  add("cc2_bridge_carrier_available",Available);add("cc2_bridge_carrier_dock_request",Request);add("cc2_bridge_carrier_dock_result",DockResult);
  add("cc2_bridge_carrier_recovery_arm",Arm);add("cc2_bridge_carrier_recovery_disarm",Disarm);add("cc2_bridge_carrier_recovery_status",Status);
+ add("cc2_bridge_tile_sites",TileSites);
+ add("cc2_bridge_equipment_available",EquipmentAvailable);add("cc2_bridge_equipment_set",EquipmentSet);
  add("cc2_bridge_settings_get",SettingGet);add("cc2_bridge_settings_set",SettingSet);add("cc2_bridge_settings_reload",SettingReload);
 }
 ModuleSettings* Host::Settings(const std::string& owner){
@@ -146,4 +173,29 @@ extern "C" CC2X_EXPORT const cc2x_carrier_api* cc2x_query_carrier_v1(std::uint32
 extern "C" CC2X_EXPORT const cc2x_settings_api* cc2x_query_settings_v1(std::uint32_t version,std::uint32_t size){
  static const cc2x_settings_api api{CC2X_SETTINGS_VERSION,sizeof(api),CC2X_SETTINGS_ID,Number,Boolean,SetNumber,SetBoolean,Reload};
  return version==CC2X_SETTINGS_VERSION&&size==sizeof(api)?&api:nullptr;
+}
+
+namespace {
+int EquipmentAvailableC(){auto* h=SharedHost();return h&&h->EquipmentAvailable();}
+int EquipmentSetC(std::uint32_t v,std::uint32_t slot,std::int32_t definition,int fill){
+ auto* h=SharedHost();std::string reason;return h&&(fill==0||fill==1)&&h->SetVehicleAttachment(v,slot,definition,fill!=0,&reason);
+}
+}
+extern "C" CC2X_EXPORT const cc2x_equipment_api* cc2x_query_equipment_v1(std::uint32_t version,std::uint32_t size){
+ static const cc2x_equipment_api api{CC2X_EQUIPMENT_VERSION,sizeof(api),CC2X_EQUIPMENT_ID,EquipmentAvailableC,EquipmentSetC};
+ return version==CC2X_EQUIPMENT_VERSION&&size==sizeof(api)?&api:nullptr;
+}
+
+namespace {
+int ReadTileSitesC(std::uint32_t id,std::uint32_t kind,std::uint32_t definition,cc2x_tile_site* out,std::uint32_t capacity,std::uint32_t* count){
+ auto* h=SharedHost();if(!h||!count||capacity>64||(!out&&capacity))return 0;*count=0;
+ std::vector<cc2::api::world::TileSite> sites;std::string reason;
+ if(!h->ReadTileSites(id,kind,definition,&sites,&reason))return 0;*count=static_cast<std::uint32_t>(sites.size());
+ if(capacity<sites.size())return 0;
+ for(std::size_t i=0;i<sites.size();++i){std::memcpy(out[i].transform,sites[i].transform.data(),sizeof(out[i].transform));out[i].flags_low=sites[i].flags_low;out[i].flags_high=sites[i].flags_high;}return 1;
+}
+}
+extern "C" CC2X_EXPORT const cc2x_tile_sites_api* cc2x_query_tile_sites_v1(std::uint32_t version,std::uint32_t size){
+ static const cc2x_tile_sites_api api{CC2X_TILE_SITES_VERSION,sizeof(api),CC2X_TILE_SITES_ID,ReadTileSitesC};
+ return version==CC2X_TILE_SITES_VERSION&&size==sizeof(api)?&api:nullptr;
 }

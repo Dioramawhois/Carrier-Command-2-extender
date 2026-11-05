@@ -3,6 +3,10 @@
 #include "carrier_fixture.h"
 #include "runtime/host.h"
 #include "cc2x_settings.h"
+#include "cc2x_equipment.h"
+#include "cc2x_tile_sites.h"
+extern "C" const cc2x_tile_sites_api* cc2x_query_tile_sites_v1(uint32_t,uint32_t);
+extern "C" const cc2x_equipment_api* cc2x_query_equipment_v1(uint32_t,uint32_t);
 #include <filesystem>
 #include <fstream>
 #include <cstdarg>
@@ -33,6 +37,14 @@ local cc2=require('cc2')
 local n,request=0,nil
 return {on_load=function()
  assert(io==nil and os==nil and debug==nil and package==nil)
+ assert(cc2.tiles.sites(7,0,3)==nil)
+ assert(cc2.tiles.sites(7,64,3)==nil)
+ assert(cc2.tiles.sites('7',0,3)==nil)
+ assert(not cc2.equipment.available())
+ assert(not cc2.equipment.set_attachment(7,0,30))
+ assert(not cc2.equipment.set_attachment(7,-1,30))
+ assert(not cc2.equipment.set_attachment(7,0,102))
+ assert(not cc2.equipment.set_attachment(7,0,'30'))
  assert(cc2.carrier.dock_available() and cc2.carrier.recovery_available())
  assert(cc2.settings.get('brake',0.25,0,1)==0.25)
  assert(cc2.settings.set('brake',0.75))
@@ -67,6 +79,12 @@ end}
  {
  cc2::runtime::Host h(nullptr,Dock);assert(h.Attach(&a,false));h.Session(server,true);h.Tick(server);
  const auto* c=cc2x_carrier_resolve(cc2x_query_carrier_v1);const auto* s=cc2x_settings_resolve(cc2x_query_settings_v1);
+ const auto* sites=cc2x_query_tile_sites_v1(1,sizeof(cc2x_tile_sites_api));
+ std::uint32_t siteCount=0;assert(sites&&!sites->read(7,0,3,nullptr,0,&siteCount));
+ assert(!cc2x_query_tile_sites_v1(2,sizeof(*sites))&&!cc2x_query_tile_sites_v1(1,sizeof(*sites)-1));
+ const auto* e=cc2x_equipment_resolve(cc2x_query_equipment_v1);
+ assert(e&&!e->available()&&!e->set_attachment(7,0,30,1));
+ assert(!cc2x_query_equipment_v1(2,sizeof(*e))&&!cc2x_query_equipment_v1(1,sizeof(*e)-1));
  assert(c&&s&&!cc2x_query_carrier_v1(2,sizeof(*c))&&!cc2x_query_settings_v1(1,sizeof(*s)-1));
  assert(c->available(CC2X_CARRIER_DOCK)&&c->available(CC2X_CARRIER_RECOVERY));
  double value=0;int boolean=0;

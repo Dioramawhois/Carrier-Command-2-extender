@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:cc2x:equipment:1",
+  "title": "Optional free parked-vehicle attachment operation",
+  "type": "object",
+  "required": ["vehicle_id", "slot", "definition"],
+  "properties": {
+    "vehicle_id": {"type": "integer", "minimum": 1, "maximum": 4294967295},
+    "slot": {"type": "integer", "minimum": 0, "maximum": 63},
+    "definition": {"type": "integer", "minimum": -1, "maximum": 101},
+    "fill": {"type": "boolean", "default": true}
+  },
+  "additionalProperties": false,
+  "description": "The operation additionally validates the live hardpoint, stock compatibility catalog, dock state, parent, empty orders, stationary body, server thread and exact native profile. No stock is debited or refunded. Capability: vehicle-equipment-v1."
+}

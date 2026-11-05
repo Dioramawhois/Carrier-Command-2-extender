@@ -2,11 +2,14 @@
 #include "api/carrier/hangar_spawn.h"
 #include "api/carrier/pe_relocation_guard.h"
 #include "api/vehicle/definition_adapter.h"
+#include "api/vehicle/attachment_rules.h"
+#include "platform/seh_guard.h"
 
 #include <Windows.h>
 #include <bcrypt.h>
 #include <array>
 #include <climits>
+#include <cmath>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
@@ -564,6 +567,120 @@ bool Host::DescribeHangarSlots(std::uint32_t carrierId,std::uint32_t chassisType
   }
   *reason="ok";
   return true;
+}
+
+
+namespace {
+bool EquipmentEntries(const cc2x_api* api) {
+  constexpr BYTE bytes[]{0x55,0x8b,0xec,0x6a,0xff,0x68,0xad,0xbb,0xca,0x00,0x64,0xa1,0,0,0,0};
+  constexpr pe_guard::RelocationField relocation[]{ {6,0x00cabbad} };
+  for (std::uint32_t va:{0x00656b90u,0x00656c50u}) {
+    if(!pe_guard::MatchLoadedBytes(reinterpret_cast<const BYTE*>(api->module_base),kSteamImageSize,
+        va-kSteamImageBase,bytes,sizeof(bytes),relocation,1,kSteamImageBase,nullptr)) return false;
+  }
+  constexpr BYTE registerBytes[]{0x55,0x8b,0xec,0x83,0xec,0x08,0x53,0x56,0x8b,0x75,0x08,0x57,0x51,0x56,0x8b,0xf9};
+  return pe_guard::MatchLoadedBytes(reinterpret_cast<const BYTE*>(api->module_base),kSteamImageSize,
+      0x005d05b0-kSteamImageBase,registerBytes,sizeof(registerBytes),nullptr,0,kSteamImageBase,nullptr);
+}
+struct EquipmentCall {
+  void* vehicle;void* definitions;void* events;void* publish;void* island;void* registerPhysics;
+  void* clients;std::uint32_t count,id,slot,definition;bool fill;
+  void* f[19];
+};
+void ApplyEquipment(void* data) {
+  auto& c=*static_cast<EquipmentCall*>(data);
+  using SetFn=void(__thiscall*)(void*,std::uint32_t,void*,std::uint32_t,char);
+  reinterpret_cast<SetFn>(c.f[8])(c.vehicle,c.slot,c.definitions,c.definition,c.fill?1:0);
+  // Stock case 0x0d registers a new attachment's physics in the owning island
+  // before publishing it. Its destructor already detached the old physics.
+  auto* attachments=At<unsigned char*>(c.vehicle,0x15c);
+  auto* attachment=At<unsigned char*>(attachments,c.slot*4);
+  if(attachment) {
+    using RegisterFn=void(__thiscall*)(void*,void*);
+    reinterpret_cast<RegisterFn>(c.registerPhysics)(attachment+0x3c,static_cast<unsigned char*>(c.island)+0xa8);
+  }
+  // Same state serializer and per-peer attachment event as stock message 0x0d.
+  alignas(16) std::array<std::uint32_t,13> state{};
+  alignas(16) std::array<std::uint32_t,2> message{};
+  reinterpret_cast<VoidThisFn>(c.f[10])(state.data());
+  reinterpret_cast<VoidThisFn>(c.f[11])(message.data());
+  reinterpret_cast<VehicleEventFn>(c.f[12])(c.vehicle,c.slot,state.data());
+  SerializeNative(c.f[13],message.data(),state.data());
+  reinterpret_cast<ServerPublishFn>(c.publish)(c.events,c.id,c.slot,message.data());
+  for(std::uint32_t i=0;i<c.count;++i) {
+    void* client=reinterpret_cast<ClientAtFn>(c.f[16])(c.clients,i);
+    if(!client||!Readable(static_cast<unsigned char*>(client)+0x64,4))continue;
+    void* sender=reinterpret_cast<ClientSenderFn>(c.f[17])(static_cast<unsigned char*>(client)+0x64);
+    if(sender)reinterpret_cast<SendEventFn>(c.f[18])(sender,c.id,c.slot,c.definition==UINT32_MAX?0x66:c.definition);
+  }
+  reinterpret_cast<VoidThisFn>(c.f[14])(message.data());
+}
+}
+bool Host::EquipmentAvailable() {
+  std::lock_guard<std::recursive_mutex> lock(mutex_);
+  if(!InServerContext()||!api_.game_build||std::strcmp(api_.game_build,kSteamBuild)!=0)return false;
+  if(equipmentGeneration_!=Generation()) {
+    equipmentGeneration_=Generation();equipmentFault_=false;std::string reason;
+    equipmentEnabled_=SupportedImage(&api_,&reason)&&EquipmentEntries(&api_);
+    Log("EQUIPMENT_CAPABILITY","host",equipmentEnabled_?"available; free stock attachments":reason.c_str());
+  }
+  return equipmentEnabled_&&!equipmentFault_;
+}
+bool Host::SetVehicleAttachment(std::uint32_t id,std::uint32_t slot,std::int32_t definition,bool fill,std::string* reason) {
+  std::lock_guard<std::recursive_mutex> lock(mutex_);
+  if(!reason)return false;
+  auto refuse=[&](const char* why){*reason=why;return false;};
+  if(!EquipmentAvailable())return refuse("equipment_unavailable");
+  if(!EntryGuardsMatch(&api_,&kSteamProfile)||!EquipmentEntries(&api_))return refuse("native_entry_changed");
+  const auto* api=Api();
+  if(!api->find||!api->ref||!api->geti||!api->count||!api->body_get)return refuse("world_api_unavailable");
+  void* v=api->find(CC2X_WORLD_VEHICLES,id);
+  if(!id||!v||!Readable(v,0x194)||api->geti(v,CC2X_VEHICLE_ID,0)!=id)return refuse("invalid_vehicle");
+  const auto slots=At<std::uint32_t>(v,0x160);
+  if(!cc2::api::vehicle::AttachmentRequestAllowed(slot,definition,slots,
+      static_cast<int>(api->geti(v,CC2X_VEHICLE_DOCK_STATE,0)),
+      static_cast<std::uint32_t>(api->geti(v,CC2X_VEHICLE_ATTACHED_TO,0)),
+      static_cast<std::uint32_t>(api->count(v,CC2X_VEHICLE_WAYPOINTS))))return refuse("vehicle_not_parked_or_invalid_attachment");
+  void* tile=api->find(CC2X_WORLD_TILES,static_cast<std::uint32_t>(api->geti(v,CC2X_VEHICLE_DOCK_TILE,0)));
+  void* island=tile?api->ref(tile,CC2X_TILE_ISLAND,0):nullptr;
+  if(!Readable(island,0xd0))return refuse("owning_island_unavailable");
+  cc2x_body body{};if(!api->body_get(v,&body))return refuse("body_unavailable");
+  for(double speed:body.vel)if(!std::isfinite(speed)||std::abs(speed)>.5)return refuse("vehicle_moving");
+  auto* model=At<unsigned char*>(v,0x88);auto* attachments=At<void*>(v,0x15c);
+  if(!Readable(model,0x90)||!Readable(attachments,slots*4))return refuse("attachment_layout_unavailable");
+  const auto capacity=At<std::uint32_t>(model,0x84),first=At<std::uint32_t>(model,0x88),nodes=At<std::uint32_t>(model,0x8c);
+  auto* records=At<unsigned char*>(model,0x80);
+  if(!capacity||capacity>256||first>=capacity||nodes<slots||nodes>capacity||!Readable(records,capacity*0x54))return refuse("hardpoint_layout_unavailable");
+  const auto type=At<std::uint32_t>(records,((first+slot)%capacity)*0x54+0x3c);
+  if(type>=8)return refuse("unsupported_hardpoint_type");
+  using OptionCount=std::uint32_t(__stdcall*)(std::uint32_t);
+  using Option=std::uint32_t(__stdcall*)(std::uint32_t,std::uint32_t);
+  const auto n=reinterpret_cast<OptionCount>(api->va(0x656b90))(type);
+  if(n>256)return refuse("catalog_bound_exceeded");
+  bool compatible=definition==-1;
+  for(std::uint32_t i=0;i<n&&!compatible;++i)compatible=reinterpret_cast<Option>(api->va(0x656c50))(type,i)==static_cast<std::uint32_t>(definition);
+  if(!compatible)return refuse("incompatible_attachment");
+  auto* events=static_cast<unsigned char*>(server_)+0x514;
+  if(!Readable(events,4))return refuse("event_manager_unavailable");
+  auto** vt=*reinterpret_cast<void***>(events);
+  void* publish=Readable(vt,8)?vt[1]:nullptr;
+  MEMORY_BASIC_INFORMATION code{};
+  if(!publish||!VirtualQuery(publish,&code,sizeof(code))||code.AllocationBase!=reinterpret_cast<void*>(api->module_base)||
+     !(code.Protect&(PAGE_EXECUTE|PAGE_EXECUTE_READ|PAGE_EXECUTE_READWRITE|PAGE_EXECUTE_WRITECOPY)))return refuse("publisher_unavailable");
+  EquipmentCall call{};call.vehicle=v;call.definitions=static_cast<unsigned char*>(server_)+0x1bc;
+  call.events=events;call.publish=publish;call.clients=static_cast<unsigned char*>(server_)+0xc48;
+  call.island=island;call.registerPhysics=ImageVa(api,0x005d05b0);
+  call.id=id;call.slot=slot;call.definition=static_cast<std::uint32_t>(definition);call.fill=fill;
+  for(std::size_t i=0;i<19;++i)call.f[i]=ImageVa(api,static_cast<std::uint32_t>(kSteam26277078Functions[i]));
+  if(!Readable(call.clients,0x10)||!Readable(call.definitions,0x10))return refuse("server_layout_unavailable");
+  call.count=reinterpret_cast<ClientCountFn>(call.f[15])(call.clients);
+  if(call.count>1024)return refuse("client_count_bound_exceeded");
+  if(!cc2x_seh_guard(ApplyEquipment,&call)) {
+    equipmentFault_=true;Log("EQUIPMENT_ENGINE_FAULT","host","latched until next session; no retry or rollback");return refuse("engine_fault");
+  }
+  const bool occupied=At<void*>(attachments,slot*4)!=nullptr;
+  if(occupied!=(definition!=-1))return refuse("attachment_creation_failed");
+  *reason="applied";return true;
 }
 
 } // namespace cc2::runtime
