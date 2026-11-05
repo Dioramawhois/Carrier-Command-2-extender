@@ -12,6 +12,16 @@ spec.loader.exec_module(module)
 
 
 class ReleasePackageTest(unittest.TestCase):
+    def test_development_release_is_explicit_and_always_prerelease(self):
+        self.assertFalse(module.release_version('0.9.0'))
+        self.assertTrue(module.release_version('0.9.0-client-beta.1'))
+        with self.assertRaises(ValueError):
+            module.release_version('0.9.0-dev')
+        self.assertTrue(module.release_version('0.9.0-dev', allow_development=True))
+        for invalid in ('main', '../release', '0.9.0-dev/other', '0.9.0-dev-dirty'):
+            with self.subTest(invalid=invalid), self.assertRaises(ValueError):
+                module.release_version(invalid, allow_development=True)
+
     def test_runtime_payload_preserves_all_linked_library_notices(self):
         files = module.license_payload(ROOT)
         for name in ('mingw-COPYING.txt', 'Zig-LICENSE.txt', 'libcxx-LICENSE.txt',

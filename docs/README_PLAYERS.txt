@@ -1,5 +1,5 @@
 CC2X SDK - Shared Runtime for Carrier Command 2
-0.8.1-client-beta.1 / C API 8 / framework C API 1 / independent Lua API 2
+0.9.0-dev / C API 8 / framework C API 1 / independent Lua API 2
 =======================================================================
 
 CC2X supplies common native engine access and Lua support for compatible mods.
@@ -16,7 +16,7 @@ INSTALL WITH A MATCHING CC2 MODLOADER
 4. Wait until the selected set is ready, then click Launch.
 
 Automatic installation requires a ModLoader build that explicitly reviews
-this exact 0.8.1 runtime, waypoint-origin and screen-extension capabilities. Until a matching
+this exact 0.9.0-dev runtime, waypoint-origin and screen-extension capabilities. Until a matching
 ModLoader update is available, use the manual route below.
 ModLoader releases:
 https://github.com/Dioramawhois/CC2-ModLoader/releases
@@ -24,7 +24,7 @@ https://github.com/Dioramawhois/CC2-ModLoader/releases
 INSTALL MANUALLY
 
 1. Close the game. Download dinput8.dll from this exact client beta:
-   https://github.com/Dioramawhois/Carrier-Command-2-extender/releases/download/0.8.1-client-beta.1/dinput8.dll
+   https://github.com/Dioramawhois/Carrier-Command-2-extender/releases/download/0.9.0-dev/dinput8.dll
    Or copy it from the SDK's downloaded Workshop folder inside your Steam library:
    steamapps\workshop\content\1489630\3833014670\content\dinput8.dll
 2. In Steam, right-click Carrier Command 2 > Manage > Browse local files.
@@ -45,15 +45,17 @@ backup. Disable gameplay mods that require CC2X.
 
 CURRENT SUPPORT AND REPORTING PROBLEMS
 
-This client beta targets the reviewed Windows Carrier Command 2 1.5.18-r2 build.
+This development preview targets the reviewed Windows Carrier Command 2 1.5.18-r2 build.
 Release assets identify the exact source commit, DLL hashes, offline test
 evidence and separately recorded runtime acceptance in RELEASE.json.
 Offline fixtures do not prove full gameplay compatibility.
 
 Remote multiplayer, dedicated servers, changed-catalog saves, full custom-aircraft
 flight/island landing and native macOS support remain unverified.
-The full Brake v15 and Island Airfields Lua ports are separate work; this
-framework beta does not claim to complete those gameplay mods.
+Island Airfields 2.2 equipment changes and three-arrival save/reload received
+an ordinary-host owner test with this exact runtime. Full Brake behavior remains
+separate and unverified. The experimental CPU tile preview currently refuses
+unavailable tile definitions; do not rely on it for distant map positions.
 The runtime is shared infrastructure, not a guarantee that every mod combination
 will work together. ModLoader reports overlapping changes when preparing mods.
 

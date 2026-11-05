@@ -1,17 +1,23 @@
 # Changelog
 
-## 0.9.0-dev (unreleased, 2026-11-05)
+## 0.9.0-dev (development preview, 2026-11-06)
+
+- Publish the exact owner-tested runtime as an explicit prerelease. Native bytes
+  remain identical to the Island Airfields 2.2 test runtime; the embedded version
+  is retained. Stable ABI layouts and the separate-addon boundary are preserved.
 
 - Add an optional shared CPU tile-site preview for map positions before island
   streaming. Use the stock terrain task with private results, native cleanup,
   session caching, bounded selectors and one uncached query per tick.
-  Actual generated coordinates and startup cost still need game acceptance.
+  Currently refuses unavailable tile definitions in the tested world. Actual
+  generated coordinates and startup cost remain unverified; this is experimental.
 
 - Add optional equipment C API 1 and matching independent Lua functions for
   free compatible stock attachments on parked, stationary vehicles. Reuse the
   native setter and stock state/peer notifications; no carrier inventory is touched.
   Exact executable and relocation-aware entries are checked; faults disable this
-  operation until the next session. Gameplay and remote-client acceptance are pending.
+  operation until the next session. Equipment changes received an ordinary-host
+  owner test through Island Airfields; remote-client acceptance remains pending.
 
 - Add optional named C carrier API 1 and equivalent independent Lua operations:
   checked, next-tick carrier recall, bounded owner-scoped completion records,

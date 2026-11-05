@@ -64,19 +64,28 @@ def json_bytes(value):
     return (json.dumps(value, indent=2) + '\n').encode('utf-8')
 
 
+def release_version(tag, *, allow_development=False):
+    if re.fullmatch(r'\d+\.\d+\.\d+(?:-client-beta\.\d+)?', tag):
+        return '-beta.' in tag
+    if allow_development and re.fullmatch(r'\d+\.\d+\.\d+-dev', tag):
+        return True
+    raise ValueError('A concrete release version is required; development previews require an explicit flag')
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--provider-sources', required=True, type=Path,
                         help='Hash-pinned Zig 0.15.2 provider source archive')
     parser.add_argument('--acceptance', type=Path, help='Separate exact-binary game acceptance JSON')
+    parser.add_argument('--allow-development-version', action='store_true',
+                        help='Publish the unchanged tested -dev runtime as an explicit prerelease')
     args = parser.parse_args()
     git = lambda *arguments: subprocess.check_output(['git', *arguments], cwd=ROOT)
     if git('status', '--porcelain').strip():
         raise ValueError('Release source checkout must be clean')
     commit = git('rev-parse', 'HEAD').decode().strip()
     tag = re.search(r'#define CC2X_VERSION "([^"]+)"', (ROOT / 'src/cc2x.c').read_text()).group(1)
-    if not re.fullmatch(r'\d+\.\d+\.\d+(?:-client-beta\.\d+)?', tag):
-        raise ValueError('A concrete release version is required')
+    prerelease = release_version(tag, allow_development=args.allow_development_version)
     binary = (ROOT / 'dist/dinput8.dll').read_bytes()
     native = json.loads((ROOT / 'dist/dinput8.build.json').read_text())
     evidence = json.loads((ROOT / 'build/unified/test-results.json').read_text())
@@ -113,7 +122,8 @@ def main():
         game = json.loads(args.acceptance.read_text())
         if game.get('runtime_sha256') != sha(binary):
             raise ValueError('Acceptance belongs to another runtime')
-    result = {'schema_version': 1, 'release_tag': tag, 'prerelease': '-beta.' in tag,
+    result = {'schema_version': 1, 'release_tag': tag, 'prerelease': prerelease,
+              'development_preview': tag.endswith('-dev'),
               'runtime_version': tag, 'compiled_source_commit': commit,
               'source_url': f'https://github.com/{REPOSITORY}/tree/{commit}',
               'sdk_api': native['api'], 'lua_api': native['lua_api'],
