@@ -100,7 +100,7 @@ def main():
     runtime = [ROOT / 'src' / name for name in CPP_SOURCES]
     sources = core + lua + runtime + [ROOT / 'src/plugin.cpp', ROOT / 'src/platform/seh_guard.c']
     inputs = sources + headers + [ROOT / name for name in (
-        'build.py', 'tools/build_unified.py', 'sdk/cc2.lua',
+        'build.py', 'tools/build_unified.py', 'tools/verify_equipment_profile.py', 'sdk/cc2.lua',
         'src/api/vehicle/ui_library_shim.lua', 'src/dinput8.def',
         'src/runtime/sdk_data.h.in', 'src/api/vehicle/ui_library_shim_source.h.in',
         'integrations/native-bridge-source-manifest.json', 'integrations/cc2mods-source-lock.json',
@@ -150,7 +150,7 @@ def main():
               'capabilities': ['independent-lua-v1', 'ordered-module-bundles-v1', 'session-query-v1',
                                'lua-mod-api-v2', 'framework-c-api-v1', 'waypoint-origin-v1',
                                'screen-extensions-v1', 'screen-source-edits-v1',
-                               'carrier-dock-v1', 'carrier-recovery-v1', 'module-settings-v1'],
+                               'carrier-dock-v1', 'carrier-recovery-v1', 'module-settings-v1', 'vehicle-equipment-v1'],
               'lua_api': 2,
               'framework_api': 1,
               'source_sha256': input_hashes,
