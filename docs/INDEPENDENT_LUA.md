@@ -100,3 +100,10 @@ ready definitions through `cc2x.vehicles.definitions()` and weapon mappings via
 Fresh-checkout SDK tests use trusted facade code and synthetic fake-game mods.
 Fresh gameplay, saved-catalog migration and host/client/dedicated acceptance of
 the integrated runtime remain open; historical team fixtures do not close them.
+
+## Optional 0.9.0 development interfaces
+
+The development candidate adds shared C/Lua [carrier recall and parked deck
+recovery](CARRIER_RECOVERY.md), plus [persistent typed module settings](MODULE_SETTINGS.md).
+These are optional additions to Lua API 2; check their capabilities/results.
+They are not in the published 0.8.1 runtime and do not enable gameplay by default.

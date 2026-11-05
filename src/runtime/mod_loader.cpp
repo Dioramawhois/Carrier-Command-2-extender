@@ -1,6 +1,7 @@
 #include "mod_loader.h"
 
 #include <Windows.h>
+#include <bcrypt.h>
 
 #include <algorithm>
 #include <fstream>
@@ -11,6 +12,12 @@
 #include <string_view>
 #include <cwctype>
 #include <cwchar>
+#include <cstdlib>
+#include <cstdint>
+extern "C" {
+#include "lua.h"
+#include "lauxlib.h"
+}
 
 namespace cc2::host {
 namespace {
@@ -248,6 +255,72 @@ bool SafeLuaName(const std::wstring& value) {
     needsComponent = false;
   }
   return !needsComponent;
+}
+
+bool SafeScreenPath(const std::wstring& value, const wchar_t* prefix) {
+  if (!SafeEntry(value) || value.rfind(prefix, 0) != 0) return false;
+  for (const wchar_t c : value)
+    if (!((c >= L'a' && c <= L'z') || (c >= L'A' && c <= L'Z') ||
+          (c >= L'0' && c <= L'9') || c == L'_' || c == L'-' || c == L'.' || c == L'/'))
+      return false;
+  return true;
+}
+
+bool ScreenSourceSyntax(const std::string& source) {
+  struct Budget { std::size_t used = 0; } budget;
+  auto allocate = [](void* context, void* pointer, std::size_t oldSize,
+                     std::size_t newSize) -> void* {
+    auto& state = *static_cast<Budget*>(context);
+    if (!pointer) oldSize = 0;  // Lua uses osize as a type tag for new objects.
+    if (newSize == 0) { state.used -= oldSize; std::free(pointer); return nullptr; }
+    if (newSize > 8 * 1024 * 1024 || state.used - oldSize > 8 * 1024 * 1024 - newSize)
+      return nullptr;
+    void* replacement = std::realloc(pointer, newSize);
+    if (replacement) state.used = state.used - oldSize + newSize;
+    return replacement;
+  };
+  lua_State* state = lua_newstate(allocate, &budget);
+  if (!state) return false;
+  const bool valid = luaL_loadbufferx(state, source.data(), source.size(),
+      "screen_extension_syntax", "t") == LUA_OK;
+  lua_close(state);
+  return valid;  // No libraries opened and no Lua function executed.
+}
+
+bool ReadScreenSource(const std::wstring& path, std::size_t* remainingBytes, std::string* source) {
+  const HANDLE file = CreateFileW(path.c_str(), GENERIC_READ, FILE_SHARE_READ,
+      nullptr, OPEN_EXISTING, FILE_FLAG_OPEN_REPARSE_POINT, nullptr);
+  if (file == INVALID_HANDLE_VALUE) return false;
+  struct Close { HANDLE handle; ~Close() { CloseHandle(handle); } } close{file};
+  BY_HANDLE_FILE_INFORMATION info{};
+  LARGE_INTEGER size{};
+  if (!GetFileInformationByHandle(file, &info) ||
+      (info.dwFileAttributes & (FILE_ATTRIBUTE_REPARSE_POINT | FILE_ATTRIBUTE_DIRECTORY)) ||
+      !GetFileSizeEx(file, &size) || size.QuadPart <= 0 || size.QuadPart > 256 * 1024 ||
+      static_cast<std::uint64_t>(size.QuadPart) > *remainingBytes)
+    return false;
+  wchar_t finalPath[32768]{};
+  const DWORD length = GetFinalPathNameByHandleW(file, finalPath, 32768, FILE_NAME_NORMALIZED);
+  if (!length || length >= 32768) return false;
+  // GetFullPathName preserves DOS 8.3 aliases (including GitHub's RUNNER~1
+  // temporary directory), while the file handle returns the long spelling.
+  // Expand spelling only; reparse resolution must still match the final handle.
+  wchar_t expanded[32768]{};
+  const DWORD expandedLength = GetLongPathNameW(path.c_str(), expanded, 32768);
+  if (!expandedLength || expandedLength >= 32768) return false;
+  const std::wstring longPath(expanded, expandedLength);
+  const std::wstring expected = longPath.rfind(L"\\\\?\\", 0) == 0 ? longPath :
+      longPath.rfind(L"\\\\", 0) == 0 ? L"\\\\?\\UNC\\" + longPath.substr(2) : L"\\\\?\\" + longPath;
+  if (_wcsicmp(finalPath, expected.c_str()) != 0) return false;
+  // Count attempted reads too: invalid packages cannot repeatedly consume the
+  // full accepted-output budget and force unbounded parsing at startup.
+  *remainingBytes -= static_cast<std::size_t>(size.QuadPart);
+  source->resize(static_cast<std::size_t>(size.QuadPart));
+  DWORD read = 0;
+  if (!ReadFile(file, source->data(), static_cast<DWORD>(source->size()), &read, nullptr) ||
+      read != source->size() || source->find('\0') != std::string::npos ||
+      Utf8ToWide(*source).empty()) return false;
+  return ScreenSourceSyntax(*source);
 }
 
 bool IsReparsePath(const std::wstring& path) {
@@ -569,6 +642,200 @@ bool ParseHook(const JsonValue& json, HookDescriptor* hook) {
 }
 
 }  // namespace
+
+bool ScreenExtensionMatches(const ScreenExtensionDescriptor& extension, std::string_view screen) {
+  return screen == extension.screen;
+}
+
+namespace {
+std::string CanonicalScreenSource(std::string_view source) {
+  if(source.substr(0,3)=="\xef\xbb\xbf")source.remove_prefix(3);
+  std::string result; result.reserve(source.size());
+  for(std::size_t i=0;i<source.size();++i) {
+    if(source[i]=='\r'&&i+1<source.size()&&source[i+1]=='\n')continue;
+    result.push_back(source[i]);
+  }
+  return result;
+}
+}
+
+std::string ScreenSourceSha256(std::string_view source) {
+  if(source.size()>2*1024*1024)return {};
+  const auto canonical=CanonicalScreenSource(source);
+  BCRYPT_ALG_HANDLE algorithm=nullptr; BCRYPT_HASH_HANDLE hash=nullptr;
+  if(BCryptOpenAlgorithmProvider(&algorithm,BCRYPT_SHA256_ALGORITHM,nullptr,0)<0)return {};
+  struct Close {BCRYPT_ALG_HANDLE a;BCRYPT_HASH_HANDLE* h;std::vector<unsigned char> object;
+    ~Close(){if(*h)BCryptDestroyHash(*h);BCryptCloseAlgorithmProvider(a,0);}} close{algorithm,&hash,{}};
+  DWORD length=0,written=0;
+  if(BCryptGetProperty(algorithm,BCRYPT_OBJECT_LENGTH,reinterpret_cast<PUCHAR>(&length),sizeof(length),&written,0)<0||length>65536)return {};
+  close.object.resize(length);unsigned char digest[32]{};
+  if(BCryptCreateHash(algorithm,&hash,close.object.data(),length,nullptr,0,0)<0||
+      BCryptHashData(hash,reinterpret_cast<PUCHAR>(const_cast<char*>(canonical.data())),static_cast<ULONG>(canonical.size()),0)<0||
+      BCryptFinishHash(hash,digest,sizeof(digest),0)<0)return {};
+  constexpr char hex[]="0123456789abcdef";std::string result;
+  for(auto c:digest){result.push_back(hex[c>>4]);result.push_back(hex[c&15]);}
+  return result;
+}
+
+ScreenSourceEditResult TransformScreenSource(const std::vector<ScreenSourceProfile>& profiles,
+                                            std::string_view source,std::string* output) {
+  if(!output||source.size()>2*1024*1024||profiles.empty()||profiles.size()>8)return ScreenSourceEditResult::Rejected;
+  const auto digest=ScreenSourceSha256(source);
+  if(digest.empty())return ScreenSourceEditResult::Rejected;
+  const ScreenSourceProfile* selected=nullptr;
+  for(const auto& profile:profiles)if(profile.sha256==digest) {
+    if(selected)return ScreenSourceEditResult::Rejected;
+    selected=&profile;
+  }
+  if(!selected)return ScreenSourceEditResult::NoProfile;
+  if(selected->edits.empty()||selected->edits.size()>64)return ScreenSourceEditResult::Rejected;
+  const auto canonical=CanonicalScreenSource(source);
+  std::string result;std::size_t cursor=0,inserted=0;bool first=true;
+  std::size_t previousOffset=0;
+  for(const auto& edit:selected->edits) {
+    if(edit.offset<cursor||(!first&&edit.offset<=previousOffset)||edit.offset>canonical.size()||
+       edit.remove>canonical.size()-edit.offset||edit.insert.size()>256*1024-inserted)
+      return ScreenSourceEditResult::Rejected;
+    inserted+=edit.insert.size();previousOffset=edit.offset;first=false;
+    result.append(canonical,cursor,edit.offset-cursor);result+=edit.insert;
+    cursor=edit.offset+edit.remove;
+  }
+  result.append(canonical,cursor,std::string::npos);
+  if(result.size()>2*1024*1024||result.find('\0')!=std::string::npos||
+     Utf8ToWide(result).empty()||!ScreenSourceSyntax(result))return ScreenSourceEditResult::Rejected;
+  *output=std::move(result);return ScreenSourceEditResult::Applied;
+}
+
+ScreenExtensionDiscovery DiscoverActiveScreenExtensions(const std::vector<std::wstring>& activePackages) {
+  ScreenExtensionDiscovery result;
+  if (activePackages.size() > 256) {
+    result.diagnostics.push_back(L"SCREEN_EXTENSION_FAIL: too many active packages");
+    return result;
+  }
+  std::set<std::wstring> seen;
+  std::size_t totalBytes = 0;
+  std::size_t remainingReadBytes = 4 * 1024 * 1024;
+  for (const auto& package : activePackages) {
+    const auto canonical = CanonicalPath(package);
+    if (canonical.empty()) continue;
+    auto key = canonical;
+    std::transform(key.begin(), key.end(), key.begin(), towlower);
+    if (!seen.insert(key).second) continue;
+    const std::wstring relativeManifest = L"content/cc2x/screen_extensions.json";
+    const auto manifest = canonical + L"\\content\\cc2x\\screen_extensions.json";
+    if (GetFileAttributesW(manifest.c_str()) == INVALID_FILE_ATTRIBUTES) continue;
+    auto reject = [&](const wchar_t* reason) {
+      result.diagnostics.push_back(canonical + L": SCREEN_EXTENSION_FAIL: " + reason);
+    };
+    JsonValue root;
+    std::wstring error;
+    if (IsReparsePath(canonical) || IsReparsePath(canonical + L"\\content") ||
+        !ValidateEntryPath(canonical, L"mod.xml") ||
+        !ValidateEntryPath(canonical, relativeManifest) ||
+        !ReadManifest(manifest, &root, &error) || !UniqueJsonKeys(root) ||
+        root.kind != JsonValue::Kind::Object || root.object.size() != 2) {
+      reject(L"invalid or unsafe descriptor"); continue;
+    }
+    const auto* schema = Field(root, L"schema");
+    const auto* entries = Field(root, L"extensions");
+    if (!schema || schema->kind != JsonValue::Kind::Other || (schema->primitive != L"1" && schema->primitive != L"2") ||
+        !entries || entries->kind != JsonValue::Kind::Array || entries->array.size() > 16) {
+      reject(L"unsupported schema or extension count"); continue;
+    }
+    std::vector<ScreenExtensionDescriptor> pending;
+    std::set<std::wstring> targets;
+    std::size_t pendingBytes = 0;
+    bool valid = true;
+    ModDescriptor content;
+    content.rootPath = canonical + L"\\content";
+    for (const auto& entry : entries->array) {
+      if (result.extensions.size() + pending.size() >= 128 || remainingReadBytes == 0) {
+        valid = false; break;
+      }
+      const auto* screen = Field(entry, L"screen");
+      const auto* source = Field(entry, L"source");
+      const auto* profiles = Field(entry, L"profiles");
+      if (entry.kind != JsonValue::Kind::Object || entry.object.size() != (profiles?3:2) ||
+          (profiles && schema->primitive != L"2") ||
+          !screen || !source || screen->kind != JsonValue::Kind::String ||
+          source->kind != JsonValue::Kind::String ||
+          !SafeScreenPath(screen->string, L"scripts/") ||
+          !SafeScreenPath(source->string, L"cc2x/ui/") ||
+          !targets.insert(screen->string).second) {
+        valid = false; break;
+      }
+      std::wstring absolute;
+      std::string sourceBytes;
+      if (!ResolveModAssetPath(content, source->string, L".lua", &absolute) ||
+          !ReadScreenSource(absolute, &remainingReadBytes, &sourceBytes)) {
+        valid = false; break;
+      }
+      auto utf8 = [](const std::wstring& value) {
+        const int size = WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS,
+            value.data(), static_cast<int>(value.size()), nullptr, 0, nullptr, nullptr);
+        std::string bytes(size > 0 ? size : 0, '\0');
+        if (size > 0) WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS,
+            value.data(), static_cast<int>(value.size()), bytes.data(), size, nullptr, nullptr);
+        return bytes;
+      };
+      ScreenExtensionDescriptor descriptor{utf8(screen->string), utf8(source->string), std::move(sourceBytes)};
+      if(profiles) {
+        auto natural=[](const JsonValue* value,std::size_t* number) {
+          if(!value||value->kind!=JsonValue::Kind::Other||value->primitive.empty()||
+             (value->primitive.size()>1&&value->primitive[0]==L'0'))return false;
+          std::size_t result=0;
+          for(auto c:value->primitive) {
+            if(c<L'0'||c>L'9'||result>(2*1024*1024-static_cast<std::size_t>(c-L'0'))/10)return false;
+            result=result*10+(c-L'0');
+          }
+          *number=result;return true;
+        };
+        std::set<std::wstring> hashes;
+        std::size_t insertBytes=0;
+        valid=profiles->kind==JsonValue::Kind::Array&&!profiles->array.empty()&&profiles->array.size()<=8;
+        if(valid)for(const auto& profile:profiles->array) {
+          const auto* digest=Field(profile,L"sha256");const auto* edits=Field(profile,L"edits");
+          if(profile.kind!=JsonValue::Kind::Object||profile.object.size()!=2||!digest||
+             digest->kind!=JsonValue::Kind::String||digest->string.size()!=64||
+             digest->string.find_first_not_of(L"0123456789abcdef")!=std::wstring::npos||
+             !hashes.insert(digest->string).second||!edits||edits->kind!=JsonValue::Kind::Array||
+             edits->array.empty()||edits->array.size()>64){valid=false;break;}
+          ScreenSourceProfile parsed;parsed.sha256=utf8(digest->string);
+          std::size_t previousOffset=0,previousEnd=0;bool first=true;
+          for(const auto& edit:edits->array) {
+            ScreenSourceEdit item;
+            const auto* insert=Field(edit,L"insert");
+            if(edit.kind!=JsonValue::Kind::Object||edit.object.size()!=3||
+               !natural(Field(edit,L"offset"),&item.offset)||!natural(Field(edit,L"remove"),&item.remove)||
+               !insert||insert->kind!=JsonValue::Kind::String||
+               item.remove>2*1024*1024-item.offset||item.offset<previousEnd||
+               (!first&&item.offset<=previousOffset)){valid=false;break;}
+            item.insert=utf8(insert->string);
+            if((!insert->string.empty()&&item.insert.empty())||item.insert.find('\0')!=std::string::npos||item.insert.size()>256*1024-insertBytes){valid=false;break;}
+            insertBytes+=item.insert.size();previousOffset=item.offset;previousEnd=item.offset+item.remove;first=false;
+            parsed.edits.push_back(std::move(item));
+          }
+          if(!valid)break;
+          descriptor.profiles.push_back(std::move(parsed));
+        }
+        if(!valid)break;
+        pendingBytes+=insertBytes;
+      }
+      if (descriptor.screen.empty() || descriptor.sourcePath.empty() || descriptor.source.empty()) {
+        valid = false; break;
+      }
+      pendingBytes += descriptor.source.size();
+      pending.push_back(std::move(descriptor));
+    }
+    if (!valid || result.extensions.size() + pending.size() > 128 ||
+        totalBytes + pendingBytes > 4 * 1024 * 1024) {
+      reject(L"unsafe source, duplicate target or aggregate limit"); continue;
+    }
+    totalBytes += pendingBytes;
+    for (auto& extension : pending) result.extensions.push_back(std::move(extension));
+  }
+  return result;
+}
 
 ModDiscovery DiscoverActiveBridgeMods(const std::vector<std::wstring>& activePackages) {
   ModDiscovery result;

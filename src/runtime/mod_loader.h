@@ -1,5 +1,6 @@
 #pragma once
 #include <string>
+#include <string_view>
 #include <vector>
 namespace cc2::host {
 enum class HookMode {Before,After,Replace,Around};
@@ -23,6 +24,24 @@ struct ModDescriptor {
   ModSource source=ModSource::Local;
 };
 struct ModDiscovery {std::vector<ModDescriptor> mods;std::vector<std::wstring> diagnostics;};
+// Explicit screen-VM extensions are independent of Bridge gameplay modules.
+// Sources are copied once from enabled packages; no file is executed here.
+struct ScreenSourceEdit {std::size_t offset=0,remove=0;std::string insert;};
+struct ScreenSourceProfile {std::string sha256;std::vector<ScreenSourceEdit> edits;};
+enum class ScreenSourceEditResult {NoProfile,Applied,Rejected};
+std::string ScreenSourceSha256(std::string_view source);
+ScreenSourceEditResult TransformScreenSource(const std::vector<ScreenSourceProfile>& profiles,
+                                            std::string_view source,std::string* output);
+struct ScreenExtensionDescriptor {
+  std::string screen,sourcePath,source;
+  std::vector<ScreenSourceProfile> profiles;
+};
+struct ScreenExtensionDiscovery {
+  std::vector<ScreenExtensionDescriptor> extensions;
+  std::vector<std::wstring> diagnostics;
+};
+ScreenExtensionDiscovery DiscoverActiveScreenExtensions(const std::vector<std::wstring>& activePackages);
+bool ScreenExtensionMatches(const ScreenExtensionDescriptor& extension,std::string_view screen);
 ModDiscovery DiscoverActiveBridgeMods(const std::vector<std::wstring>& activePackages);
 bool ResolveModAssetPath(const ModDescriptor& mod,const std::wstring& relative,
                          const wchar_t* extension,std::wstring* absolute);

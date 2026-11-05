@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CC2X screen extensions schemas 1 and 2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "extensions"
+  ],
+  "properties": {
+    "schema": {
+      "enum": [
+        1,
+        2
+      ]
+    },
+    "extensions": {
+      "type": "array",
+      "maxItems": 16,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "screen",
+          "source"
+        ],
+        "properties": {
+          "screen": {
+            "type": "string",
+            "maxLength": 240,
+            "pattern": "^scripts/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_.\\-/]+\\.lua$"
+          },
+          "source": {
+            "type": "string",
+            "maxLength": 240,
+            "pattern": "^cc2x/ui/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_.\\-/]+\\.lua$"
+          },
+          "profiles": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 8,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "sha256",
+                "edits"
+              ],
+              "properties": {
+                "sha256": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                },
+                "edits": {
+                  "type": "array",
+                  "minItems": 1,
+                  "maxItems": 64,
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "offset",
+                      "remove",
+                      "insert"
+                    ],
+                    "properties": {
+                      "offset": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 2097152
+                      },
+                      "remove": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 2097152
+                      },
+                      "insert": {
+                        "type": "string",
+                        "maxLength": 262144
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "schema": {
+            "const": 1
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "extensions": {
+            "items": {
+              "not": {
+                "required": [
+                  "profiles"
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

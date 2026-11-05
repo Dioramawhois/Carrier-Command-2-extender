@@ -35,3 +35,8 @@ throttle access use engine-layout research by Yolo / totolerigolo118 from
 under that project's GPL-3.0-or-later license. Its original attribution and
 source hashes are retained in `integrations/cc2mods-source-lock.json`. Hold,
 Modes and Brake gameplay policies are not linked into the SDK runtime.
+
+The optional carrier docking/deck-recovery backend also adapts the native
+Brake v15 mechanism and XMM wrappers from that pinned GPL-3.0-or-later source,
+with attribution retained in `src/api/carrier/recovery.cpp`. Gameplay policies,
+INI defaults and the author's native DLL remain separate from the SDK.

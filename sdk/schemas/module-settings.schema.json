@@ -1,0 +1,10 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:cc2x:module-settings:1",
+  "title": "Typed module settings values (0.9.0 development)",
+  "type": "object",
+  "maxProperties": 128,
+  "propertyNames": {"type": "string", "minLength": 1, "maxLength": 96, "pattern": "^[A-Za-z0-9_-]+(?:[.][A-Za-z0-9_-]+)*$"},
+  "additionalProperties": {"type": ["number", "boolean"]},
+  "description": "Logical values, serialized as bounded flat INI, not JSON. Numbers must be finite; runtime rejects reserved Windows names and imposes 64 KiB, path, owner, atomic persistence and rate limits. Lua cannot choose a filename. Capability: module-settings-v1."
+}

@@ -43,10 +43,57 @@ def regular(root, name):
     return path.read_bytes()
 
 
+def validate_screen_descriptor(value):
+    if (not isinstance(value, dict) or set(value) != {'schema', 'extensions'}
+            or type(value['schema']) is not int or value['schema'] not in (1, 2)
+            or not isinstance(value['extensions'], list) or len(value['extensions']) > 16):
+        raise ValueError('Invalid screen extension descriptor')
+    targets, sources = set(), []
+    for entry in value['extensions']:
+        if not isinstance(entry, dict) or set(entry) not in ({'screen', 'source'}, {'screen', 'source', 'profiles'}):
+            raise ValueError('Invalid screen extension entry')
+        for key, prefix in [('screen', 'scripts/'), ('source', 'cc2x/ui/')]:
+            item = entry[key]
+            if (not isinstance(item, str) or len(item) > 240 or not item.startswith(prefix)
+                    or not item.endswith('.lua') or not re.fullmatch(r'[A-Za-z0-9_.\-/]+', item)):
+                raise ValueError('Invalid screen extension path')
+            relative(item)
+        if entry['screen'] in targets:
+            raise ValueError('Duplicate screen target')
+        targets.add(entry['screen']); sources.append('content/' + entry['source'])
+        if 'profiles' not in entry:
+            continue
+        profiles = entry['profiles']
+        if value['schema'] != 2 or not isinstance(profiles, list) or not 1 <= len(profiles) <= 8:
+            raise ValueError('Invalid screen source profiles')
+        digests, inserted = set(), 0
+        for profile in profiles:
+            if (not isinstance(profile, dict) or set(profile) != {'sha256', 'edits'}
+                    or not isinstance(profile['sha256'], str)
+                    or not re.fullmatch(r'[0-9a-f]{64}', profile['sha256'])
+                    or profile['sha256'] in digests or not isinstance(profile['edits'], list)
+                    or not 1 <= len(profile['edits']) <= 64):
+                raise ValueError('Invalid or duplicate source profile')
+            digests.add(profile['sha256'])
+            previous_offset, previous_end = -1, 0
+            for edit in profile['edits']:
+                if (not isinstance(edit, dict) or set(edit) != {'offset', 'remove', 'insert'}
+                        or type(edit['offset']) is not int or type(edit['remove']) is not int
+                        or edit['offset'] <= previous_offset or edit['offset'] < previous_end
+                        or edit['remove'] < 0 or edit['offset'] + edit['remove'] > 2*1024*1024
+                        or not isinstance(edit['insert'], str) or '\0' in edit['insert']):
+                    raise ValueError('Invalid, overlapping or out-of-range source edit')
+                inserted += len(edit['insert'].encode('utf-8'))
+                if inserted > 256*1024:
+                    raise ValueError('Source edit byte limit exceeded')
+                previous_offset, previous_end = edit['offset'], edit['offset'] + edit['remove']
+    return sources
+
+
 def validate_resource(name, data, luac):
     suffix = PurePosixPath(name).suffix.lower()
     if suffix == '.json' and name.casefold() in {
-            'content/bridge.json', 'content/native_bridge/bridge.json'}:
+            'content/bridge.json', 'content/native_bridge/bridge.json', 'content/cc2x/screen_extensions.json'}:
         if len(data) > 65536:
             raise ValueError('Module manifest exceeds 64 KiB')
         def unique(pairs):
@@ -56,8 +103,11 @@ def validate_resource(name, data, luac):
                     raise ValueError('Duplicate module JSON key')
                 result[key] = value
             return result
-        if not isinstance(json.loads(data.decode('utf-8-sig'), object_pairs_hook=unique), dict):
+        value = json.loads(data.decode('utf-8-sig'), object_pairs_hook=unique)
+        if not isinstance(value, dict):
             raise ValueError('Module metadata must be an object')
+        if name.casefold() == 'content/cc2x/screen_extensions.json':
+            validate_screen_descriptor(value)
         return
     if suffix in ('.png', '.mesh', '.txtr', '.fbx', '.dds', '.ogg', '.wav'):
         if suffix == '.txtr' and not data.startswith(b'TXTR'):
@@ -160,7 +210,9 @@ def package(project, metadata, plugin, build_report, resources, destination, *, 
         raise ValueError('Package entry limit exceeded')
     for name, content in resources.items():
         logical = relative(name)
-        if (logical.casefold() in keys or logical.lower().startswith('content/cc2x/')
+        screen_resource = (logical == 'content/cc2x/screen_extensions.json' or
+                           (logical.startswith('content/cc2x/ui/') and logical.endswith('.lua')))
+        if (logical.casefold() in keys or (logical.lower().startswith('content/cc2x/') and not screen_resource)
                 or not (logical.startswith('content/') or logical == 'thumbnail.png'
                         or logical.startswith('config_defaults/'))):
             raise ValueError('Reserved or duplicate resource path')
@@ -170,6 +222,10 @@ def package(project, metadata, plugin, build_report, resources, destination, *, 
         keys.add(logical.casefold())
         total += len(content)
         output[logical] = content
+    if 'content/cc2x/screen_extensions.json' in output:
+        descriptor = json.loads(output['content/cc2x/screen_extensions.json'].decode('utf-8-sig'))
+        if any(name not in output for name in validate_screen_descriptor(descriptor)):
+            raise ValueError('Screen extension source is missing from the package')
     xml = ET.Element('data', name=metadata['name'], author=metadata['author'],
                      description=metadata.get('description', ''), version=metadata['version'])
     declaration = ET.SubElement(xml, 'cc2mce', schema='1', type='mod', id=identity,

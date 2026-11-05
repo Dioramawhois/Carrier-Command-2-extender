@@ -1,5 +1,42 @@
 # Changelog
 
+## 0.9.0-dev (unreleased, 2026-11-05)
+
+- Add optional named C carrier API 1 and equivalent independent Lua operations:
+  checked, next-tick carrier recall, bounded owner-scoped completion records,
+  and a lazy transactional deck-recovery mechanism for planes and helicopters.
+- Enforce one armed aircraft, one bounded window per continuous recall, same
+  team, parked/wheel/bay guards, session/thread checks, hook-side budgets,
+  an abort loop breaker and explicit XMM preservation. Legacy hook ownership
+  is retained; capability queries never install hooks. Gameplay policy remains
+  in separately distributed mods.
+- Add optional named C settings API 1 and `cc2.settings.get/set/reload`:
+  bounded numbers/booleans, cached reads, clamped numeric reads, owner isolation,
+  atomic persistence, path/reparse/hardlink guards and bounded write/reload rate.
+  Lua retains no arbitrary filesystem or OS access.
+- Preserve all earlier ABI layouts and version requirements. Add paired C/real
+  Lua and native regressions, contracts and author documentation. Full Brake
+  gameplay, multiplayer, dedicated-server and macOS acceptance remain unverified.
+
+## 0.8.1-client-beta.1 (2026-11-04)
+
+- Add optional schema-2 screen source profiles: canonical SHA-256, bounded
+  ordered byte edits, syntax-only validation and atomic in-memory delivery with
+  the owned helper. Unknown sources keep their original code. No third-party
+  screen is shipped or rewritten, and no gameplay profile is built into the SDK.
+- Add native hash/range/overlap/syntax and actual-hook ring-growth fixtures,
+  plus descriptor/package validation for separate screen addons.
+
+- Unify 0.8.0 waypoint-origin/session safety and 0.7.1 optional screen extensions
+  in one current runtime. Keep C API 8, framework C API 1 and Lua API 2 intact.
+- Preserve the reviewed screen hook and bounded source/path validation, together
+  with incoming-order origin checks, session epochs and dispatch regressions.
+- Publish one current version across the SDK Workshop item, GitHub release and
+  main. Historical tags retain their original source and binary identities.
+- Re-run both native fixture sets on the combined binary. Previous exact-binary
+  gameplay/menu results do not certify this new binary; remote and dedicated
+  acceptance remain unverified.
+
 ## 0.8.0-client-beta.1 (2026-11-04)
 
 - Runtime identifies itself as `0.8.0-client-beta.1`. Add the optional
@@ -23,6 +60,19 @@
 - Add actual-core regressions for nested posts, full-queue FIFO refill, session
   replacement and subscriber/time-scale termination. This is offline evidence;
   no remote transport, host capability handshake or dedicated support is added.
+
+## 0.7.1-client-beta.1 (2026-11-04)
+
+- Add optional `screen-extensions-v1` packages for exact game screen VMs,
+  including stock menus. Reuse the reviewed single screen hook; no SDK menu or
+  gameplay policy is enabled by default, and no custom vehicles are required.
+- Read only enabled packages, preserve declared order, and reject malformed,
+  unsafe, oversized or syntactically invalid sources before engine execution.
+  Add activation/path/syntax regression fixtures and author documentation.
+- Accept valid Windows 8.3 path spellings while retaining strict final-handle
+  containment checks; cover short temporary-directory aliases used by CI.
+- This candidate needs fresh game acceptance for the consuming screen policy;
+  native regression checks do not imply visual, gameplay or multiplayer proof.
 
 ## 0.7.0-client-beta.1 (2026-11-03)
 
