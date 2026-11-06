@@ -72,6 +72,19 @@ def release_version(tag, *, allow_development=False):
     raise ValueError('A concrete release version is required; development previews require an explicit flag')
 
 
+def validate_build_record(native, digest, commit, *, preserve_tested=False, acceptance=None):
+    if native['artifact_sha256'] != digest:
+        raise ValueError('Runtime artifact hash differs from build record')
+    exact_commit = not native['source_dirty'] and native['source_commit'] == commit
+    if not exact_commit:
+        if not preserve_tested:
+            raise ValueError('Runtime does not correspond to the clean source commit')
+        if (not acceptance or acceptance.get('runtime_sha256') != digest
+                or acceptance.get('game_runtime_tested') is not True):
+            raise ValueError('Preserving a tested artifact requires exact-binary game acceptance')
+    return exact_commit
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--provider-sources', required=True, type=Path,
@@ -79,6 +92,8 @@ def main():
     parser.add_argument('--acceptance', type=Path, help='Separate exact-binary game acceptance JSON')
     parser.add_argument('--allow-development-version', action='store_true',
                         help='Publish the unchanged tested -dev runtime as an explicit prerelease')
+    parser.add_argument('--preserve-tested-artifact', action='store_true',
+                        help='Keep the accepted binary and original build record; verify every archived input hash')
     args = parser.parse_args()
     git = lambda *arguments: subprocess.check_output(['git', *arguments], cwd=ROOT)
     if git('status', '--porcelain').strip():
@@ -89,8 +104,13 @@ def main():
     binary = (ROOT / 'dist/dinput8.dll').read_bytes()
     native = json.loads((ROOT / 'dist/dinput8.build.json').read_text())
     evidence = json.loads((ROOT / 'build/unified/test-results.json').read_text())
-    if native['source_dirty'] or native['source_commit'] != commit or native['artifact_sha256'] != sha(binary):
-        raise ValueError('Runtime does not correspond to the clean source commit')
+    game = {'game_runtime_tested': False, 'verified_scope': []}
+    if args.acceptance:
+        game = json.loads(args.acceptance.read_text(encoding='utf-8'))
+        if game.get('runtime_sha256') != sha(binary):
+            raise ValueError('Acceptance belongs to another runtime')
+    exact_commit = validate_build_record(native, sha(binary), commit,
+        preserve_tested=args.preserve_tested_artifact, acceptance=game)
     for name, expected in native['source_sha256'].items():
         if sha((ROOT / name).read_bytes()) != expected:
             raise ValueError('Runtime source input changed: ' + name)
@@ -117,14 +137,11 @@ def main():
             sources[key] = (ROOT / name).read_bytes()
         if key not in sources or sha(sources[key]) != expected:
             raise ValueError('Source archive differs from the compiled input: ' + name)
-    game = {'game_runtime_tested': False, 'verified_scope': []}
-    if args.acceptance:
-        game = json.loads(args.acceptance.read_text())
-        if game.get('runtime_sha256') != sha(binary):
-            raise ValueError('Acceptance belongs to another runtime')
     result = {'schema_version': 1, 'release_tag': tag, 'prerelease': prerelease,
               'development_preview': tag.endswith('-dev'),
-              'runtime_version': tag, 'compiled_source_commit': commit,
+              'runtime_version': tag, 'compiled_source_commit': native['source_commit'],
+              'exact_source_commit': commit, 'source_snapshot_verified': True,
+              'original_build_record_retained': not exact_commit,
               'source_url': f'https://github.com/{REPOSITORY}/tree/{commit}',
               'sdk_api': native['api'], 'lua_api': native['lua_api'],
               'framework_api': native['framework_api'], 'capabilities': native['capabilities'],

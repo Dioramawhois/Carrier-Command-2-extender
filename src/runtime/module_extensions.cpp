@@ -36,15 +36,20 @@ int MotionState(lua_State* L){
  if(!Context(L)||lua_gettop(L)!=1||!Integer(L,1,&id)||!H(L)->Motion().Read(static_cast<std::uint32_t>(id),&s)){
  lua_pushnil(L);lua_pushliteral(L,"motion_state_unavailable");return 2;}
  lua_newtable(L);Field(L,"id",s.id);Field(L,"team",s.team);Field(L,"generation",s.generation);Field(L,"mode",s.mode);Field(L,"waypoints",s.waypoints);
- for(const auto& item: {std::pair<const char*,unsigned>{"active",CC2X_MOTION_ACTIVE},{"manual",CC2X_MOTION_MANUAL},{"engine_on",CC2X_MOTION_ENGINE},{"can_control",CC2X_MOTION_LOCAL}}){
+ for(const auto& item: {std::pair<const char*,unsigned>{"active",CC2X_MOTION_ACTIVE},{"manual",CC2X_MOTION_MANUAL},{"engine_on",CC2X_MOTION_ENGINE},{"can_control",CC2X_MOTION_LOCAL},{"guidance_ready",CC2X_MOTION_GUIDANCE}}){
  lua_pushboolean(L,(s.flags&item.second)!=0);lua_setfield(L,-2,item.first);}
- for(const auto& item:{std::pair<const char*,double>{"speed_mps",s.speed},{"lever",s.lever},{"forward_power",s.forward_power},{"target_x",s.target_x},{"target_z",s.target_z}}){
+ for(const auto& item:{std::pair<const char*,double>{"speed_mps",s.speed},{"lever",s.lever},{"forward_power",s.forward_power},{"target_x",s.target_x},{"target_z",s.target_z},{"heading_error",s.heading_error},{"path_distance",s.path_distance},{"yaw_rate",s.yaw_rate},{"steering",s.steering}}){
  lua_pushnumber(L,item.second);lua_setfield(L,-2,item.first);}return 1;
 }
 int MotionSet(lua_State* L){
  std::uint64_t id=0;double power=0;
  if(!Context(L)||lua_gettop(L)!=3||!Integer(L,1,&id)||lua_type(L,2)!=LUA_TBOOLEAN||!Number(L,3,&power))return Result(L,false,"invalid_motion_arguments");
  return Result(L,H(L)->Motion().Set(O(L),H(L)->Generation(),static_cast<std::uint32_t>(id),lua_toboolean(L,2)!=0,power),"motion_refused");
+}
+int MotionDrive(lua_State* L){
+ std::uint64_t id=0;double power=0,forward=0;
+ if(!Context(L)||lua_gettop(L)!=3||!Integer(L,1,&id)||!Number(L,2,&power)||!Number(L,3,&forward))return Result(L,false,"invalid_motion_arguments");
+ return Result(L,H(L)->Motion().Drive(O(L),H(L)->Generation(),static_cast<std::uint32_t>(id),power,forward),"motion_refused");
 }
 int MotionContacts(lua_State* L){
  std::uint64_t id=0;std::vector<cc2x_contact> contacts;
@@ -146,6 +151,7 @@ int SettingReload(lua_State* L){
 void RegisterModuleExtensions(lua_State* L,Host* host,const std::string& owner){
  auto add=[&](const char* name,lua_CFunction fn){lua_pushlightuserdata(L,host);lua_pushlstring(L,owner.data(),owner.size());lua_pushcclosure(L,fn,2);lua_setglobal(L,name);};
  add("cc2_bridge_motion_available",MotionAvailable);add("cc2_bridge_motion_state",MotionState);add("cc2_bridge_motion_set",MotionSet);add("cc2_bridge_motion_contacts",MotionContacts);
+ add("cc2_bridge_motion_drive",MotionDrive);
  add("cc2_bridge_carrier_available",Available);add("cc2_bridge_carrier_dock_request",Request);add("cc2_bridge_carrier_dock_result",DockResult);
  add("cc2_bridge_carrier_recovery_arm",Arm);add("cc2_bridge_carrier_recovery_disarm",Disarm);add("cc2_bridge_carrier_recovery_status",Status);
  add("cc2_bridge_tile_sites",TileSites);
@@ -232,6 +238,9 @@ int MotionReadC(std::uint32_t id,cc2x_motion_state* out){auto* h=SharedHost();re
 int MotionSetC(const char* name,std::uint64_t g,std::uint32_t id,int active,double power){
  auto* h=SharedHost();std::string owner;return h&&h->InServerContext()&&Owner(name,&owner)&&(active==0||active==1)&&h->Motion().Set(owner,g,id,active!=0,power);
 }
+int MotionDriveC(const char* name,std::uint64_t g,std::uint32_t id,double power,double forward){
+ auto* h=SharedHost();std::string owner;return h&&h->InServerContext()&&Owner(name,&owner)&&h->Motion().Drive(owner,g,id,power,forward);
+}
 int MotionContactsC(std::uint32_t id,cc2x_contact* out,std::uint32_t capacity,std::uint32_t* count){
  auto* h=SharedHost();if(!h||!h->InServerContext()||!count||capacity>4096||(!out&&capacity))return 0;*count=0;
  std::vector<cc2x_contact> contacts;if(!h->Motion().Contacts(id,&contacts))return 0;*count=static_cast<std::uint32_t>(contacts.size());
@@ -239,6 +248,6 @@ int MotionContactsC(std::uint32_t id,cc2x_contact* out,std::uint32_t capacity,st
 }
 }
 extern "C" CC2X_EXPORT const cc2x_motion_api* cc2x_query_motion_v1(std::uint32_t version,std::uint32_t size){
- static const cc2x_motion_api api{CC2X_MOTION_VERSION,sizeof(api),CC2X_MOTION_ID,MotionAvailableC,MotionReadC,MotionSetC,MotionContactsC};
+ static const cc2x_motion_api api{CC2X_MOTION_VERSION,sizeof(api),CC2X_MOTION_ID,MotionAvailableC,MotionReadC,MotionSetC,MotionContactsC,MotionDriveC};
  return version==CC2X_MOTION_VERSION&&size==sizeof(api)?&api:nullptr;
 }

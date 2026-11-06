@@ -81,7 +81,15 @@ bool Motion::Read(std::uint32_t id,cc2x_motion_state* out){
  s.speed=std::sqrt(b.vel[0]*b.vel[0]+b.vel[2]*b.vel[2]);s.lever=At<float>(v,0xc94);
  s.forward_power=0;auto* jet=At<unsigned char*>(v,0xc30);if(Region(jet,0x34))s.forward_power=At<float>(jet,0x30);
  s.target_x=At<double>(v,0x1d8);s.target_z=At<double>(v,0x1e8);
- if(!std::isfinite(s.speed)||!std::isfinite(s.lever)||!std::isfinite(s.forward_power))return false;*out=s;return true;
+ s.steering=At<float>(v,0xc90);s.yaw_rate=b.spin[1];
+ const double dx=s.target_x-b.pos[0],dz=s.target_z-b.pos[2];
+ s.path_distance=std::hypot(dx,dz);s.heading_error=0;
+ const double qnorm=b.rot[0]*b.rot[0]+b.rot[1]*b.rot[1]+b.rot[2]*b.rot[2]+b.rot[3]*b.rot[3];
+ if(s.mode==0&&s.waypoints&&std::isfinite(s.path_distance)&&s.path_distance>.01&&std::isfinite(qnorm)&&qnorm>.5&&qnorm<1.5){
+  const double fx=2*(b.rot[0]*b.rot[2]+b.rot[3]*b.rot[1]),fz=1-2*(b.rot[0]*b.rot[0]+b.rot[1]*b.rot[1]);
+  if(std::hypot(fx,fz)>.01){s.heading_error=std::atan2(dx*fz-dz*fx,dx*fx+dz*fz);s.flags|=CC2X_MOTION_GUIDANCE;}
+ }
+ if(!std::isfinite(s.speed)||!std::isfinite(s.lever)||!std::isfinite(s.forward_power)||!std::isfinite(s.steering)||!std::isfinite(s.yaw_rate)||!std::isfinite(s.path_distance))return false;*out=s;return true;
 }
 void Motion::Stop(unsigned char* v){Put<std::uint32_t>(v,0x1d0,1);Put<float>(v,0xc94,0);Put<float>(v,0xc90,0);}
 bool Motion::Set(const std::string& owner,std::uint64_t generation,std::uint32_t id,bool active,double power){
@@ -91,7 +99,12 @@ bool Motion::Set(const std::string& owner,std::uint64_t generation,std::uint32_t
  if(!active){if(found==leases_.end())return true;Stop(v);leases_.erase(found);return true;}
  if(manual_[id]||api_->count(v,CC2X_VEHICLE_WAYPOINTS)<=0||!Install())return false;
  if(leases_.size()>=8&&found==leases_.end())return false;
- leases_[id]={owner,tick_,power};Put<std::uint32_t>(v,0x1d0,0);return true;
+ auto& lease=leases_[id];lease.owner=owner;lease.tick=tick_;lease.power=power;lease.forward=-1;
+ Put<std::uint32_t>(v,0x1d0,0);return true;
+}
+bool Motion::Drive(const std::string& owner,std::uint64_t generation,std::uint32_t id,double power,double forward){
+ if(!std::isfinite(forward)||forward<0||forward>1||forward>power||!Set(owner,generation,id,true,power))return false;
+ leases_.at(id).forward=forward;return true;
 }
 void Motion::ObserveControls(void* carrier,void* inputs){
  if(!Context()||!Region(carrier,0xc98))return;
@@ -105,6 +118,14 @@ void Motion::ObserveControls(void* carrier,void* inputs){
  }
  manual_[id]=manual;
  if(manual&&leases_.erase(id)){Put<std::uint32_t>(carrier,0x1d0,1);if(api_->log)api_->log("motion",CC2X_LOG_INFO,"event=MOTION_MANUAL_TAKEOVER carrier=%u",id);}
+ else if(!manual){
+  auto lease=leases_.find(id);
+  if(lease!=leases_.end()&&lease->second.helm){
+   // Native input processing may rewrite these after physics. Keep the copied
+   // controls current at the end of carrier update, before normal replication.
+   Put<float>(carrier,0xc90,lease->second.steering);Put<float>(carrier,0xc94,lease->second.lever);
+  }
+ }
 }
 void Motion::BeforeMotion(void* carrier){
  if(!Context()||!Region(carrier,0xc98))return;auto id=At<std::uint32_t>(carrier,0x80);auto found=leases_.find(id);if(found==leases_.end())return;
@@ -115,9 +136,38 @@ void Motion::BeforeMotion(void* carrier){
 }
 void Motion::AfterMotion(void* carrier){
  if(!Context()||!Region(carrier,0xc98))return;auto found=leases_.find(At<std::uint32_t>(carrier,0x80));if(found==leases_.end())return;
- for(unsigned off:{0xc30u,0xc34u}){auto* jet=At<unsigned char*>(carrier,off);if(!Region(jet,0x34,true))continue;
-  float p=At<float>(jet,0x30);if(!std::isfinite(p))continue;
-  const auto limited=std::copysign(std::min(std::abs(p),static_cast<float>(found->second.power)),p);Put<float>(jet,0x30,limited);
+ auto* port=At<unsigned char*>(carrier,0xc30);auto* starboard=At<unsigned char*>(carrier,0xc34);
+ auto* engine=At<unsigned char*>(carrier,0xa58);
+ if(!Region(port,0x34,true)||!Region(starboard,0x34,true)||!Region(engine,12))return;
+ const float rpm=At<float>(engine,8),cap=static_cast<float>(found->second.power);
+ if(!std::isfinite(rpm)||rpm<0||rpm>1)return;
+ float lever=0;
+ if(found->second.forward>=0){
+  lever=static_cast<float>(found->second.forward);
+  // Exact native fuel threshold at reviewed VA 0xdb7208 is 0.05f.
+  if(!At<unsigned char>(carrier,0x350)||!(At<float>(carrier,0x104)>.05f)||At<std::uint32_t>(carrier,0x10c))lever=0;
+  Put<float>(port,0x30,lever*rpm);Put<float>(starboard,0x30,lever*rpm);
+ }else{
+  for(auto* jet:{port,starboard}){
+   const float p=At<float>(jet,0x30);if(!std::isfinite(p))return;
+   Put<float>(jet,0x30,std::copysign(std::min(std::abs(p),cap),p));
+  }
+  if(rpm>.001f)lever=std::clamp(At<float>(port,0x30)/rpm,-1.f,1.f);
+ }
+ // Feed native replicated control factors: the normal helm mesh animator and
+ // instruments consume these, so no replacement carrier XML/client hook is used.
+ float steering=0;
+ auto* bow=At<unsigned char*>(carrier,0xc38);auto* stern=At<unsigned char*>(carrier,0xc3c);
+ if(rpm>.001f&&Region(bow,0x34)&&Region(stern,0x34)){
+  const float a=At<float>(bow,0x30),b=At<float>(stern,0x30);
+  if(std::isfinite(a)&&std::isfinite(b))steering=std::clamp((a-b)*.5f/rpm,-1.f,1.f);
+ }
+ Put<float>(carrier,0xc90,steering);Put<float>(carrier,0xc94,lever);
+ found->second.steering=steering;found->second.lever=lever;found->second.helm=true;
+ // A consumer's forward command may exceed native turn-in-place demand.
+ // Raise engine demand normally; never synthesize engine output/RPM itself.
+ if(lever>0&&Region(engine,12,true)){
+  const float demand=At<float>(engine,0);if(std::isfinite(demand))Put<float>(engine,0,std::max(demand,lever));
  }
 }
 void Motion::DropOwner(const std::string& owner){

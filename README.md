@@ -5,13 +5,16 @@ CC2X is a shared framework for **C/C++ plugins and Lua mods**. Install one
 optional packages. The SDK itself adds no aircraft, flight modes, brakes,
 button layouts or island gameplay rules.
 
-## Unpublished development branch: 0.10.0-dev
+## Development preview being prepared: 0.10.0-dev
 
 Adds optional [carrier motion and team contacts](docs/CARRIER_MOTION.md) through
 one guarded C/Lua backend. It uses native waypoint steering, owner/session leases,
 manual helm/throttle priority and a normalized forward-power cap. Local single-peer
 sessions only; remote play is refused. Route UX and defensive policy belong to
-separate mods. The initial native route ran in a private Windows game copy;
+separate mods. The owner accepted Carrier Navigator alpha.2 with Revolution in
+a private Windows game copy. Alpha.3 adds live helm factors and explicit forward
+commands for smoother turns; those new changes need the owner's gameplay check.
+The exact subsequently accepted runtime will be preserved for release;
 combat/countermeasure and ordinary-install acceptance remain unverified.
 
 ## Previous development preview: 0.9.0-dev

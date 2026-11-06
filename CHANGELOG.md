@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Add native engine-gated forward commands alongside path steering, guidance
+  telemetry and live replicated helm factors. Consumer policy can maintain
+  headway through turns; native wheel/throttle animation follows live commands.
+  Alpha.3 requires owner gameplay acceptance separately from historical alpha.2.
 - Add optional named motion API 1 and matching independent Lua operations for
   native carrier waypoint steering, copied state, a normalized forward-output cap
   and current team-detected vehicle/projectile contacts. Preserve existing ABI
@@ -12,6 +16,8 @@
 - Add native ownership, profile, power-sign, takeover, expiry, visibility and ABI
   regressions. Initial native motion ran in a private legitimate game copy;
   remote gameplay, combat and countermeasure consumption remain unverified.
+- Preserve the owner-accepted alpha.2 binary with its original build metadata;
+  source packaging verifies all compiled inputs against the committed snapshot.
 
 ## 0.9.0-dev (development preview, 2026-11-06)
 

@@ -1,10 +1,11 @@
 # C, C++ and Lua capability parity
 
 The unpublished 0.10 branch adds [motion API 1](CARRIER_MOTION.md): named
-`cc2x_motion_api.available/read/set/contacts` and independent Lua
-`cc2.carrier.motion_available/motion_state/set_motion/contacts`. Both use the
+`cc2x_motion_api.available/read/set/contacts/drive` and independent Lua
+`cc2.carrier.motion_available/motion_state/set_motion/contacts/drive_motion`. Both use the
 same guarded Motion backend. Native fixtures cover the profile, seven-word ABI,
-ownership, power cap, manual takeover, expiry and visibility admission. The addon
+ownership, power cap, engine-gated forward command, replicated helm factors,
+guidance, manual takeover, expiry and visibility admission. The addon
 also exercises its Lua adapter with synthetic telemetry; this is not a full
 live-combat or remote-client acceptance claim.
 

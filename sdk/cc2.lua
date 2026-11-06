@@ -42,6 +42,11 @@ function M.carrier.set_motion(id, active, power)
     if type(native) ~= 'function' then return false, 'unavailable' end
     return native(id, active, power)
 end
+function M.carrier.drive_motion(id, power_cap, forward)
+    local native = rawget(_G, 'cc2_bridge_motion_drive')
+    if type(native) ~= 'function' then return false, 'unavailable' end
+    return native(id, power_cap, forward)
+end
 function M.carrier.contacts(id)
     local native = rawget(_G, 'cc2_bridge_motion_contacts')
     if type(native) ~= 'function' then return nil, 'unavailable' end

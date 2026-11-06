@@ -14,6 +14,7 @@ class Motion {
  bool Available() const;
  bool Read(std::uint32_t id,cc2x_motion_state* out);
  bool Set(const std::string& owner,std::uint64_t generation,std::uint32_t id,bool active,double power);
+ bool Drive(const std::string& owner,std::uint64_t generation,std::uint32_t id,double power,double forward);
  bool Contacts(std::uint32_t id,std::vector<cc2x_contact>* out);
  void ObserveControls(void* carrier,void* inputs);
  void BeforeMotion(void* carrier);
@@ -25,7 +26,7 @@ class Motion {
  unsigned char* Carrier(std::uint32_t id) const;
  bool LocalTeam(std::uint32_t* team) const;
  void Stop(unsigned char* carrier);
- struct Lease {std::string owner;std::uint64_t tick;double power;};
+ struct Lease {std::string owner;std::uint64_t tick;double power;double forward=-1;float steering=0,lever=0;bool helm=false;};
  const cc2x_api* api_=nullptr;void* server_=nullptr;DWORD thread_=0;
  std::uint64_t generation_=0,tick_=0;
  std::map<std::uint32_t,Lease> leases_;
