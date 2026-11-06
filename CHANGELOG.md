@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Add read-only carrier navigation profile verification and negative fixtures.
+  Confirms native waypoint/manual branch instructions for the reviewed Windows
+  1.5.18-r2 executable. Does not enable controls or change the published runtime.
+
 ## 0.9.0-dev (development preview, 2026-11-06)
 
 - Publish the exact owner-tested runtime as an explicit prerelease. Native bytes
