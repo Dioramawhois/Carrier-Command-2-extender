@@ -1,5 +1,11 @@
 # C, C++ and Lua capability parity
 
+The machine-readable framework contract is extended by separate optional
+`sdk/schemas/*-capability.json` declarations. Each identifies its named C extension,
+Lua routes, API levels and validation scope. The carrier-motion declaration
+classifies all five new facade functions without changing the stable framework
+prefix contract. Distribution tests validate and combine these declarations.
+
 The unpublished 0.10 branch adds [motion API 1](CARRIER_MOTION.md): named
 `cc2x_motion_api.available/read/set/contacts/drive` and independent Lua
 `cc2.carrier.motion_available/motion_state/set_motion/contacts/drive_motion`. Both use the
