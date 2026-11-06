@@ -11,11 +11,13 @@ Adds optional [carrier motion and team contacts](docs/CARRIER_MOTION.md) through
 one guarded C/Lua backend. It uses native waypoint steering, owner/session leases,
 manual helm/throttle priority and a normalized forward-power cap. Local single-peer
 sessions only; remote play is refused. Route UX and defensive policy belong to
-separate mods. The owner accepted Carrier Navigator alpha.2 with Revolution in
-a private Windows game copy. Alpha.3 adds live helm factors and explicit forward
-commands for smoother turns; those new changes need the owner's gameplay check.
-The exact subsequently accepted runtime will be preserved for release;
-combat/countermeasure and ordinary-install acceptance remain unverified.
+separate mods. The owner accepted Carrier: Autopilot Waypoints alpha.4 in the
+ordinary Steam installation with Revolution through ModLoader, after the live
+helm factors, continuous turning power and route-repeat corrections. The exact
+tested DLL is preserved, including its original build record; every compiled
+input is verified against the accompanying committed source snapshot.
+Separate combat/countermeasure expenditure, exhaustive save/load, multiplayer
+and clean-machine acceptance remain unverified.
 
 ## Previous development preview: 0.9.0-dev
 
@@ -68,7 +70,7 @@ See the exact release's `RELEASE.json` and test evidence for its verified scope.
 
 ## Install the runtime
 
-Download [the client beta release](https://github.com/Dioramawhois/Carrier-Command-2-extender/releases/tag/0.8.1-client-beta.1)
+Download [the matching development preview](https://github.com/Dioramawhois/Carrier-Command-2-extender/releases/tag/0.10.0-dev)
 or subscribe to the existing [SDK Workshop item](https://steamcommunity.com/sharedfiles/filedetails/?id=3833014670).
 A subscription downloads the files; it does not copy the bootstrap into the
 game installation.
@@ -82,9 +84,12 @@ game installation.
 
 [Detailed player instructions](docs/README_PLAYERS.txt) include the exact Steam
 folder. Automatic installation requires a ModLoader build that explicitly
-reviews this exact 0.8.1 runtime and its API capabilities. Existing ModLoader
+reviews this exact 0.10.0-dev runtime and its API capabilities. Existing ModLoader
 releases pinned to older binaries require a matching update. Use the manual
 route until that update is available. Do not bypass its DLL checks.
+After a manual SDK update, copy the new matching DLL again while the game is
+closed: Steam does not replace the game-folder copy. A compatible ModLoader is
+recommended for reviewed installation and upgrades with backups.
 
 ## Write a mod
 

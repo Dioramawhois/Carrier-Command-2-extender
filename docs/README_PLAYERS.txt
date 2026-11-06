@@ -52,11 +52,12 @@ Offline fixtures do not prove full gameplay compatibility.
 
 Remote multiplayer, dedicated servers, changed-catalog saves, full custom-aircraft
 flight/island landing and native macOS support remain unverified.
-The owner accepted Carrier Navigator alpha.2 navigation with Revolution in a
-private legitimate Windows game copy. That acceptance predates alpha.3's new
-helm-factor and forward-command changes, which await a new owner game test.
-Separate live combat/countermeasure expenditure and ordinary-install
-acceptance remain unverified. Carrier motion currently refuses multi-peer play.
+The owner accepted Carrier: Autopilot Waypoints alpha.4 navigation with Revolution
+in the ordinary Steam installation through ModLoader after the helm-factor,
+continuous turning-power and route-repeat corrections. The exact tested DLL is
+preserved with its original build record and hash-verified source snapshot.
+Separate live combat/countermeasure expenditure, exhaustive save/load and
+clean-machine acceptance remain unverified. Carrier motion refuses multi-peer play.
 The prior 0.9 preview received Island Airfields equipment and three-arrival
 save/reload acceptance; that is historical evidence, not a new 0.10 gameplay test.
 Full Brake behavior remains separate and unverified. The CPU tile preview refuses
