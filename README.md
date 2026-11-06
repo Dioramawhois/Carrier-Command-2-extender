@@ -5,7 +5,7 @@ CC2X is a shared framework for **C/C++ plugins and Lua mods**. Install one
 optional packages. The SDK itself adds no aircraft, flight modes, brakes,
 button layouts or island gameplay rules.
 
-## Development preview being prepared: 0.10.0-dev
+## Current development preview: 0.10.0-dev
 
 Adds optional [carrier motion and team contacts](docs/CARRIER_MOTION.md) through
 one guarded C/Lua backend. It uses native waypoint steering, owner/session leases,
@@ -177,3 +177,6 @@ CC2X is free software under the GNU General Public License v3.0 or later ([LICEN
 `include/cc2x.h` is part of it: a plugin built against this API is a work based on CC2X, so a plugin
 you distribute must be released under GPL-3.0-or-later (or a GPL-compatible licence) with its
 source code. Carrier Command 2 itself is not part of this project and keeps its own licence.
+
+CC2 ModLoader beta 12 and later accept official signed SDK updates independently
+of the application EXE. See [SDK update metadata](docs/SDK_RUNTIME_UPDATES.md).

@@ -15,9 +15,10 @@ INSTALL WITH A MATCHING CC2 MODLOADER
 3. Open ModLoader, enable CC2X SDK in Libraries, and select your mods.
 4. Wait until the selected set is ready, then click Launch.
 
-Automatic installation requires a ModLoader build that explicitly reviews
-this exact 0.10.0-dev runtime, waypoint-origin and screen-extension capabilities. Until a matching
-ModLoader update is available, use the manual route below.
+CC2 ModLoader beta 12 and later verify official signed SDK updates. Compatible
+SDK updates install from the downloaded library without replacing the ModLoader
+EXE. Existing runtime backups and Undo remain available. Older applications
+need this one update to enable the mechanism.
 ModLoader releases:
 https://github.com/Dioramawhois/CC2-ModLoader/releases
 
