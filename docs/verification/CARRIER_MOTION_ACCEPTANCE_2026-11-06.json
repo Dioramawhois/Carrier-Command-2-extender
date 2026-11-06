@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "date": "2026-11-06",
+  "timezone": "Europe/Moscow",
+  "confirmation_source": "direct owner message after owner-run alpha.2 test",
+  "game_runtime_tested": true,
+  "candidate": "0.1.0-alpha.2 / alpha2-02",
+  "candidate_source_commit": "dd3b683b9875a3eeb0b8784ea7b2706b0bf46483",
+  "runtime_sha256": "44ac2c907a10e8d2a95fb44d4d5d905da021963970adf6b056d32525dd7819b0",
+  "verified_scope": [
+    "owner acceptance of revised aviation-map navigation",
+    "owner acceptance of native full-power revision",
+    "owner-tested Revolution-containing single-player mod set"
+  ],
+  "functional_sha256": {
+    "content/bridge.json": "756085a0c9c18618e888ab259baac3f68fdb019c70a69728adfc546ad58b480b",
+    "content/bridge/cruise.lua": "880b27f1db1b4ae5aa934045a201ba1536565f1f752dcb69b429f9ce8b0b5b3d",
+    "content/bridge/defence.lua": "6e678599938589c19cebde103fe55e028599f0d2d0e825a8131a6581804e9b9e",
+    "content/bridge/main.lua": "c27249a0957211043e1766eee567e2aa934a17ac327664ee9deb321da5c6d577",
+    "content/bridge/runtime.lua": "b04f94c5a8d390a40ec4716138e02d4aa1d904086b1e387429a500c83e0ed12c",
+    "content/cc2x/screen_extensions.json": "7bc0ce8a200b4f434bf9c7b6ebee818ffba841e774af78d564d8e1c5c1260dcb",
+    "content/cc2x/ui/navigator.lua": "abb963c71ae822ece633c0c844f43cee369302b6389dcd869869e274170fd843"
+  },
+  "environment": "private legitimate Windows game copy, copied owner save/mod set, local single-player",
+  "private_test_additions": [
+    "read-only state observer around unchanged player module",
+    "normal-menu copied-save autoload screen helper"
+  ],
+  "unverified": [
+    "separate live-combat and countermeasure-expenditure acceptance",
+    "all save/load cases",
+    "ordinary-install acceptance",
+    "remote multiplayer",
+    "dedicated server",
+    "native macOS runtime"
+  ],
+  "publication_authorized_after": "owner provides mod pictures",
+  "owner_confirmation_summary": "Owner confirmed alpha.2 and requested release preparation; later alpha.3 changes require a fresh check."
+}

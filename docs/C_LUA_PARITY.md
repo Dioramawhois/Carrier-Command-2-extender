@@ -1,5 +1,20 @@
 # C, C++ and Lua capability parity
 
+The machine-readable framework contract is extended by separate optional
+`sdk/schemas/*-capability.json` declarations. Each identifies its named C extension,
+Lua routes, API levels and validation scope. The carrier-motion declaration
+classifies all five new facade functions without changing the stable framework
+prefix contract. Distribution tests validate and combine these declarations.
+
+The unpublished 0.10 branch adds [motion API 1](CARRIER_MOTION.md): named
+`cc2x_motion_api.available/read/set/contacts/drive` and independent Lua
+`cc2.carrier.motion_available/motion_state/set_motion/contacts/drive_motion`. Both use the
+same guarded Motion backend. Native fixtures cover the profile, seven-word ABI,
+ownership, power cap, engine-gated forward command, replicated helm factors,
+guidance, manual takeover, expiry and visibility admission. The addon
+also exercises its Lua adapter with synthetic telemetry; this is not a full
+live-combat or remote-client acceptance claim.
+
 The 0.9.0 development candidate adds the separately named
 [`cc2x_carrier_api`](CARRIER_RECOVERY.md) and
 [`cc2x_settings_api`](MODULE_SETTINGS.md), with matching `cc2.carrier.*` and

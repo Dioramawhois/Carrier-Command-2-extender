@@ -5,6 +5,8 @@
 #include "cc2x_settings.h"
 #include "cc2x_equipment.h"
 #include "cc2x_tile_sites.h"
+#include "cc2x_motion.h"
+extern "C" const cc2x_motion_api* cc2x_query_motion_v1(uint32_t,uint32_t);
 extern "C" const cc2x_tile_sites_api* cc2x_query_tile_sites_v1(uint32_t,uint32_t);
 extern "C" const cc2x_equipment_api* cc2x_query_equipment_v1(uint32_t,uint32_t);
 #include <filesystem>
@@ -37,6 +39,11 @@ local cc2=require('cc2')
 local n,request=0,nil
 return {on_load=function()
  assert(io==nil and os==nil and debug==nil and package==nil)
+ assert(type(cc2.carrier.drive_motion)=='function' and not cc2.carrier.motion_available())
+ assert(not cc2.carrier.drive_motion(1,1,0.5))
+ assert(not cc2.carrier.drive_motion('1',1,0.5))
+ assert(not cc2.carrier.drive_motion(1,1,0/0))
+ assert(not cc2.carrier.drive_motion(1,1,'0.5'))
  assert(cc2.tiles.sites(7,0,3)==nil)
  assert(cc2.tiles.sites(7,64,3)==nil)
  assert(cc2.tiles.sites('7',0,3)==nil)
@@ -80,6 +87,10 @@ end}
  cc2::runtime::Host h(nullptr,Dock);assert(h.Attach(&a,false));h.Session(server,true);h.Tick(server);
  const auto* c=cc2x_carrier_resolve(cc2x_query_carrier_v1);const auto* s=cc2x_settings_resolve(cc2x_query_settings_v1);
  const auto* sites=cc2x_query_tile_sites_v1(1,sizeof(cc2x_tile_sites_api));
+ const auto* motion=cc2x_motion_resolve(cc2x_query_motion_v1);
+ assert(motion&&!motion->available()&&!motion->drive("native.parity",h.Generation(),1,1,.5));
+ assert(!motion->drive("lua.recover.lua",h.Generation(),1,1,.5));
+ assert(!cc2x_query_motion_v1(2,sizeof(*motion))&&!cc2x_query_motion_v1(1,sizeof(*motion)-1));
  std::uint32_t siteCount=0;assert(sites&&!sites->read(7,0,3,nullptr,0,&siteCount));
  assert(!cc2x_query_tile_sites_v1(2,sizeof(*sites))&&!cc2x_query_tile_sites_v1(1,sizeof(*sites)-1));
  const auto* e=cc2x_equipment_resolve(cc2x_query_equipment_v1);

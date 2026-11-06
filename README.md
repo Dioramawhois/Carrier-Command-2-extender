@@ -5,7 +5,21 @@ CC2X is a shared framework for **C/C++ plugins and Lua mods**. Install one
 optional packages. The SDK itself adds no aircraft, flight modes, brakes,
 button layouts or island gameplay rules.
 
-## Current development preview: 0.9.0-dev
+## Current development preview: 0.10.0-dev
+
+Adds optional [carrier motion and team contacts](docs/CARRIER_MOTION.md) through
+one guarded C/Lua backend. It uses native waypoint steering, owner/session leases,
+manual helm/throttle priority and a normalized forward-power cap. Local single-peer
+sessions only; remote play is refused. Route UX and defensive policy belong to
+separate mods. The owner accepted Carrier: Autopilot Waypoints alpha.4 in the
+ordinary Steam installation with Revolution through ModLoader, after the live
+helm factors, continuous turning power and route-repeat corrections. The exact
+tested DLL is preserved, including its original build record; every compiled
+input is verified against the accompanying committed source snapshot.
+Separate combat/countermeasure expenditure, exhaustive save/load, multiplayer
+and clean-machine acceptance remain unverified.
+
+## Previous development preview: 0.9.0-dev
 
 Adds optional [carrier docking and deck recovery](docs/CARRIER_RECOVERY.md)
 and [persistent module settings](docs/MODULE_SETTINGS.md), shared by C and Lua.
@@ -56,7 +70,7 @@ See the exact release's `RELEASE.json` and test evidence for its verified scope.
 
 ## Install the runtime
 
-Download [the client beta release](https://github.com/Dioramawhois/Carrier-Command-2-extender/releases/tag/0.8.1-client-beta.1)
+Download [the matching development preview](https://github.com/Dioramawhois/Carrier-Command-2-extender/releases/tag/0.10.0-dev)
 or subscribe to the existing [SDK Workshop item](https://steamcommunity.com/sharedfiles/filedetails/?id=3833014670).
 A subscription downloads the files; it does not copy the bootstrap into the
 game installation.
@@ -70,9 +84,12 @@ game installation.
 
 [Detailed player instructions](docs/README_PLAYERS.txt) include the exact Steam
 folder. Automatic installation requires a ModLoader build that explicitly
-reviews this exact 0.8.1 runtime and its API capabilities. Existing ModLoader
+reviews this exact 0.10.0-dev runtime and its API capabilities. Existing ModLoader
 releases pinned to older binaries require a matching update. Use the manual
 route until that update is available. Do not bypass its DLL checks.
+After a manual SDK update, copy the new matching DLL again while the game is
+closed: Steam does not replace the game-folder copy. A compatible ModLoader is
+recommended for reviewed installation and upgrades with backups.
 
 ## Write a mod
 
@@ -160,3 +177,6 @@ CC2X is free software under the GNU General Public License v3.0 or later ([LICEN
 `include/cc2x.h` is part of it: a plugin built against this API is a work based on CC2X, so a plugin
 you distribute must be released under GPL-3.0-or-later (or a GPL-compatible licence) with its
 source code. Carrier Command 2 itself is not part of this project and keeps its own licence.
+
+CC2 ModLoader beta 12 and later accept official signed SDK updates independently
+of the application EXE. See [SDK update metadata](docs/SDK_RUNTIME_UPDATES.md).

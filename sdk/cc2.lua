@@ -28,6 +28,30 @@ local M = {
 -- Screen/UI scripts use cc2x.modules.send(owner, topic, subject, value).
 -- Optional additive interfaces. Older runtimes return unavailable; API 2 and
 -- all pre-existing selectors keep their contracts.
+function M.carrier.motion_available()
+    local native = rawget(_G, 'cc2_bridge_motion_available')
+    return type(native) == 'function' and native() == true
+end
+function M.carrier.motion_state(id)
+    local native = rawget(_G, 'cc2_bridge_motion_state')
+    if type(native) ~= 'function' then return nil, 'unavailable' end
+    return native(id)
+end
+function M.carrier.set_motion(id, active, power)
+    local native = rawget(_G, 'cc2_bridge_motion_set')
+    if type(native) ~= 'function' then return false, 'unavailable' end
+    return native(id, active, power)
+end
+function M.carrier.drive_motion(id, power_cap, forward)
+    local native = rawget(_G, 'cc2_bridge_motion_drive')
+    if type(native) ~= 'function' then return false, 'unavailable' end
+    return native(id, power_cap, forward)
+end
+function M.carrier.contacts(id)
+    local native = rawget(_G, 'cc2_bridge_motion_contacts')
+    if type(native) ~= 'function' then return nil, 'unavailable' end
+    return native(id)
+end
 function M.tiles.sites(tile_id, kind, definition)
     local native = rawget(_G, "cc2_bridge_tile_sites")
     if type(native) ~= "function" then return nil, "unavailable" end
