@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 import hashlib
 import io
 import json
+import os
 from pathlib import Path, PurePosixPath
 import re
 import subprocess
@@ -94,6 +95,10 @@ def main():
                         help='Publish the unchanged tested -dev runtime as an explicit prerelease')
     parser.add_argument('--preserve-tested-artifact', action='store_true',
                         help='Keep the accepted binary and original build record; verify every archived input hash')
+    parser.add_argument('--runtime-signing-key', type=Path,
+                        help='Publisher key outside the repository; defaults to CC2X_RUNTIME_SIGNING_KEY or the local publisher key')
+    parser.add_argument('--runtime-sequence', type=int,
+                        help='Increasing signed SDK release sequence; defaults to source commit time')
     args = parser.parse_args()
     git = lambda *arguments: subprocess.check_output(['git', *arguments], cwd=ROOT)
     if git('status', '--porcelain').strip():
@@ -152,13 +157,30 @@ def main():
               'runtime_acceptance': game, 'remote_multiplayer_verified': False,
               'dedicated_verified': False, 'macos_native_verified': False,
               'provider_sources_sha256': PROVIDER_SHA256}
+    from cryptography.hazmat.primitives import serialization
+    from sign_runtime_release import sign_release
+    default_key = Path(os.environ.get('LOCALAPPDATA', str(Path.home()))) / 'CC2ModLoaderPublisher/sdk-runtime-signing.pem'
+    key_path = args.runtime_signing_key or Path(os.environ.get('CC2X_RUNTIME_SIGNING_KEY', str(default_key)))
+    if not key_path.is_file():
+        raise ValueError('Publisher signing key required for automatic SDK updates; keep it outside source/releases')
+    key = serialization.load_pem_private_key(key_path.read_bytes(), password=None)
+    policy = json.loads((ROOT / 'sdk/runtime-update-policy.json').read_text())
+    update = sign_release(result, binary, key, policy['game_sha256'],
+        args.runtime_sequence if args.runtime_sequence is not None else stamp,
+        policy['previous_runtime_sha256'])
+    if update['key_id'] != policy['publisher_key_id']:
+        raise ValueError('SDK publisher key differs from the trusted release policy')
+    update_bytes = json_bytes(update)
+    result['runtime_update'] = {'key_id': update['key_id'], 'sequence': update['payload']['sequence'],
+                              'metadata_sha256': sha(update_bytes)}
     files = license_payload(ROOT)
+    files['runtime-update.json'] = update_bytes
     files.update({'dinput8.dll': binary, 'CC2X-README.txt': (ROOT / 'docs/README_PLAYERS.txt').read_bytes(),
                   'dinput8.build.json': json_bytes(native), 'SDK-OFFLINE-TESTS.json': json_bytes(evidence),
                   'RELEASE.json': json_bytes(result)})
     files['SHA256SUMS.txt'] = ''.join(sha(data) + '  ' + name + '\n'
                                         for name, data in sorted(files.items())).encode('ascii')
-    assets = {'dinput8.dll': binary, 'CC2X-README.txt': files['CC2X-README.txt'],
+    assets = {'dinput8.dll': binary, 'runtime-update.json': update_bytes, 'CC2X-README.txt': files['CC2X-README.txt'],
               'dinput8.build.json': files['dinput8.build.json'],
               'SDK-OFFLINE-TESTS.json': files['SDK-OFFLINE-TESTS.json'],
               'RELEASE.json': files['RELEASE.json'],

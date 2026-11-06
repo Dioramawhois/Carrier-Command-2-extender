@@ -1,0 +1,2 @@
+# Publisher metadata only; native builds do not need this Python dependency.
+cryptography==50.0.2
