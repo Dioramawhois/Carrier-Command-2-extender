@@ -11,11 +11,12 @@ speed fields. The manual branch reads steering/throttle factors and the side
 thruster switch. Presence of these branches does not establish that changing
 control mode alone safely provides a human carrier autopilot.
 
-Next native work must verify the normal mode transition, helm takeover,
-authority, waypoint/path replication and save/load. The carrier motion branch
-does not visibly use its speed output as a cruising-speed limit; do not claim
-that writing `CC2X_VEHICLE_CONTROL_SPEED` implements speed selection. A generic
-guarded speed/control interface still needs implementation and C/Lua parity.
+The unpublished branch now implements the separately named
+[motion interface](CARRIER_MOTION.md), including guarded native transitions,
+manual helm/throttle priority and local ownership checks. Native slot 57 takes
+seven stack words, confirmed by the `ret 0x1c` guard and hook ABI fixture.
+The carrier branch does not use its control-speed field as a cruising limit;
+selection caps the existing forward output instead. Full power has no knot cap.
 
 Carrier Navigator owns route UX, requested speed and defensive policies. Those
 rules do not belong in this SDK. The published 0.9.0-dev runtime is unchanged.

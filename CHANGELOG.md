@@ -2,9 +2,16 @@
 
 ## Unreleased
 
-- Add read-only carrier navigation profile verification and negative fixtures.
-  Confirms native waypoint/manual branch instructions for the reviewed Windows
-  1.5.18-r2 executable. Does not enable controls or change the published runtime.
+- Add optional named motion API 1 and matching independent Lua operations for
+  native carrier waypoint steering, copied state, a normalized forward-output cap
+  and current team-detected vehicle/projectile contacts. Preserve existing ABI
+  layouts and Lua API 2. The published 0.9 runtime is unchanged.
+- Require the reviewed 1.5.18-r2 profile, local single-peer owning team, expiring
+  owner/session/carrier leases and physical helm/throttle precedence. Install
+  the motion wrapper lazily; preserve its seven-stack-word native ABI.
+- Add native ownership, profile, power-sign, takeover, expiry, visibility and ABI
+  regressions. Initial native motion ran in a private legitimate game copy;
+  remote gameplay, combat and countermeasure consumption remain unverified.
 
 ## 0.9.0-dev (development preview, 2026-11-06)
 

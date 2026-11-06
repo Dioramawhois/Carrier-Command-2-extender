@@ -18,7 +18,7 @@ class NavigationProfileTests(unittest.TestCase):
 
     def test_exact_reviewed_branch_fixture(self):
         data = self.image()
-        self.assertEqual(len(profile.check_branches(lambda a, n: data[a][:n])), 4)
+        self.assertEqual(len(profile.check_branches(lambda a, n: data[a][:n])), 5)
 
     def test_every_instruction_guard_rejects_mutation(self):
         for address in profile.GUARDS:

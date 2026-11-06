@@ -7,6 +7,7 @@
 #include "module_mailbox.h"
 #include "api/vehicle/buttons.h"
 #include "api/carrier/recovery.h"
+#include "api/carrier/motion.h"
 #include "module_settings.h"
 #include "api/vehicle/tile_sites.h"
 #include <Windows.h>
@@ -36,7 +37,7 @@ class Host {
   void PrepareStartupCatalog(); // startup worker; fixtures may explicitly finish a deferred catalog
   void Session(void* server, bool started);
   void Tick(void* server);
-  void AfterCarrierUpdate(void* carrier);
+  void AfterCarrierUpdate(void* carrier,void* inputs=nullptr);
   bool QueueThrottle(int step);
   struct HangarSlotOption { std::uint32_t index; bool compatible; bool occupied; };
   struct HangarSpawnResult { std::uint32_t requestId; bool success; std::uint32_t vehicleId; std::uint32_t errorCode; };
@@ -92,6 +93,7 @@ class Host {
   bool ReadVehicleThrottle(std::uint32_t vehicle,double* value);
   bool WriteVehicleThrottle(std::uint32_t vehicle,double value);
   api::carrier::Recovery& Carrier(){return recovery_;}
+  api::carrier::Motion& Motion(){return motion_;}
   ModuleSettings* Settings(const std::string& owner);
   bool SettingsIo(const std::string& owner);
   bool DescribeNativePackage(const std::string& owner,const std::wstring& pluginDirectory,host::ModDescriptor* package);
@@ -112,6 +114,7 @@ class Host {
   bool tileSitesEnabled_=false,tileSitesFault_=false;
   std::map<std::uint64_t,std::vector<api::world::TileSite>> tileSites_;
   api::carrier::Recovery recovery_;
+  api::carrier::Motion motion_;
   std::map<std::string,std::unique_ptr<ModuleSettings>> settings_;
   struct SettingsBudget {ULONGLONG second=0;unsigned count=0;};
   std::map<std::string,SettingsBudget> settingsBudgets_;

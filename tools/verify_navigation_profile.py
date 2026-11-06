@@ -17,6 +17,8 @@ GUARDS = {
     0x706D0F: '8d8fd801000051ff75188bcfff751c0f11442464ff7514ff750cff7510e8ffb5fbff',
     # mode 1 reads physical helm factors; +0x39e selects side thrusters.
     0x706FA6: '83f801755b80bf9e03000000f30f1087900c00007416f30f108f940c0000',
+    # Seven stack words, including an argument omitted by old decompiler output.
+    0x707429: '5f5e8be55dc21c00',
 }
 
 
