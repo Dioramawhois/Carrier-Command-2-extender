@@ -1,6 +1,10 @@
 -- SPDX-License-Identifier: GPL-3.0-or-later
 -- Owned main-menu extension. Delivered by Workshop, including to older DLLs.
 return function(env, latest)
+    -- The UI library is shared with gameplay screens. Only the front-menu
+    -- environment exposes both its navigation table and navigation callback.
+    if type(env.g_screens)~='table' or env.g_screens.main==nil or
+        type(env.nav_set_screen)~='function' then return false end
     local function version(text)
         if type(text)~='string' then return end
         local a,b,c=text:match('^(%d+)%.(%d+)%.(%d+)')

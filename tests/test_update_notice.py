@@ -15,7 +15,9 @@ class UpdateNoticeTests(unittest.TestCase):
     def test_payload_is_own_additive_screen_extension(self):
         files=notice.payload('0.11.0-dev')
         self.assertEqual(len(files),2)
-        self.assertEqual(json.loads(files['content/cc2x/screen_extensions.json'])['schema'],1)
+        descriptor=json.loads(files['content/cc2x/screen_extensions.json'])
+        self.assertEqual(descriptor['schema'],1)
+        self.assertEqual(descriptor['extensions'][0]['screen'],'scripts/library_ui.lua')
         self.assertNotIn('content/scripts/screen_menu_main.lua',files)
 
     def test_version_cannot_inject_lua(self):
@@ -28,4 +30,4 @@ class UpdateNoticeTests(unittest.TestCase):
         result=subprocess.run([str(runner),str(ROOT/'sdk/ui/update_notice.lua'),str(ROOT/'tests/bridge/update_notice.lua')],
                               capture_output=True,text=True,timeout=20)
         self.assertEqual(result.returncode,0,result.stdout+result.stderr)
-        self.assertIn('6 real-Lua scenarios',result.stdout)
+        self.assertIn('7 real-Lua scenarios',result.stdout)

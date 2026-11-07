@@ -1,7 +1,9 @@
 # SDK update notifications
 
-The official SDK Workshop package carries an owned append-only main-menu
-extension. Packaging generates its available version from CC2X_VERSION. The
+The official SDK Workshop package carries an owned append-only UI-library
+extension, guarded to activate only in the front-menu environment. This keeps
+its delivery separate from ModLoader's own main-menu policy, including in
+existing beta 12 installations. Packaging generates its available version from CC2X_VERSION. The
 extension compares that with `cc2x.version`, which describes the loaded DLL.
 It does not confuse the downloaded Workshop DLL with the installed runtime.
 
