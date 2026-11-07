@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "name": "carrier-navigation",
+  "framework_api": 1,
+  "lua_api": 2,
+  "c": [],
+  "c_extension": "cc2x_navigation_api.available/read/configure (cc2x_query_navigation_v1)",
+  "lua": [
+    "carrier.navigation_available",
+    "carrier.navigation_state",
+    "carrier.set_navigation"
+  ],
+  "validation": "real-lua-with-synthetic-engine",
+  "scope": "optional owner/session-scoped surface mesh policy for local carrier navigation; stable motion/framework prefixes unchanged"
+}

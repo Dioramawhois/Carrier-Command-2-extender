@@ -539,6 +539,10 @@ bool Host::Attach(const cc2x_api* api,bool installNative,bool deferCatalog) {
   if(!api_.config_dir||!api_.config_dir[0])return false;
   recovery_.Configure(&api_);
   motion_.Configure(&api_);
+  // Shared navigation seams are installed before a session can run native path queries.
+  // Unsupported profiles keep the optional interface unavailable; legacy motion remains usable.
+  if(installNative&&!motion_.InstallNavigation()&&api_.log)
+    api_.log("native_bridge",CC2X_LOG_INFO,"event=SURFACE_NAVIGATION_UNAVAILABLE profile_or_patch_refused");
   nativeExtensionsReady_=!installNative||InstallNativeExtensions(&api_,this);
   if(!nativeExtensionsReady_) {
     api_.carrier_throttle=nullptr;

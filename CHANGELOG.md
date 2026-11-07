@@ -1,6 +1,19 @@
 # Changelog
 
-## Unreleased
+## Unreleased - 0.11.0-dev surface navigation candidate
+
+- Add a separate optional navigation API 1 for C/Lua callers over the same
+  owner/session-scoped backend. Keep C API 8, framework API 1, Lua API 2 and
+  motion API 1 layouts unchanged.
+- Retain native A*/funnel/steering while permitting explicitly configured wet
+  mesh triangles and a caller-selected arrival radius. Preserve raw goals and
+  block failed paths instead of silently consuming their waypoints.
+- Confine hooks to the configured carrier's native query; preserve other vessels,
+  original routing outside scope, register/floating state and native fault cleanup.
+- Add copied exact-goal telemetry and strict C/Lua options contracts. Source/native
+  fixtures are separate from fresh coastal gameplay and hull-clearance acceptance.
+
+## Earlier 0.10 development notes
 
 - Add native engine-gated forward commands alongside path steering, guidance
   telemetry and live replicated helm factors. Consumer policy can maintain

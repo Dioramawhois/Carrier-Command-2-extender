@@ -1,5 +1,13 @@
 # C, C++ and Lua capability parity
 
+The 0.11 source candidate adds [surface navigation API 1](SURFACE_NAVIGATION.md):
+`cc2x_navigation_api.available/read/configure` and independent Lua
+`cc2.carrier.navigation_available/navigation_state/set_navigation`. Both use the
+same optional owned native route policy. Existing motion/framework/core layouts
+are preserved. Natural Windows x86 layouts are options 24, state 56 and table
+32 bytes. Strict options, unavailable/context/owner failures and copied status
+are exercised through both bindings; live coastal acceptance remains separate.
+
 The machine-readable framework contract is extended by separate optional
 `sdk/schemas/*-capability.json` declarations. Each identifies its named C extension,
 Lua routes, API levels and validation scope. The carrier-motion declaration

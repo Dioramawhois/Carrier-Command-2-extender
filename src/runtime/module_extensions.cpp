@@ -6,6 +6,7 @@
 #include "cc2x_equipment.h"
 #include "cc2x_tile_sites.h"
 #include "cc2x_motion.h"
+#include "cc2x_navigation.h"
 extern "C" {
 #include "lua.h"
 }
@@ -59,6 +60,54 @@ int MotionContacts(lua_State* L){
  for(const auto& c:contacts){lua_newtable(L);Field(L,"id",c.id);Field(L,"kind",c.kind);Field(L,"definition",c.definition);Field(L,"team",c.team);
  lua_pushboolean(L,1);lua_setfield(L,-2,"detected");
  lua_pushnumber(L,c.x);lua_setfield(L,-2,"x");lua_pushnumber(L,c.y);lua_setfield(L,-2,"y");lua_pushnumber(L,c.z);lua_setfield(L,-2,"z");lua_rawseti(L,-2,index++);}return 1;
+}
+int NavigationAvailable(lua_State* L){
+ lua_pushboolean(L,Context(L)&&lua_gettop(L)==0&&H(L)->Motion().NavigationAvailable());return 1;
+}
+int NavigationState(lua_State* L){
+ std::uint64_t id=0;cc2x_navigation_state state{sizeof(state)};
+ if(!Context(L)||lua_gettop(L)!=1||!Integer(L,1,&id)||!id||
+    !H(L)->Motion().NavigationRead(static_cast<std::uint32_t>(id),&state)){
+  lua_pushnil(L);lua_pushliteral(L,"navigation_state_unavailable");return 2;
+ }
+ lua_newtable(L);Field(L,"id",state.id);Field(L,"waypoint_id",state.waypoint_id);
+ for(const auto& item:{std::pair<const char*,unsigned>{"configured",CC2X_NAVIGATION_CONFIGURED},
+     {"active",CC2X_NAVIGATION_ACTIVE},{"ready",CC2X_NAVIGATION_READY},
+     {"blocked",CC2X_NAVIGATION_BLOCKED},{"arrived",CC2X_NAVIGATION_ARRIVED},
+     {"faulted",CC2X_NAVIGATION_FAULTED}}){
+  lua_pushboolean(L,(state.flags&item.second)!=0);lua_setfield(L,-2,item.first);
+ }
+ for(const auto& item:{std::pair<const char*,double>{"target_x",state.target_x},
+     {"target_z",state.target_z},{"distance",state.distance},
+     {"minimum_depth",state.minimum_depth},{"arrival_radius",state.arrival_radius}}){
+  lua_pushnumber(L,item.second);lua_setfield(L,-2,item.first);
+ }
+ return 1;
+}
+int NavigationSet(lua_State* L){
+ std::uint64_t id=0;
+ if(!Context(L)||lua_gettop(L)!=2||!Integer(L,1,&id)||!id||lua_type(L,2)!=LUA_TTABLE)
+  return Result(L,false,"invalid_navigation_arguments");
+ if(lua_getmetatable(L,2)){lua_pop(L,1);return Result(L,false,"invalid_navigation_arguments");}
+ cc2x_navigation_options options{sizeof(options),CC2X_NAVIGATION_SURFACE,0,25};
+ unsigned fields=0;lua_pushnil(L);
+ while(lua_next(L,2)){
+  std::string key;double value=0;
+  if(++fields>3||!Text(L,-2,&key))return Result(L,false,"invalid_navigation_arguments");
+  if(key=="minimum_depth"){
+   if(!Number(L,-1,&value)||value<0||value>1000)return Result(L,false,"invalid_navigation_arguments");
+   options.minimum_depth=value;
+  }else if(key=="arrival_radius"){
+   if(!Number(L,-1,&value)||value<1||value>150)return Result(L,false,"invalid_navigation_arguments");
+   options.arrival_radius=value;
+  }else if(key=="enabled"){
+   if(lua_type(L,-1)!=LUA_TBOOLEAN)return Result(L,false,"invalid_navigation_arguments");
+   options.flags=lua_toboolean(L,-1)?CC2X_NAVIGATION_SURFACE:0;
+  }else return Result(L,false,"invalid_navigation_arguments");
+  lua_pop(L,1);
+ }
+ return Result(L,H(L)->Motion().NavigationConfigure(O(L),H(L)->Generation(),
+    static_cast<std::uint32_t>(id),options),"navigation_refused");
 }
 int Available(lua_State* L){
  std::string name;const bool valid=lua_gettop(L)==1&&Text(L,1,&name);
@@ -152,6 +201,8 @@ void RegisterModuleExtensions(lua_State* L,Host* host,const std::string& owner){
  auto add=[&](const char* name,lua_CFunction fn){lua_pushlightuserdata(L,host);lua_pushlstring(L,owner.data(),owner.size());lua_pushcclosure(L,fn,2);lua_setglobal(L,name);};
  add("cc2_bridge_motion_available",MotionAvailable);add("cc2_bridge_motion_state",MotionState);add("cc2_bridge_motion_set",MotionSet);add("cc2_bridge_motion_contacts",MotionContacts);
  add("cc2_bridge_motion_drive",MotionDrive);
+ add("cc2_bridge_navigation_available",NavigationAvailable);add("cc2_bridge_navigation_state",NavigationState);
+ add("cc2_bridge_navigation_set",NavigationSet);
  add("cc2_bridge_carrier_available",Available);add("cc2_bridge_carrier_dock_request",Request);add("cc2_bridge_carrier_dock_result",DockResult);
  add("cc2_bridge_carrier_recovery_arm",Arm);add("cc2_bridge_carrier_recovery_disarm",Disarm);add("cc2_bridge_carrier_recovery_status",Status);
  add("cc2_bridge_tile_sites",TileSites);
@@ -250,4 +301,21 @@ int MotionContactsC(std::uint32_t id,cc2x_contact* out,std::uint32_t capacity,st
 extern "C" CC2X_EXPORT const cc2x_motion_api* cc2x_query_motion_v1(std::uint32_t version,std::uint32_t size){
  static const cc2x_motion_api api{CC2X_MOTION_VERSION,sizeof(api),CC2X_MOTION_ID,MotionAvailableC,MotionReadC,MotionSetC,MotionContactsC,MotionDriveC};
  return version==CC2X_MOTION_VERSION&&size==sizeof(api)?&api:nullptr;
+}
+namespace {
+int NavigationAvailableC(){auto* h=SharedHost();return h&&h->InServerContext()&&h->Motion().NavigationAvailable();}
+int NavigationReadC(std::uint32_t id,cc2x_navigation_state* state){
+ auto* h=SharedHost();return h&&h->InServerContext()&&h->Motion().NavigationRead(id,state);
+}
+int NavigationConfigureC(const char* name,std::uint64_t generation,std::uint32_t id,
+    const cc2x_navigation_options* options){
+ auto* h=SharedHost();std::string owner;
+ return h&&h->InServerContext()&&options&&Owner(name,&owner)&&
+    h->Motion().NavigationConfigure(owner,generation,id,*options);
+}
+}
+extern "C" CC2X_EXPORT const cc2x_navigation_api* cc2x_query_navigation_v1(std::uint32_t version,std::uint32_t size){
+ static const cc2x_navigation_api api{CC2X_NAVIGATION_VERSION,sizeof(api),CC2X_NAVIGATION_ID,
+    NavigationAvailableC,NavigationReadC,NavigationConfigureC};
+ return version==CC2X_NAVIGATION_VERSION&&size==sizeof(api)?&api:nullptr;
 }

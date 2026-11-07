@@ -28,6 +28,20 @@ local M = {
 -- Screen/UI scripts use cc2x.modules.send(owner, topic, subject, value).
 -- Optional additive interfaces. Older runtimes return unavailable; API 2 and
 -- all pre-existing selectors keep their contracts.
+function M.carrier.navigation_available(...)
+    local native = rawget(_G, 'cc2_bridge_navigation_available')
+    return type(native) == 'function' and native(...) == true or false
+end
+function M.carrier.navigation_state(...)
+    local native = rawget(_G, 'cc2_bridge_navigation_state')
+    if type(native) ~= 'function' then return nil, 'navigation_state_unavailable' end
+    return native(...)
+end
+function M.carrier.set_navigation(...)
+    local native = rawget(_G, 'cc2_bridge_navigation_set')
+    if type(native) ~= 'function' then return false, 'navigation_unavailable' end
+    return native(...)
+end
 function M.carrier.motion_available()
     local native = rawget(_G, 'cc2_bridge_motion_available')
     return type(native) == 'function' and native() == true

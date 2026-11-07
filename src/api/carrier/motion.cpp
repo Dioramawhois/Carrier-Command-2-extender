@@ -36,8 +36,8 @@ bool Guard(const cc2x_api* a,std::uint32_t address,const unsigned char* bytes,st
 }
 }
 void Motion::Configure(const cc2x_api* api){api_=api;}
-void Motion::Session(void* server,std::uint64_t generation){server_=server;generation_=server?generation:0;tick_=0;thread_=0;leases_.clear();manual_.clear();}
-void Motion::Tick(std::uint64_t tick){if(!server_)return;thread_=GetCurrentThreadId();tick_=tick;}
+void Motion::Session(void* server,std::uint64_t generation){navigation_.Session();server_=server;generation_=server?generation:0;tick_=0;thread_=0;leases_.clear();manual_.clear();}
+void Motion::Tick(std::uint64_t tick){if(!server_)return;thread_=GetCurrentThreadId();tick_=tick;navigation_.Tick();}
 bool Motion::Context()const{return server_&&generation_&&thread_==GetCurrentThreadId()&&api_&&api_->find&&api_->geti&&api_->count&&api_->body_get;}
 bool Motion::Available()const{
  if(!api_||!api_->game_build||std::strcmp(api_->game_build,"1.5.18-win32-r2")||!api_->va)return false;
@@ -85,7 +85,7 @@ bool Motion::Read(std::uint32_t id,cc2x_motion_state* out){
  const double dx=s.target_x-b.pos[0],dz=s.target_z-b.pos[2];
  s.path_distance=std::hypot(dx,dz);s.heading_error=0;
  const double qnorm=b.rot[0]*b.rot[0]+b.rot[1]*b.rot[1]+b.rot[2]*b.rot[2]+b.rot[3]*b.rot[3];
- if(s.mode==0&&s.waypoints&&std::isfinite(s.path_distance)&&s.path_distance>.01&&std::isfinite(qnorm)&&qnorm>.5&&qnorm<1.5){
+ if(!navigation_.Blocked(id)&&s.mode==0&&s.waypoints&&std::isfinite(s.path_distance)&&s.path_distance>.01&&std::isfinite(qnorm)&&qnorm>.5&&qnorm<1.5){
   const double fx=2*(b.rot[0]*b.rot[2]+b.rot[3]*b.rot[1]),fz=1-2*(b.rot[0]*b.rot[0]+b.rot[1]*b.rot[1]);
   if(std::hypot(fx,fz)>.01){s.heading_error=std::atan2(dx*fz-dz*fx,dx*fx+dz*fz);s.flags|=CC2X_MOTION_GUIDANCE;}
  }
@@ -96,7 +96,9 @@ bool Motion::Set(const std::string& owner,std::uint64_t generation,std::uint32_t
  if(!Context()||generation!=generation_||owner.empty()||owner.size()>96||!std::isfinite(power)||power<0||power>1)return false;
  auto* v=Carrier(id);std::uint32_t team=0;if(!v||!LocalTeam(&team)||team!=api_->geti(v,CC2X_VEHICLE_TEAM,0))return false;
  auto found=leases_.find(id);if(found!=leases_.end()&&found->second.owner!=owner)return false;
- if(!active){if(found==leases_.end())return true;Stop(v);leases_.erase(found);return true;}
+ if(!navigation_.AllowsOwner(owner,id))return false;
+ if(!active){navigation_.Drop(owner,id);if(found==leases_.end())return true;Stop(v);leases_.erase(found);return true;}
+ if(navigation_.Blocked(id))return false;
  if(manual_[id]||api_->count(v,CC2X_VEHICLE_WAYPOINTS)<=0||!Install())return false;
  if(leases_.size()>=8&&found==leases_.end())return false;
  auto& lease=leases_[id];lease.owner=owner;lease.tick=tick_;lease.power=power;lease.forward=-1;
@@ -117,7 +119,7 @@ void Motion::ObserveControls(void* carrier,void* inputs){
   }
  }
  manual_[id]=manual;
- if(manual&&leases_.erase(id)){Put<std::uint32_t>(carrier,0x1d0,1);if(api_->log)api_->log("motion",CC2X_LOG_INFO,"event=MOTION_MANUAL_TAKEOVER carrier=%u",id);}
+ if(manual){navigation_.Drop(id);if(leases_.erase(id)){Put<std::uint32_t>(carrier,0x1d0,1);if(api_->log)api_->log("motion",CC2X_LOG_INFO,"event=MOTION_MANUAL_TAKEOVER carrier=%u",id);}}
  else if(!manual){
   auto lease=leases_.find(id);
   if(lease!=leases_.end()&&lease->second.helm){
@@ -131,7 +133,7 @@ void Motion::BeforeMotion(void* carrier){
  if(!Context()||!Region(carrier,0xc98))return;auto id=At<std::uint32_t>(carrier,0x80);auto found=leases_.find(id);if(found==leases_.end())return;
  std::uint32_t team=0;
  if(tick_<found->second.tick||tick_-found->second.tick>3||!LocalTeam(&team)||team!=At<std::uint32_t>(carrier,0x108)||
-    manual_[id]||api_->count(carrier,CC2X_VEHICLE_WAYPOINTS)==0){Stop(static_cast<unsigned char*>(carrier));leases_.erase(found);return;}
+    manual_[id]||api_->count(carrier,CC2X_VEHICLE_WAYPOINTS)==0){Stop(static_cast<unsigned char*>(carrier));if(!navigation_.Arrived(id))navigation_.Drop(id);leases_.erase(found);return;}
  Put<std::uint32_t>(carrier,0x1d0,0);
 }
 void Motion::AfterMotion(void* carrier){
@@ -139,6 +141,12 @@ void Motion::AfterMotion(void* carrier){
  auto* port=At<unsigned char*>(carrier,0xc30);auto* starboard=At<unsigned char*>(carrier,0xc34);
  auto* engine=At<unsigned char*>(carrier,0xa58);
  if(!Region(port,0x34,true)||!Region(starboard,0x34,true)||!Region(engine,12))return;
+ if(navigation_.Blocked(At<std::uint32_t>(carrier,0x80))){
+  Stop(static_cast<unsigned char*>(carrier));
+  for(auto* jet:{port,starboard,At<unsigned char*>(carrier,0xc38),At<unsigned char*>(carrier,0xc3c)})if(Region(jet,0x34,true))Put<float>(jet,0x30,0);
+  if(Region(engine,12,true))Put<float>(engine,0,0);
+  found->second.forward=0;found->second.power=0;found->second.steering=0;found->second.lever=0;found->second.helm=true;return;
+ }
  const float rpm=At<float>(engine,8),cap=static_cast<float>(found->second.power);
  if(!std::isfinite(rpm)||rpm<0||rpm>1)return;
  float lever=0;
@@ -171,6 +179,7 @@ void Motion::AfterMotion(void* carrier){
  }
 }
 void Motion::DropOwner(const std::string& owner){
+ navigation_.Drop(owner);
  for(auto it=leases_.begin();it!=leases_.end();)if(it->second.owner==owner){if(auto* v=Carrier(it->first))Stop(v);it=leases_.erase(it);}else ++it;
 }
 bool Motion::Contacts(std::uint32_t id,std::vector<cc2x_contact>* out){
