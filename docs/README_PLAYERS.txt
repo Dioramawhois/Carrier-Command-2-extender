@@ -1,10 +1,16 @@
 CC2X SDK - Shared Runtime for Carrier Command 2
-0.9.0-dev / C API 8 / framework C API 1 / independent Lua API 2
+0.11.0-dev / C API 8 / framework C API 1 / independent Lua API 2
 =======================================================================
 
 CC2X supplies common native engine access and Lua support for compatible mods.
 Install the SDK once; gameplay mods and their content are supplied separately.
 The SDK itself adds no aircraft, flight modes, brakes, button layouts or island rules.
+
+SDK UPDATE NOTICE
+
+An older loaded DLL shows an update dialog in the main menu. Steam refreshes
+the download, not the installed DLL. Close the game and update with ModLoader,
+or follow the manual steps below. Compatible existing features remain usable.
 
 INSTALL WITH A MATCHING CC2 MODLOADER
 
@@ -15,16 +21,17 @@ INSTALL WITH A MATCHING CC2 MODLOADER
 3. Open ModLoader, enable CC2X SDK in Libraries, and select your mods.
 4. Wait until the selected set is ready, then click Launch.
 
-Automatic installation requires a ModLoader build that explicitly reviews
-this exact 0.9.0-dev runtime, waypoint-origin and screen-extension capabilities. Until a matching
-ModLoader update is available, use the manual route below.
+CC2 ModLoader beta 12 and later verify official signed SDK updates. Compatible
+SDK updates install from the downloaded library without replacing the ModLoader
+EXE. Existing runtime backups and Undo remain available. Older applications
+need this one update to enable the mechanism.
 ModLoader releases:
 https://github.com/Dioramawhois/CC2-ModLoader/releases
 
 INSTALL MANUALLY
 
 1. Close the game. Download dinput8.dll from this exact client beta:
-   https://github.com/Dioramawhois/Carrier-Command-2-extender/releases/download/0.9.0-dev/dinput8.dll
+   https://github.com/Dioramawhois/Carrier-Command-2-extender/releases/download/0.11.0-dev/dinput8.dll
    Or copy it from the SDK's downloaded Workshop folder inside your Steam library:
    steamapps\workshop\content\1489630\3833014670\content\dinput8.dll
 2. In Steam, right-click Carrier Command 2 > Manage > Browse local files.
@@ -52,9 +59,15 @@ Offline fixtures do not prove full gameplay compatibility.
 
 Remote multiplayer, dedicated servers, changed-catalog saves, full custom-aircraft
 flight/island landing and native macOS support remain unverified.
-Island Airfields 2.2 equipment changes and three-arrival save/reload received
-an ordinary-host owner test with this exact runtime. Full Brake behavior remains
-separate and unverified. The experimental CPU tile preview currently refuses
+The owner accepted Carrier: Autopilot Waypoints alpha.4 navigation with Revolution
+in the ordinary Steam installation through ModLoader after the helm-factor,
+continuous turning-power and route-repeat corrections. The exact tested DLL is
+preserved with its original build record and hash-verified source snapshot.
+Separate live combat/countermeasure expenditure, exhaustive save/load and
+clean-machine acceptance remain unverified. Carrier motion refuses multi-peer play.
+The prior 0.9 preview received Island Airfields equipment and three-arrival
+save/reload acceptance; that is historical evidence, not a new 0.10 gameplay test.
+Full Brake behavior remains separate and unverified. The CPU tile preview refuses
 unavailable tile definitions; do not rely on it for distant map positions.
 The runtime is shared infrastructure, not a guarantee that every mod combination
 will work together. ModLoader reports overlapping changes when preparing mods.

@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "name": "carrier-motion",
+  "framework_api": 1,
+  "lua_api": 2,
+  "c": [],
+  "c_extension": "cc2x_motion_api.available/read/set/contacts/drive (cc2x_query_motion_v1)",
+  "lua": [
+    "carrier.motion_available",
+    "carrier.motion_state",
+    "carrier.set_motion",
+    "carrier.drive_motion",
+    "carrier.contacts"
+  ],
+  "validation": "real-lua-with-synthetic-engine",
+  "scope": "optional local single-peer motion and current team contacts; no stable framework-prefix layout change"
+}

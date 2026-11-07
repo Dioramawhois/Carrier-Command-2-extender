@@ -1,5 +1,41 @@
 # Changelog
 
+- SDK 0.11 Workshop payload: show a main-menu update dialog and persistent
+  reminder when the loaded DLL is older than the downloaded SDK. Include
+  ModLoader/manual instructions and preserve compatible older-runtime features.
+
+## Unreleased - 0.11.0-dev surface navigation candidate
+
+- Add a separate optional navigation API 1 for C/Lua callers over the same
+  owner/session-scoped backend. Keep C API 8, framework API 1, Lua API 2 and
+  motion API 1 layouts unchanged.
+- Retain native A*/funnel/steering while permitting explicitly configured wet
+  mesh triangles and a caller-selected arrival radius. Preserve raw goals and
+  block failed paths instead of silently consuming their waypoints.
+- Confine hooks to the configured carrier's native query; preserve other vessels,
+  original routing outside scope, register/floating state and native fault cleanup.
+- Add copied exact-goal telemetry and strict C/Lua options contracts. Source/native
+  fixtures are separate from fresh coastal gameplay and hull-clearance acceptance.
+
+## Earlier 0.10 development notes
+
+- Add native engine-gated forward commands alongside path steering, guidance
+  telemetry and live replicated helm factors. Consumer policy can maintain
+  headway through turns; native wheel/throttle animation follows live commands.
+  Alpha.3 requires owner gameplay acceptance separately from historical alpha.2.
+- Add optional named motion API 1 and matching independent Lua operations for
+  native carrier waypoint steering, copied state, a normalized forward-output cap
+  and current team-detected vehicle/projectile contacts. Preserve existing ABI
+  layouts and Lua API 2. The published 0.9 runtime is unchanged.
+- Require the reviewed 1.5.18-r2 profile, local single-peer owning team, expiring
+  owner/session/carrier leases and physical helm/throttle precedence. Install
+  the motion wrapper lazily; preserve its seven-stack-word native ABI.
+- Add native ownership, profile, power-sign, takeover, expiry, visibility and ABI
+  regressions. Initial native motion ran in a private legitimate game copy;
+  remote gameplay, combat and countermeasure consumption remain unverified.
+- Preserve the owner-accepted alpha.2 binary with its original build metadata;
+  source packaging verifies all compiled inputs against the committed snapshot.
+
 ## 0.9.0-dev (development preview, 2026-11-06)
 
 - Publish the exact owner-tested runtime as an explicit prerelease. Native bytes

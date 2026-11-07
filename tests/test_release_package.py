@@ -12,6 +12,23 @@ spec.loader.exec_module(module)
 
 
 class ReleasePackageTest(unittest.TestCase):
+    def test_preserved_binary_requires_exact_acceptance_and_keeps_dirty_build_record(self):
+        native = {'artifact_sha256': 'tested', 'source_commit': 'old', 'source_dirty': True}
+        with self.assertRaises(ValueError):
+            module.validate_build_record(native, 'tested', 'new')
+        for acceptance in (None, {'runtime_sha256': 'other', 'game_runtime_tested': True},
+                           {'runtime_sha256': 'tested', 'game_runtime_tested': False}):
+            with self.subTest(acceptance=acceptance), self.assertRaises(ValueError):
+                module.validate_build_record(native, 'tested', 'new',
+                    preserve_tested=True, acceptance=acceptance)
+        self.assertFalse(module.validate_build_record(native, 'tested', 'new',
+            preserve_tested=True, acceptance={'runtime_sha256': 'tested', 'game_runtime_tested': True}))
+        self.assertTrue(native['source_dirty'])
+        self.assertEqual(native['source_commit'], 'old')
+        with self.assertRaises(ValueError):
+            module.validate_build_record(native, 'changed', 'new', preserve_tested=True,
+                acceptance={'runtime_sha256': 'changed', 'game_runtime_tested': True})
+
     def test_development_release_is_explicit_and_always_prerelease(self):
         self.assertFalse(module.release_version('0.9.0'))
         self.assertTrue(module.release_version('0.9.0-client-beta.1'))

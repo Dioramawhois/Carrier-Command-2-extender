@@ -16,7 +16,8 @@ GENERATED = OUT / 'generated'
 
 CPP_SOURCES = [
     'api/framework.cpp', 'api/vehicle/tile_sites.cpp',
-    'api/carrier/recovery.cpp', 'runtime/module_settings.cpp', 'runtime/module_extensions.cpp',
+    'api/carrier/recovery.cpp', 'api/carrier/motion.cpp', 'api/carrier/navigation.cpp',
+    'runtime/module_settings.cpp', 'runtime/module_extensions.cpp',
     'runtime/host.cpp', 'runtime/world.cpp', 'runtime/mod_loader.cpp', 'runtime/early_declaration.cpp',
     'api/vehicle/definition_registry.cpp', 'api/vehicle/definition_adapter.cpp',
     'api/vehicle/ui_catalog.cpp', 'api/vehicle/lua_api.cpp', 'api/vehicle/ui_library_injection.cpp',
@@ -108,6 +109,7 @@ def main():
         'sdk/schemas/framework-capabilities.json', 'sdk/schemas/screen_extensions.schema.json', 'NOTICE.md',
         'sdk/schemas/carrier-recovery.schema.json', 'sdk/schemas/module-settings.schema.json',
         'sdk/schemas/equipment.schema.json', 'sdk/schemas/tile-sites.schema.json',
+        'sdk/schemas/carrier-motion-capability.json', 'sdk/schemas/carrier-navigation-capability.json',
         'LICENSE', 'third_party/Lua-LICENSE.txt')]
     input_hashes = {p.relative_to(ROOT).as_posix(): sha(p) for p in inputs}
     compiler_hash = sha(compiler)
@@ -150,7 +152,8 @@ def main():
               'capabilities': ['independent-lua-v1', 'ordered-module-bundles-v1', 'session-query-v1',
                                'lua-mod-api-v2', 'framework-c-api-v1', 'waypoint-origin-v1',
                                'screen-extensions-v1', 'screen-source-edits-v1',
-                               'carrier-dock-v1', 'carrier-recovery-v1', 'module-settings-v1', 'vehicle-equipment-v1', 'tile-sites-v1'],
+                               'carrier-dock-v1', 'carrier-recovery-v1', 'module-settings-v1', 'vehicle-equipment-v1', 'tile-sites-v1',
+                               'carrier-motion-v1', 'carrier-navigation-v1'],
               'lua_api': 2,
               'framework_api': 1,
               'source_sha256': input_hashes,
@@ -170,6 +173,9 @@ def main():
             ('attachment_rules_test.cpp', [], []),
             ('tile_sites_test.cpp', src_objects([p for p in CPP_SOURCES if p != 'api/vehicle/tile_sites.cpp'] + ['entity_registry.c', 'order_context.c', 'platform/seh_guard.c']) + lua_objects, []),
             ('carrier_recovery_test.cpp', src_objects(['api/carrier/recovery.cpp', 'platform/seh_guard.c']), []),
+            ('carrier_motion_test.cpp', src_objects(['api/carrier/motion.cpp', 'api/carrier/navigation.cpp', 'platform/seh_guard.c']), []),
+            ('carrier_navigation_test.cpp', src_objects(['api/carrier/motion.cpp', 'api/carrier/navigation.cpp', 'platform/seh_guard.c']), []),
+            ('carrier_navigation_geometry_test.cpp', [], []),
             ('module_settings_test.cpp', src_objects(['runtime/module_settings.cpp']), []),
             ('module_extensions_parity_test.cpp', src_objects(CPP_SOURCES + ['entity_registry.c', 'order_context.c', 'platform/seh_guard.c']) + lua_objects, []),
             ('cc2x_api_layout_test.c', [], []),

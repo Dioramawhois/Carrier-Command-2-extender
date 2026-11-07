@@ -11,7 +11,7 @@ Host* target=nullptr;
 using CarrierUpdate=std::uint32_t(__thiscall*)(void*,std::uint32_t,std::uint32_t,std::uint32_t,std::uint32_t,std::uint32_t,std::uint32_t,std::uint32_t);
 CarrierUpdate original=nullptr;
 std::uint32_t __fastcall Update(void*self,void*,std::uint32_t a,std::uint32_t b,std::uint32_t c,std::uint32_t d,std::uint32_t e,std::uint32_t f,std::uint32_t g) {
-  auto result=original(self,a,b,c,d,e,f,g);if(target)target->AfterCarrierUpdate(self);return result;
+  auto result=original(self,a,b,c,d,e,f,g);if(target)target->AfterCarrierUpdate(self,reinterpret_cast<void*>(f));return result;
 }
 void __cdecl ObserveEarlyResourceInit(cc2x_cpu*,void*) {
   if(target)target->ObserveGameResourceInit();

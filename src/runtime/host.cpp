@@ -212,7 +212,7 @@ int SessionPost(lua_State* L) {
   lua_pushvalue(L,1);const int ref=luaL_ref(L,LUA_REGISTRYINDEX);
   const auto id=m->host->PostTask("lua."+m->id,m->host->ActiveGeneration(),[m,ref]{
     const int top=lua_gettop(m->L);SetBudget(*m);lua_rawgeti(m->L,LUA_REGISTRYINDEX,ref);
-    if(lua_pcall(m->L,0,0,0)!=LUA_OK){m->host->Carrier().DropOwner("lua."+m->id);++m->errors;m->host->Log("LUA_TASK_ERROR",m->id.c_str(),lua_tostring(m->L,-1));}
+    if(lua_pcall(m->L,0,0,0)!=LUA_OK){m->host->Carrier().DropOwner("lua."+m->id);m->host->Motion().DropOwner("lua."+m->id);++m->errors;m->host->Log("LUA_TASK_ERROR",m->id.c_str(),lua_tostring(m->L,-1));}
     lua_settop(m->L,top);
   },[m,ref]{luaL_unref(m->L,LUA_REGISTRYINDEX,ref);});
   if(!id){luaL_unref(L,LUA_REGISTRYINDEX,ref);lua_pushnil(L);lua_pushliteral(L,"no_session_or_task_queue_full");return 2;}
@@ -450,7 +450,7 @@ int Handler(lua_State* L) {
   unsigned index=static_cast<unsigned>(token&0x7fffffffu);if(index>258)return 0;
   auto&counter=m->handlers[index];++counter.calls;++m->callbacks;
   if(token&0x80000000u) {
-    m->host->Carrier().DropOwner("lua."+m->id);
+    m->host->Carrier().DropOwner("lua."+m->id);m->host->Motion().DropOwner("lua."+m->id);
     ++m->errors;++counter.errors;
     if(counter.errors<=3||counter.errors%1000==0){char detail[2048];const char*err=lua_tostring(L,2);sprintf_s(detail,"handler=%u errors=%llu reason=%.1600s",index,counter.errors,err?err:"Lua callback error");m->host->Log("CALLBACK_ERROR",m->id.c_str(),detail);}
   }
@@ -538,6 +538,11 @@ bool Host::Attach(const cc2x_api* api,bool installNative,bool deferCatalog) {
   if(!api_.on_server_tick||!api_.on_session||!api_.active_mod_count||!api_.active_mod_path||!api_.log)return false;
   if(!api_.config_dir||!api_.config_dir[0])return false;
   recovery_.Configure(&api_);
+  motion_.Configure(&api_);
+  // Shared navigation seams are installed before a session can run native path queries.
+  // Unsupported profiles keep the optional interface unavailable; legacy motion remains usable.
+  if(installNative&&!motion_.InstallNavigation()&&api_.log)
+    api_.log("native_bridge",CC2X_LOG_INFO,"event=SURFACE_NAVIGATION_UNAVAILABLE profile_or_patch_refused");
   nativeExtensionsReady_=!installNative||InstallNativeExtensions(&api_,this);
   if(!nativeExtensionsReady_) {
     api_.carrier_throttle=nullptr;
@@ -657,6 +662,7 @@ void Host::Session(void* server,bool started) {
     hangarSpawnResults_.clear(); // Results belong to the world that produced them.
     server_=server;++metrics_.generation;threadGeneration_=0;lastTick_=0;sessionTicks_=0;
     recovery_.Session(server_,metrics_.generation);
+    motion_.Session(server_,metrics_.generation);
     mailbox_.Begin(metrics_.generation);
     hangarSpawnRequested_=false;hangarSpawnInFlight_=false;hangarSpawnUnsafeLatched_=false;
     hangarSpawnRollbackPending_=false;
@@ -676,6 +682,7 @@ void Host::Session(void* server,bool started) {
     hangarSpawnResults_.clear();
     mailbox_.End();
     recovery_.Session(nullptr,metrics_.generation);
+    motion_.Session(nullptr,metrics_.generation);
     hangarSpawnRequested_=false;hangarSpawnInFlight_=false;hangarSpawnUnsafeLatched_=false;
     hangarSpawnRollbackPending_=false;hangarSpawnRollbackId_=0;hangarSpawnRollbackTicks_=0;
     hangarSpawnCarrierId_=hangarSpawnSlot_=hangarSpawnType_=0;
@@ -698,9 +705,10 @@ bool Host::QueueThrottle(int step) {
   auto r=commands_.Push(step,commands_.active);
   if(r==lifetime::EnqueueResult::Queued){++metrics_.requested;return true;}return false;
 }
-void Host::AfterCarrierUpdate(void* carrier) {
+void Host::AfterCarrierUpdate(void* carrier,void* inputs) {
   std::lock_guard<std::recursive_mutex> lock(mutex_);
   if(!server_||!carrier||thread_!=GetCurrentThreadId())return;
+  motion_.ObserveControls(carrier,inputs);
   std::int8_t steps[lifetime::EpochQueue::Capacity]{};auto n=commands_.Drain(commands_.active,steps);if(!n)return;
   auto*field=reinterpret_cast<float*>(static_cast<unsigned char*>(carrier)+0xC94);
   float before=*field,after=before;
@@ -771,7 +779,7 @@ bool Host::Call(Module& m,const char* name,double dt,bool argument) {
   if(!lua_isfunction(m.L,-1)){lua_settop(m.L,top);return false;}
   if(argument)lua_pushnumber(m.L,dt);
   int status=lua_pcall(m.L,argument?1:0,0,0);
-  if(status!=LUA_OK){recovery_.DropOwner("lua."+m.id);++m.errors;const char*err=lua_tostring(m.L,-1);Log("LUA_ERROR",m.id.c_str(),err?err:"unknown");}
+  if(status!=LUA_OK){recovery_.DropOwner("lua."+m.id);motion_.DropOwner("lua."+m.id);++m.errors;const char*err=lua_tostring(m.L,-1);Log("LUA_ERROR",m.id.c_str(),err?err:"unknown");}
   lua_settop(m.L,top);return status==LUA_OK;
 }
 int Host::WorldEvent(const char* name,double a,double b,double c,int neutral,bool decision) {
@@ -804,7 +812,7 @@ int Host::WorldEvent(const char* name,double a,double b,double c,int neutral,boo
     if(!lua_isfunction(m.L,-1)){lua_settop(m.L,top);continue;}
     lua_pushstring(m.L,name);lua_pushnumber(m.L,a);lua_pushnumber(m.L,b);lua_pushnumber(m.L,c);
     const int status=lua_pcall(m.L,4,1,0);
-    if(status!=LUA_OK){recovery_.DropOwner("lua."+m.id);++m.errors;if(buttonsContext_)buttonsContext_->rejected=true;Log("LUA_EVENT_ERROR",m.id.c_str(),lua_tostring(m.L,-1));}
+    if(status!=LUA_OK){recovery_.DropOwner("lua."+m.id);motion_.DropOwner("lua."+m.id);++m.errors;if(buttonsContext_)buttonsContext_->rejected=true;Log("LUA_EVENT_ERROR",m.id.c_str(),lua_tostring(m.L,-1));}
     else if(decision&&!lua_isnil(m.L,-1)) {
       int ok=0;auto result=lua_tointegerx(m.L,-1,&ok);
       if(lua_isboolean(m.L,-1)&&construction){ok=1;result=lua_toboolean(m.L,-1);}
@@ -1167,12 +1175,12 @@ void Host::Load() {
     OpenLibraries(m->L);Register(*m);
     auto path=Utf8(bootstrap);
     int rc=ReadLua(m->L,path.c_str());if(rc==LUA_OK)rc=lua_pcall(m->L,0,0,0);
-    if(rc!=LUA_OK){recovery_.DropOwner("lua."+m->id);settings_.erase("lua."+m->id);settingsBudgets_.erase("lua."+m->id);Log("MODULE_LOAD_ERROR",m->id.c_str(),lua_tostring(m->L,-1));mailbox_.Remove(m->id);cc2x_entity_type_remove_owner(m->id.c_str());lua_close(m->L);metrics_.dropped+=commands_.size();auto epoch=commands_.active;commands_.End(epoch);commands_.Begin(epoch);continue;}
+    if(rc!=LUA_OK){recovery_.DropOwner("lua."+m->id);motion_.DropOwner("lua."+m->id);settings_.erase("lua."+m->id);settingsBudgets_.erase("lua."+m->id);Log("MODULE_LOAD_ERROR",m->id.c_str(),lua_tostring(m->L,-1));mailbox_.Remove(m->id);cc2x_entity_type_remove_owner(m->id.c_str());lua_close(m->L);metrics_.dropped+=commands_.size();auto epoch=commands_.active;commands_.End(epoch);commands_.Begin(epoch);continue;}
     ++metrics_.loads;Log("MODULE_LOADED",m->id.c_str());modules_.push_back(std::move(m));
   }
 }
 void Host::CloseModules() {
-  for(auto& m:modules_){Call(*m,"__cc2_host_unload",0,false);recovery_.DropOwner("lua."+m->id);settings_.erase("lua."+m->id);settingsBudgets_.erase("lua."+m->id);DropTasks("lua."+m->id);mailbox_.Remove(m->id);cc2x_entity_type_remove_owner(m->id.c_str());lua_close(m->L);m->L=nullptr;++metrics_.unloads;Log("VM_CLOSED",m->id.c_str());}
+  for(auto& m:modules_){Call(*m,"__cc2_host_unload",0,false);recovery_.DropOwner("lua."+m->id);motion_.DropOwner("lua."+m->id);settings_.erase("lua."+m->id);settingsBudgets_.erase("lua."+m->id);DropTasks("lua."+m->id);mailbox_.Remove(m->id);cc2x_entity_type_remove_owner(m->id.c_str());lua_close(m->L);m->L=nullptr;++metrics_.unloads;Log("VM_CLOSED",m->id.c_str());}
   modules_.clear();loaded_=false;metrics_.dropped+=commands_.size();auto epoch=commands_.active;commands_.End(epoch);if(epoch)commands_.Begin(epoch);
   for(auto& m:ruleModules_){Call(*m,"__cc2_host_unload",0,false);lua_close(m->L);m->L=nullptr;}
   ruleModules_.clear();rulesLoaded_=false;
@@ -1202,6 +1210,7 @@ void Host::Tick(void* server) {
   ULONGLONG now=GetTickCount64();double dt=lastTick_?std::min(0.25,(now-lastTick_)/1000.0):1.0/30.0;lastTick_=now;
   if(reload_){CloseModules();reload_=false;}
   recovery_.Tick(server_,metrics_.generation,sessionTicks_+1);
+  motion_.Tick(sessionTicks_+1);
   if(!loaded_)Load();
   ++metrics_.updates;++sessionTicks_;
   RunTasks(taskCutoff);
