@@ -1,5 +1,9 @@
 # Changelog
 
+- SDK 0.11 Workshop payload: show a main-menu update dialog and persistent
+  reminder when the loaded DLL is older than the downloaded SDK. Include
+  ModLoader/manual instructions and preserve compatible older-runtime features.
+
 ## Unreleased - 0.11.0-dev surface navigation candidate
 
 - Add a separate optional navigation API 1 for C/Lua callers over the same

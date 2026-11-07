@@ -5,16 +5,19 @@ CC2X is a shared framework for **C/C++ plugins and Lua mods**. Install one
 optional packages. The SDK itself adds no aircraft, flight modes, brakes,
 button layouts or island gameplay rules.
 
-## Unpublished source candidate: 0.11.0-dev
+## Development beta: 0.11.0-dev
 
 Adds an optional [surface navigation policy](docs/SURFACE_NAVIGATION.md) for
 explicitly configured local carriers. It separates water-mesh admission and
 arrival radius from native deep-water routing, preserving the native path search
 and stable motion interface. Failed paths retain their requested point and report
-blocked state. This source candidate has no fresh live-game acceptance; the public
-download below remains the earlier owner-tested release.
+blocked state. The Workshop package also adds an explicit main-menu SDK update
+dialog and a persistent reminder when the loaded DLL is older than the download.
+The dialog explains ModLoader and manual updates; compatible features remain
+available after dismissal. It works through the existing screen-extension API,
+including on SDK 0.10. No HTTP checker or DLL replacement runs inside the game.
 
-## Current published development preview: 0.10.0-dev
+## Previous development preview: 0.10.0-dev
 
 Adds optional [carrier motion and team contacts](docs/CARRIER_MOTION.md) through
 one guarded C/Lua backend. It uses native waypoint steering, owner/session leases,

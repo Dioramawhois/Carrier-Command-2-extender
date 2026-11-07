@@ -174,6 +174,9 @@ def main():
     result['runtime_update'] = {'key_id': update['key_id'], 'sequence': update['payload']['sequence'],
                               'metadata_sha256': sha(update_bytes)}
     files = license_payload(ROOT)
+    from update_notice import payload as notice_payload
+    notice = notice_payload(tag)
+    files.update(notice)
     files['runtime-update.json'] = update_bytes
     files.update({'dinput8.dll': binary, 'CC2X-README.txt': (ROOT / 'docs/README_PLAYERS.txt').read_bytes(),
                   'dinput8.build.json': json_bytes(native), 'SDK-OFFLINE-TESTS.json': json_bytes(evidence),
@@ -187,6 +190,7 @@ def main():
               f'CC2X-SDK-{tag}-windows-x86.zip': zip_bytes(files, stamp),
               f'CC2X-SDK-{tag}-source.zip': zip_bytes(sources, stamp),
               f'CC2X-SDK-{tag}-toolchain-sources.zip': provider}
+    assets[f'CC2X-SDK-{tag}-update-notice.zip'] = zip_bytes(notice, stamp)
     assets['SHA256SUMS.txt'] = ''.join(sha(data) + '  ' + name + '\n'
                                          for name, data in sorted(assets.items())).encode('ascii')
     output = ROOT / 'release' / tag
