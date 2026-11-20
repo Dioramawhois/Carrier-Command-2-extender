@@ -21,11 +21,11 @@ template<class T>void put(void* p,unsigned off,T value){std::memcpy(static_cast<
 template<class T>T get(const void* p,unsigned off){T value{};std::memcpy(&value,static_cast<const unsigned char*>(p)+off,sizeof(value));return value;}
 void ring(void* p,unsigned off,void* base,unsigned count){put(p,off,base);put(p,off+4,count);put(p,off+8,0u);put(p,off+12,count);}
 std::map<std::uint32_t,std::vector<unsigned char>> guards{
- {0x706c90,{0x55,0x8b,0xec,0x83,0xe4,0xf8,0x83,0xec,0x58}},
- {0x706cd4,{0x8b,0x87,0xd0,1,0,0,0x85,0xc0,0x0f,0x85,0xc4,2,0,0}},
- {0x77d4e4,{0xff,0xb6,0xd4,0xd,0,0,0x8d,0x8e,0,5,0,0,0x57}},
- {0x707429,{0x5f,0x5e,0x8b,0xe5,0x5d,0xc2,0x1c,0}}};
-std::uintptr_t address(std::uint32_t va){return va==0xd596ec?reinterpret_cast<std::uintptr_t>(vtable):reinterpret_cast<std::uintptr_t>(guards[va].data());}
+ {0x706ee0,{0x55,0x8b,0xec,0x83,0xe4,0xf8,0x83,0xec,0x58}},
+ {0x706f24,{0x8b,0x87,0xd0,1,0,0,0x85,0xc0,0x0f,0x85,0xc4,2,0,0}},
+ {0x77d914,{0xff,0xb6,0xd4,0xd,0,0,0x8d,0x8e,0,5,0,0,0x57}},
+ {0x707679,{0x5f,0x5e,0x8b,0xe5,0x5d,0xc2,0x1c,0}}};
+std::uintptr_t address(std::uint32_t va){return va==0xd589d0?reinterpret_cast<std::uintptr_t>(vtable):reinterpret_cast<std::uintptr_t>(guards[va].data());}
 void* find(int list,std::uint32_t id){return list==CC2X_WORLD_VEHICLES?(id==42?ship.data():id==70?enemy.data():nullptr):nullptr;}
 std::int64_t geti(const void* p,int field,int){switch(field){case CC2X_VEHICLE_TEAM:return get<std::uint32_t>(p,0x108);case CC2X_VEHICLE_HP:return 1000;case CC2X_VEHICLE_DEFINITION:return 5;default:return 0;}}
 int count(const void*,int list){return list==CC2X_VEHICLE_WAYPOINTS?2:0;}
@@ -34,10 +34,10 @@ using Physics=void(__attribute__((thiscall)) *)(void*,std::uint32_t,std::uint32_
 Physics hook=nullptr;
 void __attribute__((thiscall)) originalPhysics(void*,std::uint32_t a,std::uint32_t b,std::uint32_t c,std::uint32_t d,std::uint32_t e,std::uint32_t f,std::uint32_t g){assert(a==1&&b==2&&c==3&&d==4&&e==5&&f==6&&g==7);}
 void begin(const char*){}int commit(){return 1;}void abortPatch(){}
-int patch(std::uint32_t site,std::uint32_t expected,void* replacement,void** saved){assert(site==0xd596ec+57*4&&expected==0x706c90);hook=reinterpret_cast<Physics>(replacement);*saved=reinterpret_cast<void*>(&originalPhysics);return 1;}
+int patch(std::uint32_t site,std::uint32_t expected,void* replacement,void** saved){assert(site==0xd589d0+57*4&&expected==0x706ee0);hook=reinterpret_cast<Physics>(replacement);*saved=reinterpret_cast<void*>(&originalPhysics);return 1;}
 }
 int main(){
- cc2x_api api{};api.game_build="1.5.18-win32-r2";api.va=address;api.find=find;api.geti=geti;api.count=count;api.body_get=body;
+ cc2x_api api{};api.game_build="1.5.20-win32";api.va=address;api.find=find;api.geti=geti;api.count=count;api.body_get=body;
  api.patch_begin=begin;api.patch_ptr=patch;api.patch_commit=commit;api.patch_abort=abortPatch;
  put(ship.data(),0,reinterpret_cast<std::uintptr_t>(vtable));put(ship.data(),0x80,42u);put(ship.data(),0x1d0,1u);
  put(ship.data(),0xc30,port.data());put(ship.data(),0xc34,starboard.data());put(ship.data(),0x390,&seat);

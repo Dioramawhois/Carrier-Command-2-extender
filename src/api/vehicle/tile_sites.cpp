@@ -21,14 +21,14 @@ template<class T>T At(const void* p,std::size_t o){T v{};std::memcpy(&v,static_c
 bool Entries(const cc2x_api* api){
  struct Guard{std::uint32_t address;std::array<BYTE,16> bytes;std::uint32_t relocation;};
  constexpr Guard guards[]{
-  {0x625fd0,{0x53,0x8b,0xdc,0x83,0xec,0x08,0x83,0xe4,0xf8,0x83,0xc4,0x04,0x55,0x8b,0x6b,0x04},0},
-  {0x626310,{0x55,0x8b,0xec,0x6a,0xff,0x68,0xb4,0x57,0xca,0x00,0x64,0xa1,0,0,0,0},0xca57b4},
-  {0x626420,{0x55,0x8b,0xec,0x6a,0xff,0x68,0x38,0x58,0xca,0x00,0x64,0xa1,0,0,0,0},0xca5838},
-  {0x626f50,{0x55,0x8b,0xec,0x6a,0xff,0x68,0x44,0x59,0xca,0x00,0x64,0xa1,0,0,0,0},0xca5944},
-  {0xc3f9fd,{0x55,0x8b,0xec,0xeb,0x0d,0xff,0x75,0x08,0xe8,0xda,0xf6,0x01,0x00,0x59,0x85,0xc0},0},
+  {0x626140,{0x53,0x8b,0xdc,0x83,0xec,0x08,0x83,0xe4,0xf8,0x83,0xc4,0x04,0x55,0x8b,0x6b,0x04},0},
+  {0x626480,{0x55,0x8b,0xec,0x6a,0xff,0x68,0xb4,0x40,0xca,0x00,0x64,0xa1,0x00,0x00,0x00,0x00},0xca40b4},
+  {0x626590,{0x55,0x8b,0xec,0x6a,0xff,0x68,0x38,0x41,0xca,0x00,0x64,0xa1,0x00,0x00,0x00,0x00},0xca4138},
+  {0x6270c0,{0x55,0x8b,0xec,0x6a,0xff,0x68,0x44,0x42,0xca,0x00,0x64,0xa1,0x00,0x00,0x00,0x00},0xca4244},
+  {0xc3e3ed,{0x55,0x8b,0xec,0xeb,0x0d,0xff,0x75,0x08,0xe8,0xea,0xf5,0x01,0x00,0x59,0x85,0xc0},0},
  };
  for(const auto& g:guards){const pe_guard::RelocationField field{6,g.relocation};
-  if(!pe_guard::MatchLoadedBytes(reinterpret_cast<const BYTE*>(api->module_base),0xaf7000,g.address-0x400000,
+  if(!pe_guard::MatchLoadedBytes(reinterpret_cast<const BYTE*>(api->module_base),0xaf6000,g.address-0x400000,
     g.bytes.data(),g.bytes.size(),g.relocation?&field:nullptr,g.relocation?1:0,0x400000))return false;
  }
  return true;
@@ -45,13 +45,13 @@ void Generate(void* data){
  using ConstructTask=void*(__thiscall*)(void*,void**,std::uint32_t,const double*,void*,std::uint32_t,float);
  using Run=void(__thiscall*)(void*);using Destroy=void(__thiscall*)(void*,unsigned);
  auto address=[&](std::uint32_t va){return reinterpret_cast<void*>(c.api->va(va));};
- auto allocate=reinterpret_cast<Allocate>(address(0xc3f9fd));
+ auto allocate=reinterpret_cast<Allocate>(address(0xc3e3ed));
  void* tile=allocate(0x330);
- reinterpret_cast<ConstructTile>(address(0x625fd0))(tile,c.tile,c.matrix);
+ reinterpret_cast<ConstructTile>(address(0x626140))(tile,c.tile,c.matrix);
  void* task=allocate(0xd8);
- reinterpret_cast<ConstructTask>(address(0x626310))(task,&tile,c.seed,c.bounds,c.definitions,c.biome,c.difficulty);
+ reinterpret_cast<ConstructTask>(address(0x626480))(task,&tile,c.seed,c.bounds,c.definitions,c.biome,c.difficulty);
  *reinterpret_cast<std::uint32_t*>(static_cast<unsigned char*>(task)+4)=1; // same queued task state as the native producer
- reinterpret_cast<Run>(address(0x626420))(task);
+ reinterpret_cast<Run>(address(0x626590))(task);
  void* result=At<void*>(task,0xd4);
  if(Region(result,0x330)){
   const auto* r=static_cast<const unsigned char*>(result);
@@ -68,7 +68,7 @@ void Generate(void* data){
  }
  // The task owns its private generated tile, allocations and mutexes. Its
  // stock deleting destructor releases them. Nothing entered the world lists.
- reinterpret_cast<Destroy>(address(0x626f50))(task,1);
+ reinterpret_cast<Destroy>(address(0x6270c0))(task,1);
 }
 }
 bool Host::ReadTileSites(std::uint32_t id,std::uint32_t kind,std::uint32_t definition,
@@ -79,7 +79,7 @@ bool Host::ReadTileSites(std::uint32_t id,std::uint32_t kind,std::uint32_t defin
  if(!InServerContext()||!id||!api::world::TileSiteSelector(kind,definition))return refuse("invalid_tile_sites_context_or_selector");
  if(tileSitesGeneration_!=Generation()){
   tileSitesGeneration_=Generation();tileSites_.clear();tileSitesFault_=false;tileSitesBuildTick_=UINT64_MAX;
-  tileSitesEnabled_=api_.game_build&&std::strcmp(api_.game_build,"1.5.18-win32-r2")==0&&ValidateHangarSpawnImage(&api_,reason)&&Entries(&api_);
+  tileSitesEnabled_=api_.game_build&&std::strcmp(api_.game_build,"1.5.20-win32")==0&&ValidateHangarSpawnImage(&api_,reason)&&Entries(&api_);
  }
  if(!tileSitesEnabled_||tileSitesFault_)return refuse("tile_sites_unavailable");
  const auto key=(static_cast<std::uint64_t>(id)<<12)|(kind<<6)|definition;

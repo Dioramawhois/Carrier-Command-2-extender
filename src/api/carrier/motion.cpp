@@ -40,18 +40,18 @@ void Motion::Session(void* server,std::uint64_t generation){navigation_.Session(
 void Motion::Tick(std::uint64_t tick){if(!server_)return;thread_=GetCurrentThreadId();tick_=tick;navigation_.Tick();}
 bool Motion::Context()const{return server_&&generation_&&thread_==GetCurrentThreadId()&&api_&&api_->find&&api_->geti&&api_->count&&api_->body_get;}
 bool Motion::Available()const{
- if(!api_||!api_->game_build||std::strcmp(api_->game_build,"1.5.18-win32-r2")||!api_->va)return false;
+ if(!api_||!api_->game_build||std::strcmp(api_->game_build,"1.5.20-win32")||!api_->va)return false;
  constexpr unsigned char entry[]{0x55,0x8b,0xec,0x83,0xe4,0xf8,0x83,0xec,0x58};
  constexpr unsigned char mode[]{0x8b,0x87,0xd0,1,0,0,0x85,0xc0,0x0f,0x85,0xc4,2,0,0};
  constexpr unsigned char vision[]{0xff,0xb6,0xd4,0x0d,0,0,0x8d,0x8e,0,5,0,0,0x57};
  constexpr unsigned char exit[]{0x5f,0x5e,0x8b,0xe5,0x5d,0xc2,0x1c,0};
- return Guard(api_,0x706c90,entry,sizeof(entry))&&Guard(api_,0x706cd4,mode,sizeof(mode))&&Guard(api_,0x77d4e4,vision,sizeof(vision))&&Guard(api_,0x707429,exit,sizeof(exit));
+ return Guard(api_,0x706ee0,entry,sizeof(entry))&&Guard(api_,0x706f24,mode,sizeof(mode))&&Guard(api_,0x77d914,vision,sizeof(vision))&&Guard(api_,0x707679,exit,sizeof(exit));
 }
 bool Motion::Install(){
  if(installed_)return true;
  if(!Available()||installed||!api_->patch_ptr||!api_->patch_begin||!api_->patch_abort||!api_->patch_commit)return false;
  api_->patch_begin("cc2x.motion");void* saved=nullptr;
- if(!api_->patch_ptr(0xd596ec+57*4,0x706c90,reinterpret_cast<void*>(&PhysicsHook),&saved)){api_->patch_abort();return false;}
+ if(!api_->patch_ptr(0xd589d0+57*4,0x706ee0,reinterpret_cast<void*>(&PhysicsHook),&saved)){api_->patch_abort();return false;}
  original=reinterpret_cast<Physics>(saved);installed=this;
  if(!api_->patch_commit()){installed=nullptr;original=nullptr;api_->patch_abort();return false;}
  installed_=true;if(api_->log)api_->log("motion",CC2X_LOG_INFO,"event=MOTION_HOOK_READY; native steering and guarded forward-power cap");return true;
@@ -59,7 +59,7 @@ bool Motion::Install(){
 unsigned char* Motion::Carrier(std::uint32_t id)const{
  if(!Context()||!Available())return nullptr;
  auto* v=static_cast<unsigned char*>(api_->find(CC2X_WORLD_VEHICLES,id));
- if(!Region(v,0xe7c,true)||At<std::uintptr_t>(v,0)!=api_->va(0xd596ec)||api_->geti(v,CC2X_VEHICLE_TEAM_IS_AI,0)||api_->geti(v,CC2X_VEHICLE_HP,0)<=0)return nullptr;
+ if(!Region(v,0xe7c,true)||At<std::uintptr_t>(v,0)!=api_->va(0xd589d0)||api_->geti(v,CC2X_VEHICLE_TEAM_IS_AI,0)||api_->geti(v,CC2X_VEHICLE_HP,0)<=0)return nullptr;
  return v;
 }
 bool Motion::LocalTeam(std::uint32_t* team)const{
@@ -152,7 +152,7 @@ void Motion::AfterMotion(void* carrier){
  float lever=0;
  if(found->second.forward>=0){
   lever=static_cast<float>(found->second.forward);
-  // Exact native fuel threshold at reviewed VA 0xdb7208 is 0.05f.
+  // Exact native fuel threshold at reviewed VA 0xdb5fa8 is 0.05f.
   if(!At<unsigned char>(carrier,0x350)||!(At<float>(carrier,0x104)>.05f)||At<std::uint32_t>(carrier,0x10c))lever=0;
   Put<float>(port,0x30,lever*rpm);Put<float>(starboard,0x30,lever*rpm);
  }else{

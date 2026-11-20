@@ -551,7 +551,7 @@ bool Host::Attach(const cc2x_api* api,bool installNative,bool deferCatalog) {
     api_.on_hangar_spawn_result=nullptr;
     if(api_.log)api_.log("native_bridge",CC2X_LOG_WARN,
       "event=NATIVE_FEATURES_DISABLED reason=game_build_addresses_not_verified; independent Lua runtime remains available");
-  } else if(api_.game_build&&std::strcmp(api_.game_build,"1.5.18-win32-r2")==0) {
+  } else if(api_.game_build&&std::strcmp(api_.game_build,"1.5.20-win32")==0) {
     // The instruction-level animation profile is installed transactionally
     // by NativeExtensions. Hangar calls have their own exact-hash, 19-entry
     // profile and are exposed only after its signatures validate.

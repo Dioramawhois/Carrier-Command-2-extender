@@ -57,11 +57,11 @@ int main() {
   Check(!cc2::api::mods::InstallWorkshopUploadSupport(&unsupported), "unsupported build fails closed");
   Check(begins == 0 && byteCalls == 0, "unsupported build does not stage patches");
 
-  auto supported = MakeApi("1.5.18-win32-r2");
+  auto supported = MakeApi("1.5.20-win32");
   Check(cc2::api::mods::InstallWorkshopUploadSupport(&supported), "supported profile stages and commits");
   Check(begins == 1 && commits == 1 && aborts == 0 && byteCalls == 3, "validator and both callsites commit atomically");
   Check(owner && std::strcmp(owner, "native_bridge.workshop_upload") == 0, "dedicated patch owner");
-  Check(sites[0] == 0x00644a02 && sites[1] == 0x0064542f && sites[2] == 0x00644b5f,
+  Check(sites[0] == 0x00644b82 && sites[1] == 0x006455af && sites[2] == 0x00644cdf,
         "exact validator, content-copy and preparation callsites");
   Check(expectedBytes[0] == std::array<std::uint8_t, 5>{0xb9, 0xa0, 0x05, 0x00, 0x00},
         "validator expected bytes");
@@ -69,13 +69,13 @@ int main() {
         "only extension rejection is bypassed");
   Check(expectedBytes[1] == std::array<std::uint8_t, 5>{0xe8, 0x5c, 0x01, 0x00, 0x00},
         "content worker callsite expected bytes");
-  Check(expectedBytes[2] == std::array<std::uint8_t, 5>{0xe8, 0x6c, 0x62, 0xdd, 0xff},
+  Check(expectedBytes[2] == std::array<std::uint8_t, 5>{0xe8,0xfc,0x60,0xdd,0xff},
         "preparation callsite expected bytes");
   Check(replacementBytes[1][0] == 0xe8 && replacementBytes[2][0] == 0xe8,
         "replacement callsites remain relative calls");
-  Check(RelativeTarget(sites[1], replacementBytes[1]) != 0x00645590,
+  Check(RelativeTarget(sites[1], replacementBytes[1]) != 0x00645710,
         "content callsite routes through stock-first fallback wrapper");
-  Check(RelativeTarget(sites[2], replacementBytes[2]) != 0x0041add0,
+  Check(RelativeTarget(sites[2], replacementBytes[2]) != 0x0041ade0,
         "preparation callsite captures current temp root");
   Check(cc2::api::mods::InstallWorkshopUploadSupport(&supported), "repeated installation is idempotent");
   Check(begins == 1 && byteCalls == 3, "idempotent call does not patch twice");

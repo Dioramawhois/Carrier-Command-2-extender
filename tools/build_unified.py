@@ -64,7 +64,7 @@ def generate():
     constants = sorted(set(re.findall(r'CC2X_(?:WORLD|VEHICLE|WAYPOINT|TILE|ISLAND|AIRFIELD|DOCK|FLIGHT|BODY|RAY)_[A-Z0-9_]+', header)))
     (GENERATED / 'world_constants.inc').write_text(''.join('CC2_WORLD_CONSTANT(' + name + ')\n' for name in constants))
     origin = json.loads((ROOT / 'integrations/waypoint-origin-profile.json').read_text())
-    if origin['schema'] != 1 or origin['profile'] != '1.5.18-win32-r2' or len(origin['guards']) != 5:
+    if origin['schema'] != 1 or origin['profile'] != '1.5.20-win32' or len(origin['guards']) != 5:
         raise ValueError('Unsupported waypoint origin profile')
     guards = []
     for guard in origin['guards']:

@@ -13,7 +13,7 @@ namespace cc2::api::carrier {
 namespace {
 constexpr RecoveryProfile profiles[]{
  {"1.5.18-win32",0x6a36c177,0x7018ce,0x701a3d,0x701a8a,0x6fe470,0x6ff20a,0x6fdcdd,0x6fdcf2,0xd596cc,0x707330},
- {"1.5.18-win32-r2",0x6ae228f3,0x7019de,0x701b4d,0x701b9a,0x6fe580,0x6ff31a,0x6fdded,0x6fde02,0xd596ec,0x707440}
+ {"1.5.20-win32",0x6afc5c17,0x701c2e,0x701d9d,0x701dea,0x6fe7d0,0x6ff56a,0x6fe03d,0x6fe052,0xd589d0,0x707690}
 };
 constexpr unsigned char h1[]{0x8b,0x40,0x04,0x83,0xf8,0x05},h2[]{0x8d,0x85,0x28,0xfd,0xff,0xff};
 constexpr unsigned char h5[]{0xc6,0x85,0xfb,0xfd,0xff,0xff,0x01},h6[]{0xf3,0x0f,0x59,0xd2,0xf3,0x0f,0x59,0xdb};
@@ -67,7 +67,7 @@ bool Recovery::Profile(bool hooks) const{
  if(!Region(d,sizeof(*d))||d->e_magic!=IMAGE_DOS_SIGNATURE||d->e_lfanew<sizeof(*d)||d->e_lfanew>0x100000)return false;
  auto* n=reinterpret_cast<const IMAGE_NT_HEADERS32*>(api_->module_base+d->e_lfanew);
  if(!Region(n,sizeof(*n))||n->Signature!=IMAGE_NT_SIGNATURE||n->FileHeader.Machine!=IMAGE_FILE_MACHINE_I386||
- n->FileHeader.TimeDateStamp!=profile_->timestamp||n->OptionalHeader.Magic!=IMAGE_NT_OPTIONAL_HDR32_MAGIC||n->OptionalHeader.SizeOfImage!=0xaf7000)return false;
+ n->FileHeader.TimeDateStamp!=profile_->timestamp||n->OptionalHeader.Magic!=IMAGE_NT_OPTIONAL_HDR32_MAGIC||n->OptionalHeader.SizeOfImage!=0xaf6000)return false;
  if(!Bytes(api_,profile_->dock,dockBytes))return false;
  const auto vt=api_->va(profile_->vtable);
  if(!Region(reinterpret_cast<void*>(vt),0x80)||At<std::uint32_t>(reinterpret_cast<void*>(vt),0x7c)!=api_->va(profile_->dock))return false;

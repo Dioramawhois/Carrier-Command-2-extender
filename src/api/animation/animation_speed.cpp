@@ -15,7 +15,7 @@ namespace cc2::api::animation {
 namespace {
 #ifdef CC2_ANIMATION_TESTING
 constexpr char kLegacyHash[] = "1c9a01c3007cb2bec2a04d716812cf9f24c87efa11056395c89ddd7d2c341026";
-constexpr char kCurrentBuildHash[] = "461e12623bacb7de29ca27b4614425c87e8df2c8327a5e958a957c850effe42a";
+constexpr char kCurrentBuildHash[] = "1df609c8252fc0245decfab793e3b8e1884e553539a8831cbee67663b6725920";
 #endif
 struct Profile {
   const char* build;
@@ -41,16 +41,16 @@ constexpr Profile kLegacyProfile{
   {0x9b7224,0x9b7224,0x9b71bc,0x9b71bc,0x9b71bc,0x9b71c4},
   0x300ee1, {0x305c10,0x305c3a}, {0x9b71b0,0x9b7be0}, 0x9b798c, 0x470700, 0x4443f0
 };
-// The October executable was independently checked by exact SHA, PE identity,
-// every instruction window, every source operand and all seven relative call
-// targets.  The +0x110 code / +0x38 data movement is specific to that hash.
-constexpr Profile kSteam26277078Profile{
-  "1.5.18-win32-r2", {0x3008f3,0x300d20}, {0x2fcda7,0x2fd09d,0x2fd774,0x2fdc5b}, 0x2fd9b2,
-  {0x301036,0x301041,0x301145,0x301150,0x301234,0x30123c,0x3012c6,0x3012ce,0x301329,0x301335},
-  {0x9b725c,0x9b7c4c,0x9b725c,0x9b7c4c,0x9b71f4,0x9b7c1c,0x9b71f4,0x9b7c1c,0x9b71fc,0x9b7c24},
-  {0x301065,0x30116c,0x30124e,0x301294,0x3012e4,0x301339},
-  {0x9b725c,0x9b725c,0x9b71f4,0x9b71f4,0x9b71f4,0x9b71fc},
-  0x300ff1, {0x305d20,0x305d4a}, {0x9b71e8,0x9b7c18}, 0x9b79c4, 0x470820, 0x444520
+// Steam 26732430: independently checked SHA/PE identity, every instruction
+// window/source operand and all seven call targets. Code/data movement is
+// specific to this executable; no global address shift is assumed.
+constexpr Profile kSteam26732430Profile{
+  "1.5.20-win32", {0x300b43,0x300f70}, {0x2fcff7,0x2fd2ed,0x2fd9c4,0x2fdeab}, 0x2fdc02,
+  {0x301286,0x301291,0x301395,0x3013a0,0x301484,0x30148c,0x301516,0x30151e,0x301579,0x301585},
+  {0x9b5ffc,0x9b69ec,0x9b5ffc,0x9b69ec,0x9b5f94,0x9b69bc,0x9b5f94,0x9b69bc,0x9b5f9c,0x9b69c4},
+  {0x3012b5,0x3013bc,0x30149e,0x3014e4,0x301534,0x301589},
+  {0x9b5ffc,0x9b5ffc,0x9b5f94,0x9b5f94,0x9b5f94,0x9b5f9c},
+  0x301241, {0x305f70,0x305f9a}, {0x9b5f88,0x9b69b8}, 0x9b6764, 0x471020, 0x444cf0
 };
 constexpr std::size_t kCount = 26;
 
@@ -79,7 +79,7 @@ volatile LONG g_routeHitCounts[3]{};
 const Profile* SelectProfile(const char* build) {
   if (!build) return nullptr;
   if (std::strcmp(build,kLegacyProfile.build)==0) return &kLegacyProfile;
-  if (std::strcmp(build,kSteam26277078Profile.build)==0) return &kSteam26277078Profile;
+  if (std::strcmp(build,kSteam26732430Profile.build)==0) return &kSteam26732430Profile;
   return nullptr;
 }
 

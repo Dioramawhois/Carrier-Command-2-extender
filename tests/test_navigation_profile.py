@@ -13,7 +13,7 @@ spec.loader.exec_module(profile)
 class NavigationProfileTests(unittest.TestCase):
     def image(self):
         data = {address: bytes.fromhex(signature) for address, signature in profile.GUARDS.items()}
-        data[profile.VTABLE+56*4] = struct.pack('<II', 0x705BD0, profile.MOTION)
+        data[profile.VTABLE+56*4] = struct.pack('<II', 0x705e20, profile.MOTION)
         return data
 
     def test_exact_reviewed_branch_fixture(self):

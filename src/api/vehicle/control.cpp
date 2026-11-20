@@ -20,7 +20,7 @@ bool Region(const void* p,std::size_t n,bool write) {
 bool Profile(const cc2x_api* a) {
   if(!a||!a->game_build||!a->va||!a->geti)return false;
   std::uint32_t site=0;
-  if(std::strcmp(a->game_build,"1.5.18-win32-r2")==0)site=0x71dcbf;
+  if(std::strcmp(a->game_build,"1.5.20-win32")==0)site=0x71df1f;
   else if(std::strcmp(a->game_build,"1.5.18-win32")==0)site=0x71dbbf;
   else return false;
   const auto* code=reinterpret_cast<const void*>(a->va(site));

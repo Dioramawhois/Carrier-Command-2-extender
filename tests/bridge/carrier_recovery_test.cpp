@@ -20,7 +20,7 @@ int main(){
  uint32_t element[3]{7,0,9};cc2x_cpu cpu{};cpu.eax=reinterpret_cast<uint32_t>(element);cpu.edi=reinterpret_cast<uint32_t>(manager);
  Put(manager,0,1);Put(manager,0x5c,-1);
  hooks[0](&cpu,users[0]);assert(cpu.eax!=reinterpret_cast<uint32_t>(element)&&element[1]==0);
- hooks[1](&cpu,users[1]);assert(cpu.jump_to==Va(0x701b9a));
+ hooks[1](&cpu,users[1]);assert(cpu.jump_to==Va(0x701dea));
  assert(r.Status("native.a",7,&state)&&state.grants==1);
  element[1]=3;cpu.eax=reinterpret_cast<uint32_t>(element);cpu.jump_to=0;
  hooks[0](&cpu,users[0]);hooks[1](&cpu,users[1]);assert(!cpu.jump_to); // aborted queue entry is never forced again
@@ -53,20 +53,20 @@ int main(){
  Put(manager,0x1c,3);Put(manager,0x5c,7u);
  unsigned char originalFrame[sizeof(frame)];std::memcpy(originalFrame,frame,sizeof(frame));
  for(int i=0;i<30;++i){cpu={};cpu.ebp=reinterpret_cast<uint32_t>(anchor);cpu.edi=reinterpret_cast<uint32_t>(plane);
- hooks[2](&cpu,users[2]);assert(cpu.jump_to==Va(0x6ff31a)&&cpu.edi==reinterpret_cast<uint32_t>(manager)&&cpu.esi==reinterpret_cast<uint32_t>(ship));}
+ hooks[2](&cpu,users[2]);assert(cpu.jump_to==Va(0x6ff56a)&&cpu.edi==reinterpret_cast<uint32_t>(manager)&&cpu.esi==reinterpret_cast<uint32_t>(ship));}
  cpu.jump_to=0;cpu.edi=reinterpret_cast<uint32_t>(plane);hooks[2](&cpu,users[2]);assert(!cpu.jump_to&&!std::memcmp(frame,originalFrame,sizeof(frame)));
  assert(r.Status("native.a",7,&state)&&state.touch_jumps==30);assert(r.Disarm("native.a",7));
  dock=0;r.Tick(server,1,607);dock=5;wing=0;options.window_ticks=300;assert(r.Arm("native.a",1,1,7,options));
  Put(anchor-0x270,0,plane);Put(manager,0x5c,-1);cpu={};cpu.ebp=reinterpret_cast<uint32_t>(anchor);cpu.edi=reinterpret_cast<uint32_t>(manager);
- hooks[3](&cpu,users[3]);assert(cpu.jump_to==Va(0x6fde02));cpu.jump_to=0;hooks[3](&cpu,users[3]);assert(!cpu.jump_to);
+ hooks[3](&cpu,users[3]);assert(cpu.jump_to==Va(0x6fe052));cpu.jump_to=0;hooks[3](&cpu,users[3]);assert(!cpu.jump_to);
  assert(r.Status("native.a",7,&state)&&state.grants==1);r.Disarm("native.a",7);wing=1;
  dock=0;id=r.Request("native.a",1,1,7);assert(id);r.Session(nullptr,2);r.Session(server,3);r.Tick(server,3,1);
  assert(calls==1&&!r.Result("native.a",id,&result));
  // The exact carrier entry is checked again at execution, after acceptance.
- id=r.Request("native.a",3,1,7);assert(id);Put(reinterpret_cast<void*>(Va(0xd596ec)),0x7c,0u);
+ id=r.Request("native.a",3,1,7);assert(id);Put(reinterpret_cast<void*>(Va(0xd589d0)),0x7c,0u);
  r.Tick(server,3,2);assert(calls==1&&r.Result("native.a",id,&result)&&result.code==CC2X_DOCK_PROFILE_REFUSED);
  // Foreign ownership/byte changes must refuse discovery without patching.
- a=Make();Recovery occupied(Dock);occupied.Configure(&a);image[0x7019de-0x400000]=0xe9;
+ a=Make();Recovery occupied(Dock);occupied.Configure(&a);image[0x701c2e-0x400000]=0xe9;
  assert(!occupied.Available(CC2X_CARRIER_RECOVERY)&&occupied.Available(CC2X_CARRIER_DOCK));
  a=Make();occupied.Configure(&a);occupied.Session(server,4);occupied.Tick(server,4,1);dock=5;commit=false;
  assert(!occupied.Arm("native.a",4,1,7,options)&&aborts>0);commit=true;

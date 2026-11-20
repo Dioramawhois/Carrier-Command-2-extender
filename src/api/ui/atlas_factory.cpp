@@ -508,7 +508,7 @@ bool PrepareAtlas(const host::ModDiscovery& mods, const std::wstring& vanillaAtl
   const bool anyImages = std::any_of(mods.mods.begin(), mods.mods.end(),
       [](const host::ModDescriptor& mod) { return !mod.uiImages.empty(); });
   if (!anyImages) return true;
-  if (!gameBuild || std::strcmp(gameBuild, "1.5.18-win32-r2") != 0) {
+  if (!gameBuild || std::strcmp(gameBuild, "1.5.20-win32") != 0) {
     *error = "atlas_factory_game_profile_unsupported";
     return false;
   }

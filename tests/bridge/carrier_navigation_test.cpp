@@ -10,7 +10,7 @@
 #include <limits>
 using cc2::api::carrier::Motion;
 namespace {
-std::array<unsigned char,0xaf7000> image{};
+std::array<unsigned char,0xaf6000> image{};
 std::array<unsigned char,0xe80> ship{};
 std::array<unsigned char,0xe80> foreign_ship{};
 std::array<unsigned char,0xc80> server{};
@@ -71,14 +71,14 @@ void __attribute__((thiscall)) OriginalHelper(void*,std::uint32_t,std::uint32_t,
  // Exact native ocean path establishes initialized+success before the null-tile branch.
  if(ocean){Put<unsigned char>(ship.data(),0x224,1);Put<unsigned char>(ship.data(),0x225,1);return;}
  float p[]{10,0,0},out[3]{};auto* mesh=island.data()+0x50;
- const auto start=reinterpret_cast<Filtered>(calls.at(0x5e21bb))(mesh,p,out,OriginalPred);
- const auto end=reinterpret_cast<Nearest>(calls.at(0x5e21df))(mesh,p,out);
- auto gate=Mid(0x5e2723);assert(gate.eax==2&&gate.jump_to==Va(0x5e2729));
- auto inline_hook=mids.at(0x5e2723);assert(CheckFloatingState(inline_hook.fn,&gate,inline_hook.user));
+ const auto start=reinterpret_cast<Filtered>(calls.at(0x5e231b))(mesh,p,out,OriginalPred);
+ const auto end=reinterpret_cast<Nearest>(calls.at(0x5e233f))(mesh,p,out);
+ auto gate=Mid(0x5e2883);assert(gate.eax==2&&gate.jump_to==Va(0x5e2889));
+ auto inline_hook=mids.at(0x5e2883);assert(CheckFloatingState(inline_hook.fn,&gate,inline_hook.user));
  // Changing one vertex to land must be rejected without changing shared flags.
  const auto old=vertices[1][1];vertices[1][1]=1;
- gate=Mid(0x5e2723);assert(gate.eax==0&&(gate.eflags&0x44)==0x44);vertices[1][1]=old;
- for(float invalid:{-0.f,std::numeric_limits<float>::quiet_NaN()}){vertices[1][1]=invalid;gate=Mid(0x5e2723);assert(gate.eax==0);vertices[1][1]=old;}
+ gate=Mid(0x5e2883);assert(gate.eax==0&&(gate.eflags&0x44)==0x44);vertices[1][1]=old;
+ for(float invalid:{-0.f,std::numeric_limits<float>::quiet_NaN()}){vertices[1][1]=invalid;gate=Mid(0x5e2883);assert(gate.eax==0);vertices[1][1]=old;}
  assert(Get<unsigned>(triangle.data(),0x30)==0);
  Put<unsigned char>(ship.data(),0x224,1);Put<unsigned char>(ship.data(),0x225,start&&end&&!fail_path);
  Put<double>(ship.data(),0x1d8,50);Put<double>(ship.data(),0x1e8,50);
@@ -88,7 +88,7 @@ void __attribute__((thiscall)) OriginalFollower(void* self,std::uint32_t a,std::
  assert(a==1&&b==2&&c==3&&d==4&&e==5&&f==6&&g==7&&h==8&&i==9&&j==10);
  if(reenter||self==foreign_ship.data()){
   const auto action=reenter;reenter=0;
-  if(action==4){Forward(reinterpret_cast<Ten>(calls.at(0x706d2c)),foreign_ship.data());return;}
+  if(action==4){Forward(reinterpret_cast<Ten>(calls.at(0x706f7c)),foreign_ship.data());return;}
   cc2x_navigation_options replacement{sizeof(replacement),CC2X_NAVIGATION_SURFACE,0,25};
   if(action==2){controller->Session(server.data(),1);controller->Tick(9);}
   else assert(controller->Set("lua.nav",1,42,false,0));
@@ -97,41 +97,41 @@ void __attribute__((thiscall)) OriginalFollower(void* self,std::uint32_t a,std::
   assert(controller->NavigationConfigure(owner,1,42,replacement)&&controller->Set(owner,1,42,true,0));
   return; // The old invocation must never publish into this replacement.
  }
- reinterpret_cast<Project>(calls.at(0x6c23cc))(self,waypoint.data(),nullptr,nullptr);
+ reinterpret_cast<Project>(calls.at(0x6c261c))(self,waypoint.data(),nullptr,nullptr);
  if(legacy){assert(radius(self,waypoint.data())==150);assert(!Get<unsigned char>(self,0x224)&&!Get<unsigned char>(self,0x225));return;}
  assert(radius(self,waypoint.data())==25);
- const auto arrival=Mid(0x6c2539);
+ const auto arrival=Mid(0x6c2789);
  if(complete&&!arrival.jump_to){Put<unsigned>(ship.data(),0x14c,0);Put<unsigned char>(ship.data(),0x224,0);Put<unsigned char>(ship.data(),0x225,0);return;}
- if(!Get<unsigned char>(ship.data(),0x224))assert(arrival.jump_to==Va(0x6c2540));
- Forward(reinterpret_cast<Ten>(calls.at(0x6c2979)),self);
- if(fail_path){const auto failed=Mid(0x6c2568);assert(failed.jump_to==Va(0x6c256f));}
+ if(!Get<unsigned char>(ship.data(),0x224))assert(arrival.jump_to==Va(0x6c2790));
+ Forward(reinterpret_cast<Ten>(calls.at(0x6c2bc9)),self);
+ if(fail_path){const auto failed=Mid(0x6c27b8);assert(failed.jump_to==Va(0x6c27bf));}
 }
 void __attribute__((thiscall)) OriginalPhysics(void*,std::uint32_t,std::uint32_t,std::uint32_t,std::uint32_t,std::uint32_t,std::uint32_t,std::uint32_t){}
 int PatchCall(std::uint32_t site,std::uint32_t n,const std::uint8_t* expected,void* fn,void** original){
  assert(n==5&&!std::memcmp(reinterpret_cast<void*>(Va(site)),expected,n));calls[site]=fn;
- *original=site==0x706d2c?reinterpret_cast<void*>(OriginalFollower):site==0x6c23cc?reinterpret_cast<void*>(OriginalProject):site==0x6c2979?reinterpret_cast<void*>(OriginalHelper):site==0x5e21bb?reinterpret_cast<void*>(OriginalFiltered):reinterpret_cast<void*>(OriginalNearest);return 1;
+ *original=site==0x706f7c?reinterpret_cast<void*>(OriginalFollower):site==0x6c261c?reinterpret_cast<void*>(OriginalProject):site==0x6c2bc9?reinterpret_cast<void*>(OriginalHelper):site==0x5e231b?reinterpret_cast<void*>(OriginalFiltered):reinterpret_cast<void*>(OriginalNearest);return 1;
 }
 int PatchMid(std::uint32_t site,std::uint32_t n,const std::uint8_t* b,cc2x_mid_fn fn,void* user){assert(!std::memcmp(reinterpret_cast<void*>(Va(site)),b,n));mids[site]={fn,user};return 1;}
-int PatchPtr(std::uint32_t site,std::uint32_t,void* fn,void** original){if(site==0xd596ec+0x34){radius=reinterpret_cast<Radius>(fn);*original=reinterpret_cast<void*>(OriginalRadius);}else *original=reinterpret_cast<void*>(OriginalPhysics);return 1;}
+int PatchPtr(std::uint32_t site,std::uint32_t,void* fn,void** original){if(site==0xd589d0+0x34){radius=reinterpret_cast<Radius>(fn);*original=reinterpret_cast<void*>(OriginalRadius);}else *original=reinterpret_cast<void*>(OriginalPhysics);return 1;}
 void ResetRoute(){Put<unsigned>(ship.data(),0x14c,1);Put<unsigned>(waypoint.data(),0,1);Put<unsigned>(waypoint.data(),4,0);Put<double>(waypoint.data(),8,10);Put<double>(waypoint.data(),0x10,0);complete=fail_path=fault=false;px=0;pz=-80;}
-cc2x_api Make(){cc2x_api api{};api.game_build="1.5.18-win32-r2";api.va=Va;api.find=Find;api.geti=GetI;api.count=Count;api.body_get=Body;api.server=Server;api.tile_at=Tile;
+cc2x_api Make(){cc2x_api api{};api.game_build="1.5.20-win32";api.va=Va;api.find=Find;api.geti=GetI;api.count=Count;api.body_get=Body;api.server=Server;api.tile_at=Tile;
  api.patch_begin=Begin;api.patch_commit=Commit;api.patch_abort=Abort;api.patch_call=PatchCall;api.patch_mid=PatchMid;api.patch_ptr=PatchPtr;
- Seed(0x706c90,{0x55,0x8b,0xec,0x83,0xe4,0xf8,0x83,0xec,0x58});Seed(0x706cd4,{0x8b,0x87,0xd0,1,0,0,0x85,0xc0,0x0f,0x85,0xc4,2,0,0});
- Seed(0x77d4e4,{0xff,0xb6,0xd4,0xd,0,0,0x8d,0x8e,0,5,0,0,0x57});Seed(0x707429,{0x5f,0x5e,0x8b,0xe5,0x5d,0xc2,0x1c,0});
- for(auto p:{std::pair{0x706d2cu,0x6c2330u},{0x6c23ccu,0x6c7770u},{0x6c2979u,0x6c7920u},{0x5e21bbu,0x5e1780u},{0x5e21dfu,0x5e15f0u}})SeedCall(p.first,p.second);
- Seed(0x5e2723,{0x8b,0x42,0x30,0x83,0xe0,2});Seed(0x6c2539,{0xc6,0x87,0x26,2,0,0,1});Seed(0x6c2568,{0xc6,0x87,0x26,2,0,0,1});
- Seed(0x6c4420,{0xc2,0x28,0});Seed(0x6c824a,{0xc2,0x28,0});Seed(0x6c791d,{0xc2,0x0c,0});Seed(0x708296,{0xc2,4,0});
- Seed(0x5e173e,{0xc2,0x08,0x00});
- Seed(0x5e176e,{0xc2,0x08,0x00});
- Seed(0x5e18ca,{0xc2,0x0c,0x00});
- Seed(0x5e18f6,{0xc2,0x0c,0x00});
- Seed(0x5e21b2,{0x68,0x10,0x22,0x5e,0x00,0x50,0x51,0x8b,0xce,0xe8,0xc0,0xf5,0xff,0xff,0xeb,0x10,0x8b,0x75,0x08,0x8d,0x44,0x24,0x0c,0x50,0x51,0x8b,0xce,0xe8,0x1e,0xf4,0xff,0xff,0x8b,0xf8,0x8b,0xce,0x8d,0x44,0x24,0x0c,0x50,0xff,0x74,0x24,0x0c,0xe8,0x0c,0xf4,0xff,0xff,0x85,0xff,0x74,0x20,0x85,0xc0,0x74,0x1c,0xff,0x75,0x14,0x8b,0xd0,0x8b,0xcf,0xff,0x75,0x10,0xff,0x75,0x0c,0x56,0xe8,0x31,0x00,0x00,0x00,0x83,0xc4,0x10,0x5f,0x5e,0x8b,0xe5,0x5d,0xc3,0x5f,0x32,0xc0,0x5e,0x8b,0xe5,0x5d,0xc3});
- Seed(0x5e2729,{0x75,0x2e,0xc6,0x42,0x10,0x01});
- Seed(0x6c23b6,{0x56,0xff,0x73,0x0c,0x0f,0x42,0xd1,0x8b,0xcf,0xc1,0xe2,0x06,0x03,0x97,0x40,0x01,0x00,0x00,0x52,0x89,0x55,0xec,0xe8,0x9f,0x53,0x00,0x00,0x8b,0x45,0xec,0x8b,0x55,0xd0});
- Seed(0x6c295a,{0x0f,0x10,0x06,0x56,0xff,0x73,0x0c,0x51,0xff,0x73,0x10,0x8b,0xcf,0x83,0xec,0x18,0x8b,0xc4,0x0f,0x11,0x00,0xf3,0x0f,0x7e,0x46,0x10,0x66,0x0f,0xd6,0x40,0x10,0xe8,0xa2,0x4f,0x00,0x00,0xe9,0x8a,0x1a,0x00,0x00});
- Seed(0x706ce2,{0x8d,0x44,0x24,0x48,0xc6,0x87,0x50,0x03,0x00,0x00,0x01,0x50,0x8d,0x87,0xf8,0x01,0x00,0x00,0xf2,0x0f,0x11,0x44,0x24,0x5c,0x50,0x8d,0x87,0xf0,0x01,0x00,0x00,0xc7,0x44,0x24,0x24,0x00,0x00,0x00,0x00,0x50,0x8d,0x44,0x24,0x28,0x50,0x8d,0x8f,0xd8,0x01,0x00,0x00,0x51,0xff,0x75,0x18,0x8b,0xcf,0xff,0x75,0x1c,0x0f,0x11,0x44,0x24,0x64,0xff,0x75,0x14,0xff,0x75,0x0c,0xff,0x75,0x10,0xe8,0xff,0xb5,0xfb,0xff,0x8b,0x87,0x94,0x00,0x00,0x00});
- Seed(0x708290,{0xd9,0x05,0x40,0x7a,0xdb,0x00,0xc2,0x04,0x00});
- Put(ship.data(),0,Va(0xd596ec));Put<unsigned>(ship.data(),0x80,42);Ring(ship.data(),0x140,waypoint.data(),1);
+ Seed(0x706ee0,{0x55,0x8b,0xec,0x83,0xe4,0xf8,0x83,0xec,0x58});Seed(0x706f24,{0x8b,0x87,0xd0,1,0,0,0x85,0xc0,0x0f,0x85,0xc4,2,0,0});
+ Seed(0x77d914,{0xff,0xb6,0xd4,0xd,0,0,0x8d,0x8e,0,5,0,0,0x57});Seed(0x707679,{0x5f,0x5e,0x8b,0xe5,0x5d,0xc2,0x1c,0});
+ for(auto p:{std::pair{0x706f7cu,0x6c2580u},{0x6c261cu,0x6c79c0u},{0x6c2bc9u,0x6c7b70u},{0x5e231bu,0x5e18e0u},{0x5e233fu,0x5e1750u}})SeedCall(p.first,p.second);
+ Seed(0x5e2883,{0x8b,0x42,0x30,0x83,0xe0,2});Seed(0x6c2789,{0xc6,0x87,0x26,2,0,0,1});Seed(0x6c27b8,{0xc6,0x87,0x26,2,0,0,1});
+ Seed(0x6c4670,{0xc2,0x28,0});Seed(0x6c849a,{0xc2,0x28,0});Seed(0x6c7b6d,{0xc2,0x0c,0});Seed(0x7084e6,{0xc2,4,0});
+ Seed(0x5e189e,{0xc2,0x08,0x00});
+ Seed(0x5e18ce,{0xc2,0x08,0x00});
+ Seed(0x5e1a2a,{0xc2,0x0c,0x00});
+ Seed(0x5e1a56,{0xc2,0x0c,0x00});
+ Seed(0x5e2312,{0x68,0x70,0x23,0x5e,0x00,0x50,0x51,0x8b,0xce,0xe8,0xc0,0xf5,0xff,0xff,0xeb,0x10,0x8b,0x75,0x08,0x8d,0x44,0x24,0x0c,0x50,0x51,0x8b,0xce,0xe8,0x1e,0xf4,0xff,0xff,0x8b,0xf8,0x8b,0xce,0x8d,0x44,0x24,0x0c,0x50,0xff,0x74,0x24,0x0c,0xe8,0x0c,0xf4,0xff,0xff,0x85,0xff,0x74,0x20,0x85,0xc0,0x74,0x1c,0xff,0x75,0x14,0x8b,0xd0,0x8b,0xcf,0xff,0x75,0x10,0xff,0x75,0x0c,0x56,0xe8,0x31,0x00,0x00,0x00,0x83,0xc4,0x10,0x5f,0x5e,0x8b,0xe5,0x5d,0xc3,0x5f,0x32,0xc0,0x5e,0x8b,0xe5,0x5d,0xc3});
+ Seed(0x5e2889,{0x75,0x2e,0xc6,0x42,0x10,0x01});
+ Seed(0x6c2606,{0x56,0xff,0x73,0x0c,0x0f,0x42,0xd1,0x8b,0xcf,0xc1,0xe2,0x06,0x03,0x97,0x40,0x01,0x00,0x00,0x52,0x89,0x55,0xec,0xe8,0x9f,0x53,0x00,0x00,0x8b,0x45,0xec,0x8b,0x55,0xd0});
+ Seed(0x6c2baa,{0x0f,0x10,0x06,0x56,0xff,0x73,0x0c,0x51,0xff,0x73,0x10,0x8b,0xcf,0x83,0xec,0x18,0x8b,0xc4,0x0f,0x11,0x00,0xf3,0x0f,0x7e,0x46,0x10,0x66,0x0f,0xd6,0x40,0x10,0xe8,0xa2,0x4f,0x00,0x00,0xe9,0x8a,0x1a,0x00,0x00});
+ Seed(0x706f32,{0x8d,0x44,0x24,0x48,0xc6,0x87,0x50,0x03,0x00,0x00,0x01,0x50,0x8d,0x87,0xf8,0x01,0x00,0x00,0xf2,0x0f,0x11,0x44,0x24,0x5c,0x50,0x8d,0x87,0xf0,0x01,0x00,0x00,0xc7,0x44,0x24,0x24,0x00,0x00,0x00,0x00,0x50,0x8d,0x44,0x24,0x28,0x50,0x8d,0x8f,0xd8,0x01,0x00,0x00,0x51,0xff,0x75,0x18,0x8b,0xcf,0xff,0x75,0x1c,0x0f,0x11,0x44,0x24,0x64,0xff,0x75,0x14,0xff,0x75,0x0c,0xff,0x75,0x10,0xe8,0xff,0xb5,0xfb,0xff,0x8b,0x87,0x94,0x00,0x00,0x00});
+ Seed(0x7084e0,{0xd9,0x05,0xe0,0x67,0xdb,0x00,0xc2,0x04,0x00});
+ Put(ship.data(),0,Va(0xd589d0));Put<unsigned>(ship.data(),0x80,42);Ring(ship.data(),0x140,waypoint.data(),1);
  Ring(server.data(),0xc68,peers,1);Put<unsigned>(peer.data(),0x68,0);
  Put(tile.data(),0xf0,island.data());Ring(island.data(),0x50,triangles,1);Ring(island.data(),0x60,vertices.data(),3);
  Put<unsigned>(triangle.data(),0x14,0);Put<unsigned>(triangle.data(),0x18,1);Put<unsigned>(triangle.data(),0x1c,2);
@@ -143,8 +143,8 @@ int main(){
  auto api=Make();Motion motion;controller=&motion;motion.Configure(&api);motion.Session(server.data(),1);motion.Tick(1);
  cc2x_navigation_options options{sizeof(options),CC2X_NAVIGATION_SURFACE,0,25};
  assert(!motion.NavigationConfigure("lua.nav",1,42,options));
- const std::uint32_t sites[]{0x706d2c,0x6c23cc,0x6c2979,0x5e21bb,0x5e21df,0x5e2723,0x6c2539,0x6c2568,0x6c4420,0x6c824a,0x6c791d,0x708296,
-  0x706ce2,0x6c23b6,0x6c295a,0x5e21b2,0x708290,0x5e2729,0x5e173e,0x5e176e,0x5e18ca,0x5e18f6};
+ const std::uint32_t sites[]{0x706f7c,0x6c261c,0x6c2bc9,0x5e231b,0x5e233f,0x5e2883,0x6c2789,0x6c27b8,0x6c4670,0x6c849a,0x6c7b6d,0x7084e6,
+  0x706f32,0x6c2606,0x6c2baa,0x5e2312,0x7084e0,0x5e2889,0x5e189e,0x5e18ce,0x5e1a2a,0x5e1a56};
  for(auto site:sites){auto* p=reinterpret_cast<unsigned char*>(Va(site));*p^=1;assert(!motion.InstallNavigation());*p^=1;}
  assert(!commits&&motion.InstallNavigation()&&motion.NavigationAvailable());
  assert(motion.NavigationConfigure("lua.nav",1,42,options));
@@ -159,42 +159,42 @@ int main(){
  std::array<unsigned char,16> inputs{};Ring(inputs.data(),0,control_items,1);motion.ObserveControls(ship.data(),inputs.data());
  assert(motion.NavigationRead(42,&state)&&!state.flags);assert(!motion.NavigationConfigure("lua.nav",1,42,options));
  Put<float>(controls.data(),0x50,0);motion.ObserveControls(ship.data(),inputs.data());assert(motion.NavigationConfigure("lua.nav",1,42,options));
- assert(motion.Set("lua.nav",1,42,true,0));Forward(reinterpret_cast<Ten>(calls.at(0x706d2c)),ship.data());
+ assert(motion.Set("lua.nav",1,42,true,0));Forward(reinterpret_cast<Ten>(calls.at(0x706f7c)),ship.data());
  assert(!projected&&filtered==2&&Get<double>(waypoint.data(),8)==10);
  assert(motion.NavigationRead(42,&state)&&(state.flags&CC2X_NAVIGATION_READY));assert(state.target_x==10&&state.target_z==0&&state.distance>25);
- assert(radius(ship.data(),waypoint.data())==150);auto outside=Mid(0x5e2723);assert(outside.jump_to==0); // Scoped context restored.
+ assert(radius(ship.data(),waypoint.data())==150);auto outside=Mid(0x5e2883);assert(outside.jump_to==0); // Scoped context restored.
  // Release must invalidate the shallow cache before an unchanged v1 owner.
  assert(Get<unsigned char>(ship.data(),0x224)&&Get<unsigned char>(ship.data(),0x225));
  assert(motion.Set("lua.nav",1,42,false,0));assert(!Get<unsigned char>(ship.data(),0x224)&&!Get<unsigned char>(ship.data(),0x225));assert(Get<double>(waypoint.data(),8)==10);
- legacy=true;assert(motion.Set("legacy",1,42,true,0));Forward(reinterpret_cast<Ten>(calls.at(0x706d2c)),ship.data());assert(projected==1);assert(motion.Set("legacy",1,42,false,0));legacy=false;projected=0;ResetRoute();
- assert(motion.NavigationConfigure("lua.nav",1,42,options)&&motion.Set("lua.nav",1,42,true,0));Forward(reinterpret_cast<Ten>(calls.at(0x706d2c)),ship.data());
+ legacy=true;assert(motion.Set("legacy",1,42,true,0));Forward(reinterpret_cast<Ten>(calls.at(0x706f7c)),ship.data());assert(projected==1);assert(motion.Set("legacy",1,42,false,0));legacy=false;projected=0;ResetRoute();
+ assert(motion.NavigationConfigure("lua.nav",1,42,options)&&motion.Set("lua.nav",1,42,true,0));Forward(reinterpret_cast<Ten>(calls.at(0x706f7c)),ship.data());
  assert(motion.NavigationConfigure("lua.nav",1,42,options));complete=true;px=10;pz=0;
- Forward(reinterpret_cast<Ten>(calls.at(0x706d2c)),ship.data());assert(motion.NavigationRead(42,&state));assert((state.flags&CC2X_NAVIGATION_ARRIVED)&&!(state.flags&CC2X_NAVIGATION_BLOCKED));
+ Forward(reinterpret_cast<Ten>(calls.at(0x706f7c)),ship.data());assert(motion.NavigationRead(42,&state));assert((state.flags&CC2X_NAVIGATION_ARRIVED)&&!(state.flags&CC2X_NAVIGATION_BLOCKED));
  motion.BeforeMotion(ship.data());assert(motion.NavigationRead(42,&state)&&(state.flags&CC2X_NAVIGATION_ARRIVED)&&!(state.flags&CC2X_NAVIGATION_ACTIVE));motion.Tick(9);assert(motion.NavigationRead(42,&state)&&!state.flags);
  assert(motion.Set("lua.nav",1,42,false,0));ResetRoute();assert(motion.NavigationConfigure("lua.nav",1,42,options));assert(motion.Set("lua.nav",1,42,true,0));
- fail_path=true;Forward(reinterpret_cast<Ten>(calls.at(0x706d2c)),ship.data());assert(motion.NavigationRead(42,&state)&&(state.flags&CC2X_NAVIGATION_BLOCKED));assert(Count(ship.data(),CC2X_VEHICLE_WAYPOINTS)==1);assert(!motion.Drive("lua.nav",1,42,1,1));
+ fail_path=true;Forward(reinterpret_cast<Ten>(calls.at(0x706f7c)),ship.data());assert(motion.NavigationRead(42,&state)&&(state.flags&CC2X_NAVIGATION_BLOCKED));assert(Count(ship.data(),CC2X_VEHICLE_WAYPOINTS)==1);assert(!motion.Drive("lua.nav",1,42,1,1));
  for(auto* jet:{port.data(),starboard.data(),bow.data(),stern.data()})Put<float>(jet,0x30,1);
  motion.AfterMotion(ship.data());for(auto* jet:{port.data(),starboard.data(),bow.data(),stern.data()})assert(Get<float>(jet,0x30)==0);
  assert(motion.Set("lua.nav",1,42,false,0));ResetRoute();ocean=true;
- assert(motion.NavigationConfigure("lua.nav",1,42,options)&&motion.Set("lua.nav",1,42,true,0));Forward(reinterpret_cast<Ten>(calls.at(0x706d2c)),ship.data());assert(motion.NavigationRead(42,&state)&&(state.flags&CC2X_NAVIGATION_READY));
+ assert(motion.NavigationConfigure("lua.nav",1,42,options)&&motion.Set("lua.nav",1,42,true,0));Forward(reinterpret_cast<Ten>(calls.at(0x706f7c)),ship.data());assert(motion.NavigationRead(42,&state)&&(state.flags&CC2X_NAVIGATION_READY));
  assert(motion.Set("lua.nav",1,42,false,0));ResetRoute();world_tiles=0;
- assert(motion.NavigationConfigure("lua.nav",1,42,options)&&motion.Set("lua.nav",1,42,true,0));Forward(reinterpret_cast<Ten>(calls.at(0x706d2c)),ship.data());assert(motion.NavigationRead(42,&state)&&(state.flags&CC2X_NAVIGATION_BLOCKED));
+ assert(motion.NavigationConfigure("lua.nav",1,42,options)&&motion.Set("lua.nav",1,42,true,0));Forward(reinterpret_cast<Ten>(calls.at(0x706f7c)),ship.data());assert(motion.NavigationRead(42,&state)&&(state.flags&CC2X_NAVIGATION_BLOCKED));
  assert(motion.Set("lua.nav",1,42,false,0));ResetRoute();world_tiles=1;ocean=false;vertices[1][1]=1;
- assert(motion.NavigationConfigure("lua.nav",1,42,options)&&motion.Set("lua.nav",1,42,true,0));Forward(reinterpret_cast<Ten>(calls.at(0x706d2c)),ship.data());assert(motion.NavigationRead(42,&state)&&(state.flags&CC2X_NAVIGATION_BLOCKED));assert(!projected);
+ assert(motion.NavigationConfigure("lua.nav",1,42,options)&&motion.Set("lua.nav",1,42,true,0));Forward(reinterpret_cast<Ten>(calls.at(0x706f7c)),ship.data());assert(motion.NavigationRead(42,&state)&&(state.flags&CC2X_NAVIGATION_BLOCKED));assert(!projected);
  assert(motion.Set("lua.nav",1,42,false,0));ResetRoute();vertices[1][1]=-5;
  // Native reentrancy must not let an old invocation overwrite or Stop a new
  // lease, even when a Session reset reuses the same generation and carrier.
  Put<unsigned>(foreign_ship.data(),0x80,43);
  for(unsigned action:{1u,2u,4u}){
   assert(motion.NavigationConfigure("lua.nav",1,42,options)&&motion.Set("lua.nav",1,42,true,0));reenter=action;
-  Forward(reinterpret_cast<Ten>(calls.at(0x706d2c)),ship.data());assert(motion.NavigationRead(42,&state));
+  Forward(reinterpret_cast<Ten>(calls.at(0x706f7c)),ship.data());assert(motion.NavigationRead(42,&state));
   assert(state.flags==(CC2X_NAVIGATION_CONFIGURED|CC2X_NAVIGATION_ACTIVE)&&state.waypoint_id==0&&state.target_x==0&&Get<unsigned>(ship.data(),0x1d0)==0);
-  assert(radius(ship.data(),waypoint.data())==150&&Mid(0x5e2723).jump_to==0);
+  assert(radius(ship.data(),waypoint.data())==150&&Mid(0x5e2883).jump_to==0);
   assert(motion.Set(action==1?"replacement":"lua.nav",1,42,false,0));ResetRoute();
  }
  reenter=3; // A native fault after cancellation still disables the capability.
- assert(motion.NavigationConfigure("lua.nav",1,42,options)&&motion.Set("lua.nav",1,42,true,0));Forward(reinterpret_cast<Ten>(calls.at(0x706d2c)),ship.data());
- assert(!motion.NavigationAvailable()&&motion.NavigationRead(42,&state)&&state.flags==CC2X_NAVIGATION_FAULTED);assert(radius(ship.data(),waypoint.data())==150&&Mid(0x5e2723).jump_to==0);
+ assert(motion.NavigationConfigure("lua.nav",1,42,options)&&motion.Set("lua.nav",1,42,true,0));Forward(reinterpret_cast<Ten>(calls.at(0x706f7c)),ship.data());
+ assert(!motion.NavigationAvailable()&&motion.NavigationRead(42,&state)&&state.flags==CC2X_NAVIGATION_FAULTED);assert(radius(ship.data(),waypoint.data())==150&&Mid(0x5e2883).jump_to==0);
  assert(motion.Set("lua.nav",1,42,false,0));motion.Session(nullptr,2);
  std::cout<<"PASS coastal navigation: shallow water, land refusal, scoped hooks, raw endpoint,25m completion, failed path, ocean, missing world, SEH cleanup\n";
 }

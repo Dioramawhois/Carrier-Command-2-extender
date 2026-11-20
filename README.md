@@ -5,7 +5,23 @@ CC2X is a shared framework for **C/C++ plugins and Lua mods**. Install one
 optional packages. The SDK itself adds no aircraft, flight modes, brakes,
 button layouts or island gameplay rules.
 
-## Development beta: 0.11.0-dev
+## Compatibility hotfix: 0.11.1-dev
+
+Targets Windows Carrier Command 2 **1.5.20, Steam build 26732430**. The November
+security update changed native addresses and the register holding game-owned
+Lua states. This SDK ports the existing framework to that exact executable and
+keeps the game's removal of unsafe Lua file-loading globals intact. C API 8,
+framework API 1 and Lua API 2 remain unchanged. See the
+[port record and validation scope](docs/GAME_1_5_20_PORT.md).
+
+This runtime authenticates the new executable before installing hooks. Keep the
+previous SDK release if you intentionally use an older game build. Signed update
+metadata is bound to the new game hash; ModLoader must also support that game
+build before it can install this update. The manual installation route below
+remains available. Runtime and gameplay evidence is recorded separately in the
+release metadata.
+
+## Previous development beta: 0.11.0-dev
 
 Adds an optional [surface navigation policy](docs/SURFACE_NAVIGATION.md) for
 explicitly configured local carriers. It separates water-mesh admission and
@@ -82,7 +98,7 @@ See the exact release's `RELEASE.json` and test evidence for its verified scope.
 
 ## Install the runtime
 
-Download [the matching development preview](https://github.com/Dioramawhois/Carrier-Command-2-extender/releases/tag/0.10.0-dev)
+Download [the matching development preview](https://github.com/Dioramawhois/Carrier-Command-2-extender/releases/tag/0.11.1-dev)
 or subscribe to the existing [SDK Workshop item](https://steamcommunity.com/sharedfiles/filedetails/?id=3833014670).
 A subscription downloads the files; it does not copy the bootstrap into the
 game installation.

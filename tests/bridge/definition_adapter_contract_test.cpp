@@ -6,7 +6,7 @@
 
 int main() {
   using namespace cc2::api::vehicle::definition_adapter;
-  constexpr std::uint32_t preferredReturn = 0x005A2EA1;
+  constexpr std::uint32_t preferredReturn = 0x005a2ff1;
   constexpr std::uint32_t relocatedBase = 0x008A0000;
   constexpr std::uint32_t runtimeReturn = relocatedBase + (preferredReturn - 0x00400000);
   if (!ShouldExpandNameMap(true, runtimeReturn, runtimeReturn, kStockDefinitionCount) ||

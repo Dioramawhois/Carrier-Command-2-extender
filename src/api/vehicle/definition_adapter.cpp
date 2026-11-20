@@ -12,16 +12,16 @@
 namespace cc2::api::vehicle::definition_adapter {
 namespace {
 
-constexpr std::uint32_t kLoaderRegisterSite = 0x005A5C0D;
-constexpr std::uint32_t kDefinitionLoaderSite = 0x005A2E70;
-constexpr std::uint32_t kNameMapResizeSite = 0x00853E10;
-constexpr std::uint32_t kXmlParseSuccessSite = 0x005A5FD5;
-constexpr std::uint32_t kXmlParseReturnSite = 0x005A5C42;
-constexpr std::uint32_t kServerClassSelector = 0x00734B60;
-constexpr std::uint32_t kClientClassSelector = 0x00730660;
-constexpr std::uint32_t kRegisterNameFunction = 0x005A5CE0;
-constexpr std::uint32_t kNameMapResizeReturn = 0x005A2EA1;
-constexpr std::uint32_t kExpectedBuildSize = 0x00AF7000;
+constexpr std::uint32_t kLoaderRegisterSite = 0x005a5d5d;
+constexpr std::uint32_t kDefinitionLoaderSite = 0x005a2fc0;
+constexpr std::uint32_t kNameMapResizeSite = 0x008545e0;
+constexpr std::uint32_t kXmlParseSuccessSite = 0x005a6125;
+constexpr std::uint32_t kXmlParseReturnSite = 0x005a5d92;
+constexpr std::uint32_t kServerClassSelector = 0x00734dc0;
+constexpr std::uint32_t kClientClassSelector = 0x007308c0;
+constexpr std::uint32_t kRegisterNameFunction = 0x005a5e30;
+constexpr std::uint32_t kNameMapResizeReturn = 0x005a2ff1;
+constexpr std::uint32_t kExpectedBuildSize = 0x00af6000;
 
 constexpr std::uint8_t kLoaderRegisterExpected[6] = {0xFF,0x76,0x04,0x8D,0x4E,0x08};
 constexpr std::uint8_t kDefinitionLoaderExpected[5] = {0x55,0x8B,0xEC,0x6A,0xFF};
@@ -251,7 +251,7 @@ void __cdecl OnClientSelector(cc2x_cpu* cpu, void*) {
 }
 
 bool IsSteamBuild(const cc2x_api* api) {
-  return api && api->game_build && std::strcmp(api->game_build, "1.5.18-win32-r2") == 0;
+  return api && api->game_build && std::strcmp(api->game_build, "1.5.20-win32") == 0;
 }
 
 void __cdecl OnDefinitionLoaderEntry(cc2x_cpu*, void*) {

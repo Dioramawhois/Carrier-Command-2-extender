@@ -28,11 +28,11 @@ bool InstallNativeExtensions(const cc2x_api* api,Host* host) {
   std::uint32_t vtableVa=0,expected55=0,updateVa=0,expected57=0;
   if(api->game_build&&std::strcmp(api->game_build,"1.5.18-win32")==0) {
     vtableVa=0xD596CC;expected55=0x5ECAE0;updateVa=0x705AC0;expected57=0x706B80;
-  } else if(api->game_build&&std::strcmp(api->game_build,"1.5.18-win32-r2")==0) {
+  } else if(api->game_build&&std::strcmp(api->game_build,"1.5.20-win32")==0) {
     // c_vehicle_server_carrier RTTI/COL points at this vtable. Current Ghidra
-    // evidence: slots 55/56/57 = 0x5ECC20/0x705BD0/0x706C90. Slot 56 still
+    // evidence: slots 55/56/57 = 0x5ecd90/0x705e20/0x706ee0. Slot 56 still
     // receives seven stack words and updates control_factors at this+0xC90.
-    vtableVa=0xD596EC;expected55=0x5ECC20;updateVa=0x705BD0;expected57=0x706C90;
+    vtableVa=0xd589d0;expected55=0x5ecd90;updateVa=0x705e20;expected57=0x706ee0;
   } else {
     if(api->log)api->log("native_bridge",CC2X_LOG_WARN,
       "event=NATIVE_PROFILE_UNAVAILABLE build=%s; throttle, hangar and animation disabled",
@@ -69,14 +69,14 @@ bool InstallNativeExtensions(const cc2x_api* api,Host* host) {
   if(api->log)api->log("native_bridge",CC2X_LOG_INFO,
     "event=THROTTLE_HOOK_INSTALLED build=%s slot56_va=0x%08lx target_va=0x%08lx",
     api->game_build?api->game_build:"unknown",static_cast<unsigned long>(vtableVa+56*4),static_cast<unsigned long>(updateVa));
-  if(api->game_build&&std::strcmp(api->game_build,"1.5.18-win32-r2")==0) {
+  if(api->game_build&&std::strcmp(api->game_build,"1.5.20-win32")==0) {
     // FUN_00771BA0 is the cold game-context initializer. Its first resource
     // requests (button/medal atlases) precede FUN_005A2E70 definition loading.
     // This passive hook records whether the process catalog was already ready;
     // no filesystem or Lua work is performed on the game thread here.
     constexpr std::uint8_t expected[]{0x55,0x8B,0xEC,0x6A,0xFF};
     api->patch_begin("native_bridge.early_resource_init_observer");
-    if(!api->patch_mid(0x00771BA0u,sizeof(expected),expected,
+    if(!api->patch_mid(0x00771e80u,sizeof(expected),expected,
           ObserveEarlyResourceInit,nullptr)||!api->patch_commit()) {
       api->patch_abort();
       if(api->log)api->log("native_bridge",CC2X_LOG_WARN,

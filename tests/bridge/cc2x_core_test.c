@@ -65,6 +65,14 @@ static void queue_dispatch_test(void) {
 }
 int main(void) {
     InitializeCriticalSection(&g_log_cs);InitializeCriticalSection(&g_post_cs);
+    /* EDI is now an unrelated cleanup-table pointer. Distinct values make
+       the old callback's register choice fail without dereferencing either. */
+    cc2x_cpu lua_cpu={0};lua_cpu.esi=0x12345678;lua_cpu.edi=0x87654321;
+    CHECK(lua_state_from_cpu(&PROFILES[0],&lua_cpu)==(cc2x_lua *)(uintptr_t)lua_cpu.esi);
+    CHECK(lua_state_from_cpu(&PROFILES[0],&lua_cpu)!=(cc2x_lua *)(uintptr_t)lua_cpu.edi);
+    CHECK(PROFILES[0].lua_site==0x446633 && PROFILES[0].lua_site_size==12);
+    CHECK(PROFILES[0].lua_site_bytes[0]==0x6a && PROFILES[0].lua_site_bytes[2]==0xc7);
+    puts("PASS 1.5.20 Lua ABI: ESI state, distinct stale EDI and complete 12-byte hook");
     queue_dispatch_test();
     uint8_t *image=VirtualAlloc(NULL,4096,MEM_RESERVE|MEM_COMMIT,PAGE_READWRITE);
     g_base=(uintptr_t)image;memset(image,0x90,4096);

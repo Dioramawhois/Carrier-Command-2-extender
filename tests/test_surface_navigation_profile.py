@@ -13,7 +13,7 @@ spec.loader.exec_module(profile)
 class SurfaceNavigationProfileTests(unittest.TestCase):
     def image(self):
         data = {a: bytes.fromhex(b) for a, b in profile.GUARDS.items()}
-        data[profile.VTABLE+0x34] = struct.pack('<I', 0x708290)
+        data[profile.VTABLE+0x34] = struct.pack('<I', 0x7084e0)
         return data
 
     def test_matched_abi_projection_gate_and_completion(self):

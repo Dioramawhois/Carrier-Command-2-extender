@@ -10,7 +10,7 @@ import struct
 def verify(path):
     data = path.read_bytes()
     digest = hashlib.sha256(data).hexdigest()
-    if digest != '461e12623bacb7de29ca27b4614425c87e8df2c8327a5e958a957c850effe42a':
+    if digest != '1df609c8252fc0245decfab793e3b8e1884e553539a8831cbee67663b6725920':
         raise ValueError('Unreviewed executable')
     pe = struct.unpack_from('<I', data, 0x3c)[0]
     count, optional = struct.unpack_from('<H', data, pe+6)[0], struct.unpack_from('<H', data, pe+20)[0]
@@ -24,18 +24,18 @@ def verify(path):
                 return data[raw+offset:raw+offset+size]
         raise ValueError('Address outside file-backed section')
 
-    guards = {0x625fd0:'538bdc83ec0883e4f883c404558b6b04',
-              0x626310:'558bec6aff68b457ca0064a100000000',
-              0x626420:'558bec6aff683858ca0064a100000000',
-              0x626f50:'558bec6aff684459ca0064a100000000',
-              0xc3f9fd:'558beceb0dff7508e8daf601005985c0',
-              0x626264:'c20800', 0x62640f:'c21800',
-              0x626965:'c3', 0x627031:'c20400',
-              0x631074:'c7460401000000'}
+    guards = {0x626140:'538bdc83ec0883e4f883c404558b6b04',
+              0x626480:'558bec6aff68b440ca0064a100000000',
+              0x626590:'558bec6aff683841ca0064a100000000',
+              0x6270c0:'558bec6aff684442ca0064a100000000',
+              0xc3e3ed:'558beceb0dff7508e8eaf501005985c0',
+              0x6263d4:'c20800', 0x62657f:'c21800',
+              0x626ad5:'c3', 0x6271a1:'c20400',
+              0x6311e4:'c7460401000000'}
     for va, expected in guards.items():
         if read(va, len(bytes.fromhex(expected))).hex() != expected:
             raise ValueError('Signature/calling convention mismatch at '+hex(va))
-    calls = {0x631010:0xc3f9fd, 0x63103f:0x626310}
+    calls = {0x631180:0xc3e3ed, 0x6311af:0x626480}
     for va, target in calls.items():
         instruction = read(va, 5)
         if instruction[0] != 0xe8 or va+5+struct.unpack_from('<i', instruction, 1)[0] != target:

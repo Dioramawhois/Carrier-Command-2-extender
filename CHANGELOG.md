@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.11.1-dev - Carrier Command 2 1.5.20 compatibility
+
+- Authenticate Windows Steam build 26732430 by SHA-256, PE timestamp and image
+  size; port the existing native addresses, instruction windows, vtables and
+  relocation operands to this exact build.
+- Move game-owned Lua integration to the complete instruction window after the
+  security cleanup and read the Lua state from ESI. Preserve removal of
+  `dofile`, `loadfile`, `load` and `loadstring` in game-owned Lua.
+- Recheck authenticated incoming waypoint sender operands, stock UI script
+  injection, carrier motion/recovery/navigation, animation, hangar and equipment.
+  Preserve existing API versions, transactional hooks and unknown-build refusal.
+- Bind signed runtime updates to the new executable. Older game builds retain
+  their previous SDK releases; gameplay, remote-client and dedicated acceptance
+  are separate from static and fixture evidence.
+
 - SDK 0.11 Workshop payload: show a main-menu update dialog and persistent
   reminder when the loaded DLL is older than the downloaded SDK. Include
   ModLoader/manual instructions and preserve compatible older-runtime features.
