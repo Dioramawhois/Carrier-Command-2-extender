@@ -7,9 +7,9 @@ from pathlib import Path
 import struct
 
 PROFILES = {
-    '461e12623bacb7de29ca27b4614425c87e8df2c8327a5e958a957c850effe42a':
-        ('1.5.18-win32-r2', 0x6ae228f3, 0xd596ec, 0x707440,
-         (0x7019de, 0x701b4d, 0x701b9a, 0x6fe580, 0x6ff31a, 0x6fdded, 0x6fde02)),
+    '1df609c8252fc0245decfab793e3b8e1884e553539a8831cbee67663b6725920':
+        ('1.5.20-win32', 0x6afc5c17, 0xd589d0, 0x707690,
+         (0x701c2e, 0x701d9d, 0x701dea, 0x6fe7d0, 0x6ff56a, 0x6fe03d, 0x6fe052)),
     '1c9a01c3007cb2bec2a04d716812cf9f24c87efa11056395c89ddd7d2c341026':
         ('1.5.18-win32', 0x6a36c177, 0xd596cc, 0x707330,
          (0x7018ce, 0x701a3d, 0x701a8a, 0x6fe470, 0x6ff20a, 0x6fdcdd, 0x6fdcf2)),
@@ -31,7 +31,7 @@ def verify(path):
     optional = pe + 24
     if (data[pe:pe+4] != b'PE\0\0' or machine != 0x14c or timestamp != stamp
             or struct.unpack_from('<H', data, optional)[0] != 0x10b
-            or struct.unpack_from('<I', data, optional + 56)[0] != 0xaf7000):
+            or struct.unpack_from('<I', data, optional + 56)[0] != (0xaf6000 if name == '1.5.20-win32' else 0xaf7000)):
         raise ValueError('Executable PE profile mismatch')
     base = struct.unpack_from('<I', data, optional + 28)[0]
     if base != 0x400000:

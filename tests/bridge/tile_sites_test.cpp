@@ -36,9 +36,9 @@ void __thiscall Destroy(void* p,unsigned deleting){
  std::free(tile);std::free(p);destroyed+=2;
 }
 std::uintptr_t Address(std::uint32_t address){
- switch(address){case 0xc3f9fd:return reinterpret_cast<std::uintptr_t>(Allocate);
- case 0x625fd0:return reinterpret_cast<std::uintptr_t>(Tile);case 0x626310:return reinterpret_cast<std::uintptr_t>(Task);
- case 0x626420:return reinterpret_cast<std::uintptr_t>(Run);case 0x626f50:return reinterpret_cast<std::uintptr_t>(Destroy);}
+ switch(address){case 0xc3e3ed:return reinterpret_cast<std::uintptr_t>(Allocate);
+ case 0x626140:return reinterpret_cast<std::uintptr_t>(Tile);case 0x626480:return reinterpret_cast<std::uintptr_t>(Task);
+ case 0x626590:return reinterpret_cast<std::uintptr_t>(Run);case 0x6270c0:return reinterpret_cast<std::uintptr_t>(Destroy);}
  assert(false);return 0;
 }
 }

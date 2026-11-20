@@ -94,7 +94,7 @@ int main(int argc, char** argv) {
 
   AtlasBuildResult first;
   std::string error;
-  CHECK(PrepareAtlas(discovery, atlasPath, cacheRoot, "1.5.18-win32-r2",
+  CHECK(PrepareAtlas(discovery, atlasPath, cacheRoot, "1.5.20-win32",
       &first, &error));
   CHECK(first.regions == 5);
   CHECK(first.generatedSmallIcons == 2);
@@ -160,7 +160,7 @@ int main(int argc, char** argv) {
   std::ofstream(stale / L"old.txtr", std::ios::binary).put('x');
 
   AtlasBuildResult second;
-  CHECK(PrepareAtlas(discovery, atlasPath, cacheRoot, "1.5.18-win32-r2",
+  CHECK(PrepareAtlas(discovery, atlasPath, cacheRoot, "1.5.20-win32",
       &second, &error));
   CHECK(second.cacheHit);
   CHECK(second.cacheKey == first.cacheKey);
@@ -170,7 +170,7 @@ int main(int argc, char** argv) {
 
   cc2::host::ModDiscovery empty;
   AtlasBuildResult noUi;
-  CHECK(PrepareAtlas(empty, atlasPath, cacheRoot + L"_empty", "1.5.18-win32-r2",
+  CHECK(PrepareAtlas(empty, atlasPath, cacheRoot + L"_empty", "1.5.20-win32",
       &noUi, &error));
   CHECK(noUi.resources.empty() && noUi.regions == 0);
   CHECK(!std::filesystem::exists(cacheRoot + L"_empty"));
@@ -178,7 +178,7 @@ int main(int argc, char** argv) {
   auto invalid = discovery;
   invalid.mods[0].uiImages[0].small = L"textures/cc2x_aircraft_icons/f16_layout.png";
   AtlasBuildResult rejected;
-  CHECK(!PrepareAtlas(invalid, atlasPath, cacheRoot, "1.5.18-win32-r2",
+  CHECK(!PrepareAtlas(invalid, atlasPath, cacheRoot, "1.5.20-win32",
       &rejected, &error));
   CHECK(error == "ui_png_dimensions_do_not_match_declared_role");
 

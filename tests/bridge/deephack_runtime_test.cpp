@@ -38,7 +38,7 @@ int wmain(int argc,wchar_t**argv){
   auto*pe=reinterpret_cast<IMAGE_NT_HEADERS32*>(file.data()+dos->e_lfanew);
   CHECK(pe->Signature==IMAGE_NT_SIGNATURE&&pe->FileHeader.Machine==IMAGE_FILE_MACHINE_I386);
   const bool legacyAnimationProfile=pe->FileHeader.TimeDateStamp==0x6a36c177;
-  const char* build=legacyAnimationProfile?"1.5.18-win32":"1.5.18-win32-r2";
+  const char* build=legacyAnimationProfile?"1.5.18-win32":"1.5.20-win32";
   image=VirtualAlloc(nullptr,pe->OptionalHeader.SizeOfImage,MEM_RESERVE|MEM_COMMIT,PAGE_READWRITE);CHECK(image);
   auto*data=static_cast<unsigned char*>(image);memcpy(data,file.data(),pe->OptionalHeader.SizeOfHeaders);
   auto*section=IMAGE_FIRST_SECTION(pe);for(int i=0;i<pe->FileHeader.NumberOfSections;++i)if(section[i].SizeOfRawData)memcpy(data+section[i].VirtualAddress,file.data()+section[i].PointerToRawData,section[i].SizeOfRawData);

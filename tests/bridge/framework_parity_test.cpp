@@ -53,14 +53,14 @@ std::int32_t NativeTask(const cc2x_framework_event* event,void*){
     ++nativeTasks;if(nativeTasks==1)nativeFramework->post("native.parity",event->generation,NativeTask,nullptr);
   }return CC2X_FRAMEWORK_DEFAULT;
 }
-std::uintptr_t Va(std::uint32_t address){return address==0x71dcbf?reinterpret_cast<std::uintptr_t>(throttleCode):0;}
+std::uintptr_t Va(std::uint32_t address){return address==0x71df1f?reinterpret_cast<std::uintptr_t>(throttleCode):0;}
 int NativeSum(cc2x_vm* vm,void*){savedVm=vm;std::int64_t a=0,b=0;if(!nativeFramework||nativeFramework->vm->gettop(vm)!=2||!nativeFramework->vm->tointeger(vm,1,&a)||!nativeFramework->vm->tointeger(vm,2,&b))return 0;nativeFramework->vm->pushinteger(vm,a+b);return 1;}
 }
 #define CHECK(x) do{if(!(x)){std::cerr<<"FAIL "<<__LINE__<<": " #x "\n";for(const auto& log:logs)std::cerr<<log<<"\n";return 1;}}while(0)
 int main(){
   wchar_t temp[MAX_PATH]{};CHECK(GetTempPathW(MAX_PATH,temp)>0);
   const auto root=fs::path(temp)/(L"cc2x_framework_native_"+std::to_wstring(GetCurrentProcessId())+L"_"+std::to_wstring(GetTickCount64()));
-  cc2x_api api{};api.size=sizeof(api);api.api_version=CC2X_API_VERSION;api.game_build="1.5.18-win32-r2";
+  cc2x_api api{};api.size=sizeof(api);api.api_version=CC2X_API_VERSION;api.game_build="1.5.20-win32";
   api.log=Log;api.active_mod_count=ModCount;api.active_mod_path=ModPath;api.on_server_tick=TickRegister;api.on_session=SessionRegister;
   api.find=Find;api.geti=GetI;api.getf=GetF;api.seti=SetI;api.setf=SetF;api.count=Count;api.ref=Ref;
   api.on_waypoints=SubscribeWaypoints;api.va=Va;std::string config=root.string();api.config_dir=config.c_str();

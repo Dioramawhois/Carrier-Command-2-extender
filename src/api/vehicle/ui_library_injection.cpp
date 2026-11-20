@@ -18,10 +18,10 @@
 namespace cc2::api::vehicle {
 namespace {
 
-constexpr std::uint32_t kScriptVectorHook = 0x005B555B;
-constexpr std::uint32_t kVectorEmplaceBack = 0x00858740;
-constexpr std::uint32_t kStringReserve = 0x00412B30;
-constexpr std::uint32_t kStringFree = 0x00C4C722;
+constexpr std::uint32_t kScriptVectorHook = 0x005b56bb;
+constexpr std::uint32_t kVectorEmplaceBack = 0x00858f00;
+constexpr std::uint32_t kStringReserve = 0x00412b50;
+constexpr std::uint32_t kStringFree = 0x00c4b112;
 constexpr std::uint8_t kScriptVectorHookBytes[] = {0x8D, 0x5F, 0x74, 0x8D, 0x45, 0xC4};
 constexpr std::uint8_t kVectorEmplaceBackPrefix[] = {0x55, 0x8B, 0xEC, 0x6A, 0xFF};
 constexpr std::uint8_t kStringReservePrefix[] = {
@@ -360,7 +360,7 @@ void OnScreenScriptsReady(cc2x_cpu* cpu, void*) {
 bool InstallStockUiLibraryInjection(const cc2x_api* api) {
   if (!api || !api->game_build || !api->va || !api->log || !api->patch_mid ||
       !api->patch_begin || !api->patch_commit || !api->patch_abort) return false;
-  if (std::strcmp(api->game_build, "1.5.18-win32-r2") != 0) {
+  if (std::strcmp(api->game_build, "1.5.20-win32") != 0) {
     api->log("cc2x_vehicle_ui", CC2X_LOG_WARN,
         "event=UI_SHIM_INJECTION_UNAVAILABLE build=%s", api->game_build);
     return false;

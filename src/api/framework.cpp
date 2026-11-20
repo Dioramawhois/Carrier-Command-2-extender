@@ -35,7 +35,7 @@ std::uint64_t Capabilities() {
   auto* h=Owner();if(!h)return 0;std::uint64_t flags=CC2X_FRAMEWORK_MESSAGES|CC2X_FRAMEWORK_LUA_BINDINGS;
   const auto* a=h->Api();if(a->find&&a->geti&&a->getf&&a->seti&&a->setf)flags|=CC2X_FRAMEWORK_WORLD;
   if(cc2::api::vehicle::ButtonsSupported())flags|=CC2X_FRAMEWORK_BUTTONS;
-  if(a->game_build&&(std::strcmp(a->game_build,"1.5.18-win32-r2")==0||std::strcmp(a->game_build,"1.5.18-win32")==0))flags|=CC2X_FRAMEWORK_THROTTLE;
+  if(a->game_build&&(std::strcmp(a->game_build,"1.5.20-win32")==0||std::strcmp(a->game_build,"1.5.18-win32")==0))flags|=CC2X_FRAMEWORK_THROTTLE;
   return flags|CC2X_FRAMEWORK_VEHICLE_CATALOG|CC2X_FRAMEWORK_ENTITY_METADATA|CC2X_FRAMEWORK_SESSION_TASKS;
 }
 std::uint64_t Subscribe(const char* event,cc2x_framework_event_fn callback,void* user) {

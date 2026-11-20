@@ -28,56 +28,56 @@ constexpr std::uintptr_t kLegacyFunctions[]{
   0x005ec130,0x005ee700,0x005ee6a0,0x00850670,0x0040fb60,0x005e9c10,
   0x0040ffa0,0x005ec2c0,0x005e9d10,0x005ee8c0,0x005e44f0,0x0041a730,
   0x005ea870,0x0088e080,0x00411570,0x00572090,0x005720b0,0x004380b0,0x00565870};
-constexpr std::uintptr_t kSteam26277078Functions[]{
-  0x005ec270,0x005ee840,0x005ee7e0,0x008507a0,0x0040fb60,0x005e9d50,
-  0x0040ffa0,0x005ec400,0x005e9e50,0x005eea00,0x005e4630,0x0041a730,
-  0x005ea9b0,0x0088e1c0,0x00411570,0x005721e0,0x00572200,0x004380b0,0x00565990};
-constexpr BYTE kSteam26277078EntryBytes[][16]{
+constexpr std::uintptr_t kSteam26732430Functions[]{
+  0x005ec3e0,0x005ee9b0,0x005ee950,0x00850f70,0x0040fb60,0x005e9eb0,
+  0x0040ffa0,0x005ec570,0x005e9fb0,0x005eeb70,0x005e4790,0x0041a750,
+  0x005eab10,0x0088e9a0,0x00411570,0x00572310,0x00572330,0x00411620,0x00565a10};
+constexpr BYTE kSteam26732430EntryBytes[][16]{
   {0x55,0x8b,0xec,0x8b,0x45,0x08,0x83,0xc0,0xfe,0x83,0xf8,0x56,0x77,0x28,0x0f,0xb6},
-  {0x55,0x8b,0xec,0x6a,0xff,0x68,0x9d,0xd2,0xc7,0x00,0x64,0xa1,0x00,0x00,0x00,0x00},
+  {0x55,0x8b,0xec,0x6a,0xff,0x68,0x9d,0xbb,0xc7,0x00,0x64,0xa1,0x00,0x00,0x00,0x00},
   {0x55,0x8b,0xec,0x51,0x53,0x8b,0xd9,0x33,0xc0,0x56,0x57,0x39,0x43,0x44,0x74,0x2d},
   {0x55,0x8b,0xec,0x56,0x8b,0x71,0x08,0x03,0x75,0x08,0x8b,0xc6,0x2b,0x41,0x04,0x3b},
   {0x55,0x8b,0xec,0x83,0xe4,0xf8,0x83,0xec,0x10,0x8b,0x45,0x08,0xf3,0x0f,0x10,0x40},
   {0x8b,0x91,0x90,0x00,0x00,0x00,0x8b,0x81,0x8c,0x00,0x00,0x00,0x56,0x8b,0xb1,0x94},
-  {0x55,0x8b,0xec,0x83,0xe4,0xf8,0x83,0xec,0x50,0xa1,0x44,0xdb,0xe1,0x00,0x33,0xc4},
-  {0x55,0x8b,0xec,0x83,0xe4,0xf8,0x81,0xec,0x24,0x01,0x00,0x00,0xa1,0x44,0xdb,0xe1},
-  {0x55,0x8b,0xec,0x83,0xe4,0xf8,0x81,0xec,0x3c,0x01,0x00,0x00,0xa1,0x44,0xdb,0xe1},
-  {0x55,0x8b,0xec,0x6a,0xff,0x68,0xdd,0x1b,0xca,0x00,0x64,0xa1,0x00,0x00,0x00,0x00},
+  {0x55,0x8b,0xec,0x83,0xe4,0xf8,0x83,0xec,0x50,0xa1,0x44,0xcb,0xe1,0x00,0x33,0xc4},
+  {0x55,0x8b,0xec,0x83,0xe4,0xf8,0x81,0xec,0x24,0x01,0x00,0x00,0xa1,0x44,0xcb,0xe1},
+  {0x55,0x8b,0xec,0x83,0xe4,0xf8,0x81,0xec,0x3c,0x01,0x00,0x00,0xa1,0x44,0xcb,0xe1},
+  {0x55,0x8b,0xec,0x6a,0xff,0x68,0xdd,0x04,0xca,0x00,0x64,0xa1,0x00,0x00,0x00,0x00},
   {0xc7,0x01,0x00,0x00,0x00,0x00,0x8b,0xc1,0xc7,0x41,0x04,0xff,0xff,0xff,0xff,0xc7},
   {0xc7,0x01,0x00,0x00,0x00,0x00,0x8b,0xc1,0xc7,0x41,0x04,0x00,0x00,0x00,0x00,0xc3},
   {0x55,0x8b,0xec,0x8b,0x89,0x5c,0x01,0x00,0x00,0x8b,0x45,0x08,0x8b,0x0c,0x81,0x85},
-  {0x55,0x8b,0xec,0x6a,0xff,0x68,0x7e,0xf9,0xcc,0x00,0x64,0xa1,0x00,0x00,0x00,0x00},
-  {0x55,0x8b,0xec,0x6a,0xff,0x68,0xf0,0xc4,0xc7,0x00,0x64,0xa1,0x00,0x00,0x00,0x00},
+  {0x55,0x8b,0xec,0x6a,0xff,0x68,0x0e,0xe3,0xcc,0x00,0x64,0xa1,0x00,0x00,0x00,0x00},
+  {0x55,0x8b,0xec,0x6a,0xff,0x68,0xf0,0xad,0xc7,0x00,0x64,0xa1,0x00,0x00,0x00,0x00},
   {0x8b,0x41,0x2c,0xc3,0xcc,0xcc,0xcc,0xcc,0xcc,0xcc,0xcc,0xcc,0xcc,0xcc,0xcc,0xcc},
   {0x55,0x8b,0xec,0x57,0x8b,0xf9,0x8b,0x4d,0x08,0x3b,0x4f,0x2c,0x73,0x1d,0x8b,0x57},
   {0x8b,0x01,0xc3,0xcc,0xcc,0xcc,0xcc,0xcc,0xcc,0xcc,0xcc,0xcc,0xcc,0xcc,0xcc,0xcc},
-  {0x55,0x8b,0xec,0x6a,0xff,0x68,0x5d,0x7f,0xc9,0x00,0x64,0xa1,0x00,0x00,0x00,0x00},
+  {0x55,0x8b,0xec,0x6a,0xff,0x68,0x5d,0x68,0xc9,0x00,0x64,0xa1,0x00,0x00,0x00,0x00},
 };
 struct EntryRelocations { std::uint8_t count; pe_guard::RelocationField fields[2]; };
 // HIGHLOW operand offsets within the corresponding 16-byte entry signatures,
 // extracted from the exact executable whose SHA-256 is pinned below. The
 // image's .reloc section is IMAGE_SCN_MEM_DISCARDABLE and cannot be relied on
 // being readable after Windows has applied relocations.
-constexpr EntryRelocations kSteam26277078EntryRelocations[]{
-  {0,{{0,0},{0,0}}},{1,{{6,0x00c7d29d},{0,0}}},{0,{{0,0},{0,0}}},
+constexpr EntryRelocations kSteam26732430EntryRelocations[]{
+  {0,{{0,0},{0,0}}},{1,{{6,0x00c7bb9d},{0,0}}},{0,{{0,0},{0,0}}},
   {0,{{0,0},{0,0}}},{0,{{0,0},{0,0}}},{0,{{0,0},{0,0}}},
-  {1,{{10,0x00e1db44},{0,0}}},{1,{{13,0x00e1db44},{0,0}}},
-  {1,{{13,0x00e1db44},{0,0}}},{1,{{6,0x00ca1bdd},{0,0}}},
+  {1,{{10,0x00e1cb44},{0,0}}},{1,{{13,0x00e1cb44},{0,0}}},
+  {1,{{13,0x00e1cb44},{0,0}}},{1,{{6,0x00ca04dd},{0,0}}},
   {0,{{0,0},{0,0}}},{0,{{0,0},{0,0}}},{0,{{0,0},{0,0}}},
-  {1,{{6,0x00ccf97e},{0,0}}},{1,{{6,0x00c7c4f0},{0,0}}},
+  {1,{{6,0x00cce30e},{0,0}}},{1,{{6,0x00c7adf0},{0,0}}},
   {0,{{0,0},{0,0}}},{0,{{0,0},{0,0}}},{0,{{0,0},{0,0}}},
-  {1,{{6,0x00c97f5d},{0,0}}},
+  {1,{{6,0x00c9685d},{0,0}}},
 };
-static_assert(std::size(kSteam26277078Functions)==std::size(kSteam26277078EntryBytes));
-static_assert(std::size(kSteam26277078Functions)==std::size(kSteam26277078EntryRelocations));
+static_assert(std::size(kSteam26732430Functions)==std::size(kSteam26732430EntryBytes));
+static_assert(std::size(kSteam26732430Functions)==std::size(kSteam26732430EntryRelocations));
 constexpr char kLegacyBuild[]="1.5.18-win32";
 constexpr char kLegacySha256[]="1c9a01c3007cb2bec2a04d716812cf9f24c87efa11056395c89ddd7d2c341026";
 constexpr HangarProfile kLegacyProfile{kLegacyBuild,kLegacySha256};
-constexpr char kSteamBuild[]="1.5.18-win32-r2";
-constexpr char kSteamSha256[]="461e12623bacb7de29ca27b4614425c87e8df2c8327a5e958a957c850effe42a";
+constexpr char kSteamBuild[]="1.5.20-win32";
+constexpr char kSteamSha256[]="1df609c8252fc0245decfab793e3b8e1884e553539a8831cbee67663b6725920";
 constexpr HangarProfile kSteamProfile{kSteamBuild,kSteamSha256};
 constexpr std::uint32_t kSteamImageBase=0x00400000;
-constexpr std::size_t kSteamImageSize=0x00af7000;
+constexpr std::size_t kSteamImageSize=0x00af6000;
 
 struct Mat34 { double v[12]; };
 
@@ -154,7 +154,7 @@ const HangarProfile* ProfileFor(const cc2x_api* api) {
 const std::uintptr_t* FunctionAddresses(const cc2x_api* api) {
   if (!api || !api->game_build) return nullptr;
   if (std::strcmp(api->game_build,kLegacyBuild)==0) return kLegacyFunctions;
-  if (std::strcmp(api->game_build,kSteamBuild)==0) return kSteam26277078Functions;
+  if (std::strcmp(api->game_build,kSteamBuild)==0) return kSteam26732430Functions;
   return nullptr;
 }
 
@@ -164,17 +164,17 @@ bool EntryGuardsMatch(const cc2x_api* api, const HangarProfile* profile,
                       std::size_t* badIndex=nullptr) {
   if (!api || !profile || profile!=&kSteamProfile) return profile==&kLegacyProfile;
   const auto* image=reinterpret_cast<const BYTE*>(api->module_base);
-  for(std::size_t i=0;i<std::size(kSteam26277078Functions);++i) {
-    const auto va=static_cast<std::uint32_t>(kSteam26277078Functions[i]);
+  for(std::size_t i=0;i<std::size(kSteam26732430Functions);++i) {
+    const auto va=static_cast<std::uint32_t>(kSteam26732430Functions[i]);
     if(va<kSteamImageBase) { if(badVa)*badVa=va; return false; }
     const auto rva=va-kSteamImageBase;
     auto* entry=image+rva;
     pe_guard::MatchDiagnostics match{};
     const bool entryReadable=Readable(entry,16);
     const bool matches=entryReadable && pe_guard::MatchLoadedBytes(image,kSteamImageSize,rva,
-        kSteam26277078EntryBytes[i],sizeof(kSteam26277078EntryBytes[i]),
-        kSteam26277078EntryRelocations[i].fields,
-        kSteam26277078EntryRelocations[i].count,
+        kSteam26732430EntryBytes[i],sizeof(kSteam26732430EntryBytes[i]),
+        kSteam26732430EntryRelocations[i].fields,
+        kSteam26732430EntryRelocations[i].count,
         static_cast<std::uint32_t>(kSteamImageBase),&match);
     if(!matches) {
       if(!entryReadable) match.reason="entry_unreadable";
@@ -214,7 +214,7 @@ bool SupportedImage(const cc2x_api* api, std::string* reason) {
   std::size_t badIndex=0;
   if(!EntryGuardsMatch(api,profile,&badVa,&match,&badIndex)) {
     char expected[33]{},normalized[33]{},actual[33]{};
-    FormatBytes(kSteam26277078EntryBytes[badIndex],16,expected,sizeof(expected));
+    FormatBytes(kSteam26732430EntryBytes[badIndex],16,expected,sizeof(expected));
     if(match.normalizedAvailable)
       FormatBytes(match.normalized,16,normalized,sizeof(normalized));
     const auto* image=reinterpret_cast<const BYTE*>(api->module_base);
@@ -572,15 +572,15 @@ bool Host::DescribeHangarSlots(std::uint32_t carrierId,std::uint32_t chassisType
 
 namespace {
 bool EquipmentEntries(const cc2x_api* api) {
-  constexpr BYTE bytes[]{0x55,0x8b,0xec,0x6a,0xff,0x68,0xad,0xbb,0xca,0x00,0x64,0xa1,0,0,0,0};
-  constexpr pe_guard::RelocationField relocation[]{ {6,0x00cabbad} };
-  for (std::uint32_t va:{0x00656b90u,0x00656c50u}) {
+  constexpr BYTE bytes[]{0x55,0x8b,0xec,0x6a,0xff,0x68,0xad,0xa4,0xca,0x00,0x64,0xa1,0,0,0,0};
+  constexpr pe_guard::RelocationField relocation[]{ {6,0x00caa4ad} };
+  for (std::uint32_t va:{0x00656dd0u,0x00656e90u}) {
     if(!pe_guard::MatchLoadedBytes(reinterpret_cast<const BYTE*>(api->module_base),kSteamImageSize,
         va-kSteamImageBase,bytes,sizeof(bytes),relocation,1,kSteamImageBase,nullptr)) return false;
   }
   constexpr BYTE registerBytes[]{0x55,0x8b,0xec,0x83,0xec,0x08,0x53,0x56,0x8b,0x75,0x08,0x57,0x51,0x56,0x8b,0xf9};
   return pe_guard::MatchLoadedBytes(reinterpret_cast<const BYTE*>(api->module_base),kSteamImageSize,
-      0x005d05b0-kSteamImageBase,registerBytes,sizeof(registerBytes),nullptr,0,kSteamImageBase,nullptr);
+      0x005d0720-kSteamImageBase,registerBytes,sizeof(registerBytes),nullptr,0,kSteamImageBase,nullptr);
 }
 struct EquipmentCall {
   void* vehicle;void* definitions;void* events;void* publish;void* island;void* registerPhysics;
@@ -655,10 +655,10 @@ bool Host::SetVehicleAttachment(std::uint32_t id,std::uint32_t slot,std::int32_t
   if(type>=8)return refuse("unsupported_hardpoint_type");
   using OptionCount=std::uint32_t(__stdcall*)(std::uint32_t);
   using Option=std::uint32_t(__stdcall*)(std::uint32_t,std::uint32_t);
-  const auto n=reinterpret_cast<OptionCount>(api->va(0x656b90))(type);
+  const auto n=reinterpret_cast<OptionCount>(api->va(0x656dd0))(type);
   if(n>256)return refuse("catalog_bound_exceeded");
   bool compatible=definition==-1;
-  for(std::uint32_t i=0;i<n&&!compatible;++i)compatible=reinterpret_cast<Option>(api->va(0x656c50))(type,i)==static_cast<std::uint32_t>(definition);
+  for(std::uint32_t i=0;i<n&&!compatible;++i)compatible=reinterpret_cast<Option>(api->va(0x656e90))(type,i)==static_cast<std::uint32_t>(definition);
   if(!compatible)return refuse("incompatible_attachment");
   auto* events=static_cast<unsigned char*>(server_)+0x514;
   if(!Readable(events,4))return refuse("event_manager_unavailable");
@@ -669,9 +669,9 @@ bool Host::SetVehicleAttachment(std::uint32_t id,std::uint32_t slot,std::int32_t
      !(code.Protect&(PAGE_EXECUTE|PAGE_EXECUTE_READ|PAGE_EXECUTE_READWRITE|PAGE_EXECUTE_WRITECOPY)))return refuse("publisher_unavailable");
   EquipmentCall call{};call.vehicle=v;call.definitions=static_cast<unsigned char*>(server_)+0x1bc;
   call.events=events;call.publish=publish;call.clients=static_cast<unsigned char*>(server_)+0xc48;
-  call.island=island;call.registerPhysics=ImageVa(api,0x005d05b0);
+  call.island=island;call.registerPhysics=ImageVa(api,0x005d0720);
   call.id=id;call.slot=slot;call.definition=static_cast<std::uint32_t>(definition);call.fill=fill;
-  for(std::size_t i=0;i<19;++i)call.f[i]=ImageVa(api,static_cast<std::uint32_t>(kSteam26277078Functions[i]));
+  for(std::size_t i=0;i<19;++i)call.f[i]=ImageVa(api,static_cast<std::uint32_t>(kSteam26732430Functions[i]));
   if(!Readable(call.clients,0x10)||!Readable(call.definitions,0x10))return refuse("server_layout_unavailable");
   call.count=reinterpret_cast<ClientCountFn>(call.f[15])(call.clients);
   if(call.count>1024)return refuse("client_count_bound_exceeded");

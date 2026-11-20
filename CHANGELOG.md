@@ -1,5 +1,59 @@
 # Changelog
 
+## 0.11.1-dev - Carrier Command 2 1.5.20 compatibility
+
+- Authenticate Windows Steam build 26732430 by SHA-256, PE timestamp and image
+  size; port the existing native addresses, instruction windows, vtables and
+  relocation operands to this exact build.
+- Move game-owned Lua integration to the complete instruction window after the
+  security cleanup and read the Lua state from ESI. Preserve removal of
+  `dofile`, `loadfile`, `load` and `loadstring` in game-owned Lua.
+- Recheck authenticated incoming waypoint sender operands, stock UI script
+  injection, carrier motion/recovery/navigation, animation, hangar and equipment.
+  Preserve existing API versions, transactional hooks and unknown-build refusal.
+- Match navigation's two absolute operands to their exact ASLR targets and
+  follow the button enqueue constructor's actual type-vtable reference. Reject
+  preferred-base and incorrect relocated operands in the native fixture.
+- Bind signed runtime updates to the new executable. Older game builds retain
+  their previous SDK releases; gameplay, remote-client and dedicated acceptance
+  are separate from static and fixture evidence.
+
+- SDK 0.11 Workshop payload: show a main-menu update dialog and persistent
+  reminder when the loaded DLL is older than the downloaded SDK. Include
+  ModLoader/manual instructions and preserve compatible older-runtime features.
+
+## Unreleased - 0.11.0-dev surface navigation candidate
+
+- Add a separate optional navigation API 1 for C/Lua callers over the same
+  owner/session-scoped backend. Keep C API 8, framework API 1, Lua API 2 and
+  motion API 1 layouts unchanged.
+- Retain native A*/funnel/steering while permitting explicitly configured wet
+  mesh triangles and a caller-selected arrival radius. Preserve raw goals and
+  block failed paths instead of silently consuming their waypoints.
+- Confine hooks to the configured carrier's native query; preserve other vessels,
+  original routing outside scope, register/floating state and native fault cleanup.
+- Add copied exact-goal telemetry and strict C/Lua options contracts. Source/native
+  fixtures are separate from fresh coastal gameplay and hull-clearance acceptance.
+
+## Earlier 0.10 development notes
+
+- Add native engine-gated forward commands alongside path steering, guidance
+  telemetry and live replicated helm factors. Consumer policy can maintain
+  headway through turns; native wheel/throttle animation follows live commands.
+  Alpha.3 requires owner gameplay acceptance separately from historical alpha.2.
+- Add optional named motion API 1 and matching independent Lua operations for
+  native carrier waypoint steering, copied state, a normalized forward-output cap
+  and current team-detected vehicle/projectile contacts. Preserve existing ABI
+  layouts and Lua API 2. The published 0.9 runtime is unchanged.
+- Require the reviewed 1.5.18-r2 profile, local single-peer owning team, expiring
+  owner/session/carrier leases and physical helm/throttle precedence. Install
+  the motion wrapper lazily; preserve its seven-stack-word native ABI.
+- Add native ownership, profile, power-sign, takeover, expiry, visibility and ABI
+  regressions. Initial native motion ran in a private legitimate game copy;
+  remote gameplay, combat and countermeasure consumption remain unverified.
+- Preserve the owner-accepted alpha.2 binary with its original build metadata;
+  source packaging verifies all compiled inputs against the committed snapshot.
+
 ## 0.9.0-dev (development preview, 2026-11-06)
 
 - Publish the exact owner-tested runtime as an explicit prerelease. Native bytes

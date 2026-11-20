@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "date": "2026-11-07",
+  "timezone": "Europe/Moscow",
+  "confirmation_source": "Direct owner release request after owner-run ordinary-game alpha.4 ModLoader test",
+  "game_runtime_tested": true,
+  "candidate": "0.1.0-alpha.4 / alpha4-loop-01",
+  "candidate_source_commit": "6fd432b9bac3a6277b854db946b080cc99a3351a",
+  "runtime_sha256": "2e799fd21ee3571b7d316cf0f25e7649e55b52a2777b2dc0bb84751018dc7ad5",
+  "environment": "Ordinary Steam Windows 1.5.18-r2 installation, combined selected mod set through ModLoader, local single-player",
+  "verified_scope": [
+    "General owner acceptance of the combined alpha.4 navigation experience after the route-repeat correction",
+    "Ordinary ModLoader launch with original Revolution and Island Airfields"
+  ],
+  "functional_sha256": {
+    "content/bridge.json": "756085a0c9c18618e888ab259baac3f68fdb019c70a69728adfc546ad58b480b",
+    "content/bridge/cruise.lua": "d77e6db9b48ad4744ec513772bd0d4ea7c8b89835add6d0bf2a2beac69cc098d",
+    "content/bridge/defence.lua": "6e678599938589c19cebde103fe55e028599f0d2d0e825a8131a6581804e9b9e",
+    "content/bridge/main.lua": "cfdd30ea48e123a90d7c26e2374b6d87a4acd9484e218f5ee81ed57d2852f6d3",
+    "content/bridge/runtime.lua": "39fb8a67445d0d5ae68bc089ca46d8954cedfd4f679ce8b8ad43ab82c2a27bd6",
+    "content/scripts/library_custom_0.lua": "3499b4c2ab8ba931e1f883d958d174577636652c248d96c0f4df6446c79bb8b2"
+  },
+  "launch_receipt_sha256": {
+    "after.json": "7a967f09c883fb2d28dcdf28a113ca9e991a9b1626570c4b9e4e582745569274",
+    "launch.json": "47c56489b58095f632c6255e32da19ff3efddcb2c4b65acdd14538a7bb6792da",
+    "source-change.json": "4e162679cf4410e2f3951873d283f35b69112400f88a168e781da50ae17d0be5"
+  },
+  "private_test_additions": [],
+  "unverified": [
+    "Separate live-combat and countermeasure-expenditure acceptance",
+    "All save/load cases",
+    "Remote multiplayer",
+    "Dedicated server",
+    "Native macOS runtime",
+    "Clean-machine deployment"
+  ],
+  "presentation_update": "The subsequently approved public title changes only two startup/error strings and one panel heading. tools/release.py verifies the exact three literal substitutions and reports different raw hashes.",
+  "publication_authorized_after": "Owner provides mod pictures; owner reconfirmed this condition on 2026-11-07"
+}

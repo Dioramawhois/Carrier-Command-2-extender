@@ -13,7 +13,7 @@ using namespace cc2::api::vehicle;
 extern "C" const cc2x_framework_api* cc2x_query_framework_v1(std::uint32_t,std::uint32_t);
 extern "C" void cc2x_native_hangar_spawn_result(std::uint32_t,int,std::uint32_t,std::uint32_t){}
 namespace {
-std::vector<unsigned char> image(0xc00000);
+std::vector<unsigned char> image(0xbfea20);
 std::wstring modRoot;std::vector<std::string> logs;
 int begins=0,aborts=0,commits=0,failAt=0,patches=0,messages=0,nativeCalls=0,queryChoice=1;
 struct Patch{std::uint32_t site,len;};std::vector<Patch> pending;

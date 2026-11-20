@@ -126,10 +126,10 @@ int wmain(int argc,wchar_t** argv){
     cursor+=block->SizeOfBlock;
   }
   const bool legacy=FixtureHasLegacyPatchProfile(argv[1]);
-  const char* build=legacy?"1.5.18-win32":"1.5.18-win32-r2";
-  const std::size_t codeShift=legacy?0:0x110;
-  const std::size_t clampShift=legacy?0:0x120;
-  const std::size_t factorShift=legacy?0:0x130;
+  const char* build=legacy?"1.5.18-win32":"1.5.20-win32";
+  const std::size_t codeShift=legacy?0:0x360;
+  const std::size_t clampShift=legacy?0:0x920;
+  const std::size_t factorShift=legacy?0:0x900;
   const std::size_t routeCallSites[]{0x2fcc97,0x2fcf8d,0x2fd664,0x2fdb4b};
   const std::size_t craneCallSites[]{0x300f55,0x30105c,0x30113e,0x301184,0x3011d4,0x301229};
   Check(!SetSpeed(Group::kRoutes,2),"setter unavailable before startup installation");

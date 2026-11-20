@@ -15,45 +15,45 @@
 namespace cc2::api::ui::second_atlas {
 namespace {
 
-constexpr std::uint32_t kResourceLoadCall = 0x005AD5BE;
+constexpr std::uint32_t kResourceLoadCall = 0x005ad71e;
 // Capture the name at the first call site inside FUN_005B2170, after its
 // stack frame is established but before the function reuses [EBP+8].
-constexpr std::uint32_t kRegionLookupCapture = 0x005B219A;
-constexpr std::uint32_t kRegionLookupReturn = 0x005B2272;
-constexpr std::uint32_t kUpdateImageEntry = 0x005B26D0;
-constexpr std::uint32_t kUpdateImagePowerEntry = 0x005B2750;
-constexpr std::uint32_t kUpdateImageRotEntry = 0x005B27D0;
-constexpr std::uint32_t kGetImageSizeEntry = 0x005B2850;
-constexpr std::uint32_t kImageReturn = 0x005B2746;
-constexpr std::uint32_t kImagePowerReturn = 0x005B27C9;
-constexpr std::uint32_t kImageRotReturn = 0x005B2840;
-constexpr std::uint32_t kSizeReturn = 0x005B28C2;
-constexpr std::uint32_t kResourceRequest = 0x0043C1C0;
+constexpr std::uint32_t kRegionLookupCapture = 0x005b22fa;
+constexpr std::uint32_t kRegionLookupReturn = 0x005b23d2;
+constexpr std::uint32_t kUpdateImageEntry = 0x005b2830;
+constexpr std::uint32_t kUpdateImagePowerEntry = 0x005b28b0;
+constexpr std::uint32_t kUpdateImageRotEntry = 0x005b2930;
+constexpr std::uint32_t kGetImageSizeEntry = 0x005b29b0;
+constexpr std::uint32_t kImageReturn = 0x005b28a6;
+constexpr std::uint32_t kImagePowerReturn = 0x005b2929;
+constexpr std::uint32_t kImageRotReturn = 0x005b29a0;
+constexpr std::uint32_t kSizeReturn = 0x005b2a22;
+constexpr std::uint32_t kResourceRequest = 0x0043c1f0;
 // FUN_00439800 is the engine's atlas/resource population path. These two
 // passive probes distinguish a failed/missing asset parse from an atlas whose
 // region vector was populated but later read incorrectly.
 // Wrap the exact five-byte parser CALL to observe its real return value and
 // parsed-region count without relocating the following conditional branch.
-constexpr std::uint32_t kAtlasParserCall = 0x00439878;
+constexpr std::uint32_t kAtlasParserCall = 0x004398a8;
 // This is the final SEH-chain restore before callee-saved registers/EBP are
 // popped, so both the atlas `this` in EDI and the request frame are intact.
-constexpr std::uint32_t kAtlasPopulateReturn = 0x00439A37;
-constexpr std::uint32_t kSetUiPosition = 0x005AF870;
-constexpr std::uint32_t kQueueUiImage = 0x005AFE30;
-constexpr std::uint32_t kQueueUiRotatedImage = 0x005B0050;
+constexpr std::uint32_t kAtlasPopulateReturn = 0x00439a67;
+constexpr std::uint32_t kSetUiPosition = 0x005af9d0;
+constexpr std::uint32_t kQueueUiImage = 0x005aff90;
+constexpr std::uint32_t kQueueUiRotatedImage = 0x005b01b0;
 // Typed resource-task calls to FUN_0041D7F0. They all pass the same
 // file-request object in ECX and the destination buffer in EDX.
 constexpr std::uint32_t kResourceReadCalls[] = {
-    0x008B27F6, 0x008B28A8, 0x008B2A63, 0x008B2B63, 0x008B2C43};
+    0x008b2fc6, 0x008b3078, 0x008b3233, 0x008b3333, 0x008b3413};
 constexpr std::uint8_t kResourceReadCallExpected[][5] = {
-    {0xE8, 0xF5, 0xAF, 0xB6, 0xFF},
-    {0xE8, 0x43, 0xAF, 0xB6, 0xFF},
-    {0xE8, 0x88, 0xAD, 0xB6, 0xFF},
-    {0xE8, 0x88, 0xAC, 0xB6, 0xFF},
-    {0xE8, 0xA8, 0xAB, 0xB6, 0xFF}};
+    {0xe8,0x35,0xa8,0xb6,0xff},
+    {0xe8,0x83,0xa7,0xb6,0xff},
+    {0xe8,0xc8,0xa5,0xb6,0xff},
+    {0xe8,0xc8,0xa4,0xb6,0xff},
+    {0xe8,0xe8,0xa3,0xb6,0xff}};
 
 constexpr std::uint8_t kResourceLoadExpected[7] = {0xC6, 0x45, 0xFC, 0x00, 0x8B, 0x45, 0xDC};
-constexpr std::uint8_t kAtlasParserCallExpected[5] = {0xE8, 0xA3, 0x9D, 0x43, 0x00};
+constexpr std::uint8_t kAtlasParserCallExpected[5] = {0xe8,0x73,0xa5,0x43,0x00};
 constexpr std::uint8_t kAtlasPopulateReturnExpected[7] = {0x64, 0x89, 0x0D, 0x00, 0x00, 0x00, 0x00};
 constexpr std::uint8_t kRegionLookupCaptureExpected[6] = {0xFF, 0x75, 0x08, 0x8D, 0x4D, 0xE0};
 constexpr std::uint8_t kRegionLookupReturnExpected[5] = {0x8B, 0xC6, 0x8B, 0x4D, 0xF4};
@@ -625,7 +625,7 @@ bool Install(const cc2x_api* api) {
         "event=SECOND_ATLAS_SKIPPED reason=no_custom_ui_resources");
     return true;
   }
-  if (std::strcmp(api->game_build, "1.5.18-win32-r2") != 0) {
+  if (std::strcmp(api->game_build, "1.5.20-win32") != 0) {
     api->log("cc2x_ui_second_atlas", CC2X_LOG_WARN,
         "event=SECOND_ATLAS_PROFILE_UNAVAILABLE build=%s", api->game_build);
     return false;

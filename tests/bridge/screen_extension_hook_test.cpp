@@ -83,18 +83,18 @@ void* Thunk(std::initializer_list<unsigned char> prefix,
 }
 std::uintptr_t Va(std::uint32_t address) {
   static const std::uint8_t mismatchedHelper[] = {0x90, 0x90, 0x90, 0x90, 0x90};
-  if (address == 0x00858740 && rejectHelper)
+  if (address == 0x00858f00 && rejectHelper)
     return reinterpret_cast<std::uintptr_t>(mismatchedHelper);
-  if (address == 0x00858740) return reinterpret_cast<std::uintptr_t>(appendThunk);
-  if (address == 0x00412B30) return reinterpret_cast<std::uintptr_t>(reserveThunk);
-  if (address == 0x00C4C722) return reinterpret_cast<std::uintptr_t>(freeThunk);
+  if (address == 0x00858f00) return reinterpret_cast<std::uintptr_t>(appendThunk);
+  if (address == 0x00412b50) return reinterpret_cast<std::uintptr_t>(reserveThunk);
+  if (address == 0x00c4b112) return reinterpret_cast<std::uintptr_t>(freeThunk);
   return 0;
 }
 void Begin(const char*) { patchCount = 0; hook = nullptr; }
 int Mid(std::uint32_t address, std::uint32_t size, const std::uint8_t* expected,
         cc2x_mid_fn callback, void*) {
   constexpr std::uint8_t bytes[] = {0x8D, 0x5F, 0x74, 0x8D, 0x45, 0xC4};
-  if (address != 0x005B555B || size != sizeof(bytes) ||
+  if (address != 0x005b56bb || size != sizeof(bytes) ||
       std::memcmp(bytes, expected, sizeof(bytes))) return 0;
   hook = callback; ++patchCount; return 1;
 }
@@ -194,12 +194,12 @@ int main() {
   Write(profiledPackage/"content/cc2x/ui/owned.lua","fixture_sequence = fixture_sequence .. ':profiled'\n");
   activePackages.push_back(profiledPackage.wstring());
   api.api_version = 8; api.size = sizeof(api); api.module_base = 0x00400000;
-  api.game_build = "1.5.18-win32-r2"; api.va = Va; api.log = Log;
+  api.game_build = "1.5.20-win32"; api.va = Va; api.log = Log;
   api.patch_begin = Begin; api.patch_mid = Mid; api.patch_commit = Commit; api.patch_abort = Abort;
   api.active_mod_count = ActiveCount; api.active_mod_path = ActivePath;
   api.game_build = "unknown";
   CHECK(!InstallStockUiLibraryInjection(&api) && !hook);
-  api.game_build = "1.5.18-win32-r2";
+  api.game_build = "1.5.20-win32";
   CHECK(InstallStockUiLibraryInjection(&api) && patchCount == 1 && hook);
 
   rejectHelper = true;

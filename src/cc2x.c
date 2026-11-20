@@ -16,7 +16,7 @@
 #include "cc2x_post_queue.h"
 #include "cc2x_session.h"
 
-#define CC2X_VERSION "0.9.0-dev"
+#define CC2X_VERSION "0.11.1-dev"
 
 #if defined(_MSC_VER) && !defined(CC2X_USE_GNU_ASM_ABI)
 #define CC2X_THISCALL __thiscall
@@ -45,24 +45,19 @@ typedef struct {
     int lua_abi_verified;
     uint32_t server_vtable;                      /* init, tick, end */
     uint32_t server_init, server_tick, server_end;
-    uint32_t lua_site; uint8_t lua_site_bytes[8];
+    uint32_t lua_site, lua_site_size; int lua_state_esi;
+    uint8_t lua_site_bytes[12];
     uint32_t f_index2addr, f_auxsetstr, f_finishset, f_luaS_new, f_luaH_new, f_luaC_step, nilobject;
 } Profile;
 
 static const Profile PROFILES[] = {{
-    "1.5.18-win32", 0x6a36c177, 0x00af7000,
-    "1c9a01c3007cb2bec2a04d716812cf9f24c87efa11056395c89ddd7d2c341026", 1,
-    0x00d34bc4, 0x00772fd0, 0x0077ee10, 0x0077eea0,
-    0x004465ec, {0x6a, 0x20, 0x89, 0x85, 0x64, 0xff, 0xff, 0xff},
-    0x008cda70, 0x008ce200, 0x008ff6b0, 0x00908220, 0x00904a50, 0x00904050, 0x00d03518,
-}, {
-    /* Steam rebuild 26277078 (2026-10-28). Exact executable identity and
-       all Lua helper entry signatures were checked against this PE. */
-    "1.5.18-win32-r2", 0x6ae228f3, 0x00af7000,
-    "461e12623bacb7de29ca27b4614425c87e8df2c8327a5e958a957c850effe42a", 1,
-    0x00d34bfc, 0x007730c0, 0x0077ef00, 0x0077ef90,
-    0x004465ec, {0x6a, 0x20, 0x89, 0x85, 0x64, 0xff, 0xff, 0xff},
-    0x008cdbc0, 0x008ce350, 0x008ff820, 0x009083a0, 0x00904bc0, 0x009041c0, 0x00d03530,
+    /* Steam 26732430 (1.5.20 security hotfix). ESI holds the game Lua state.
+       Hook after the game's removal of dofile/loadfile/load/loadstring. */
+    "1.5.20-win32", 0x6afc5c17, 0x00af6000,
+    "1df609c8252fc0245decfab793e3b8e1884e553539a8831cbee67663b6725920", 1,
+    0x00d34114, 0x007733a0, 0x0077f330, 0x0077f3c0,
+    0x00446633, 12, 1, {0x6a,0x20,0xc7,0x85,0x64,0xff,0xff,0xff,0,0,0,0},
+    0x008ce390, 0x008ceb20, 0x008fe360, 0x00906e10, 0x00903700, 0x00902d00, 0x00d01800,
 }};
 
 static const struct { int field; uint8_t bytes[8]; } LUA_SIGS[] = {
@@ -776,9 +771,13 @@ static void register_cc2x(cc2x_lua *L) {
     }
 }
 
+static cc2x_lua *lua_state_from_cpu(const Profile *profile, const cc2x_cpu *cpu) {
+    return (cc2x_lua *)(uintptr_t)(profile->lua_state_esi ? cpu->esi : cpu->edi);
+}
+
 static void h_lua_state(cc2x_cpu *cpu, void *user) {
     (void)user;
-    cc2x_lua *L = (cc2x_lua *)(uintptr_t)cpu->edi;
+    cc2x_lua *L = lua_state_from_cpu(P, cpu);
     if (!L) return;
     TValue *top = L_TOP(L);
     register_cc2x(L);
@@ -1058,7 +1057,7 @@ static void startup(void) {
     patch_ptr(P->server_vtable + 0, P->server_init, (void *)h_init, &oi);
     patch_ptr(P->server_vtable + 4, P->server_tick, (void *)h_tick, &ot);
     patch_ptr(P->server_vtable + 8, P->server_end, (void *)h_end, &oe);
-    if (g_lua_ok) patch_mid(P->lua_site, 8, P->lua_site_bytes, h_lua_state, NULL);
+    if (g_lua_ok) patch_mid(P->lua_site, P->lua_site_size, P->lua_site_bytes, h_lua_state, NULL);
     if (!patch_commit()) {
         LOG(CC2X_LOG_ERROR, "core hooks failed; CC2X stays inactive");
         P = NULL;

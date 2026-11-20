@@ -26,7 +26,7 @@ int main(int argc,char** argv) {
   }
   IMAGE_OPTIONAL_HEADER32 optional{};std::memcpy(&optional,file.data()+optionalOffset,sizeof(optional));
   if(optional.Magic!=IMAGE_NT_OPTIONAL_HDR32_MAGIC){std::fprintf(stderr,"target optional header is not PE32\n");return 2;}
-  if(fileHeader.TimeDateStamp==0x6ae228f3&&optional.SizeOfImage==0x00af7000) {
+  if(fileHeader.TimeDateStamp==0x6afc5c17&&optional.SizeOfImage==0x00af6000) {
     constexpr DWORD wrapperRva=0x001EE840;
     constexpr unsigned char expectedWrapper[5]={0x55,0x8B,0xEC,0x6A,0xFF};
     std::size_t wrapperOffset=0;bool wrapperFound=false;
@@ -64,8 +64,8 @@ int main(int argc,char** argv) {
     constexpr unsigned char nameMapResizeGuard[]={0x55,0x8B,0xEC,0x51,0x53,0x56};
     constexpr unsigned char definitionParserGuard[]={0x55,0x8B,0xEC,0x6A,0xFF};
     if(!matchesRva(0x001A2E70,loaderGuard,sizeof(loaderGuard))||
-       !matchesRva(0x0044F550,definitionResizeGuard,sizeof(definitionResizeGuard))||
-       !matchesRva(0x00453E10,nameMapResizeGuard,sizeof(nameMapResizeGuard))||
+       !matchesRva(0x0044f5e0,definitionResizeGuard,sizeof(definitionResizeGuard))||
+       !matchesRva(0x00453ea0,nameMapResizeGuard,sizeof(nameMapResizeGuard))||
        !matchesRva(0x001A5E80,definitionParserGuard,sizeof(definitionParserGuard))) {
       std::fprintf(stderr,"current-build definition observer guard mismatch or incomplete instruction boundary\n");return 2;
     }

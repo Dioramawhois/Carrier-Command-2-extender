@@ -51,11 +51,11 @@ int main() {
 
   // State is process-lifetime and intentionally not resettable; use a fresh
   // test process per case. The supported profile is exercised by this binary.
-  auto supported = MakeApi("1.5.18-win32-r2");
+  auto supported = MakeApi("1.5.20-win32");
   Check(cc2::api::mods::InstallCompatibilityBypass(&supported), "supported profile stages and commits");
   Check(begins == 1 && commits == 1 && aborts == 0 && byte_calls == 1, "single atomic patch transaction");
   Check(owner && std::strcmp(owner, "native_bridge.mod_compatibility") == 0, "dedicated patch owner");
-  Check(patched_va == 0x006474da, "exact image VA");
+  Check(patched_va == 0x0064765a, "exact image VA");
   Check(before == std::array<std::uint8_t, 2>{0x75, 0x27}, "expected original JNE bytes");
   Check(after == std::array<std::uint8_t, 2>{0xeb, 0x27}, "replacement preserves branch target");
   Check(cc2::api::mods::InstallCompatibilityBypass(&supported), "repeated call is idempotent");

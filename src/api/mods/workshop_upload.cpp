@@ -9,10 +9,10 @@
 
 namespace cc2::api::mods {
 namespace {
-constexpr char kSupportedBuild[] = "1.5.18-win32-r2";
-constexpr std::uint32_t kCopyEntryCallVa = 0x0064542f;
+constexpr char kSupportedBuild[] = "1.5.20-win32";
+constexpr std::uint32_t kCopyEntryCallVa = 0x006455af;
 constexpr std::uint8_t kExpectedCall[] = {0xe8, 0x5c, 0x01, 0x00, 0x00};
-constexpr std::uint8_t kExpectedPreparationCall[] = {0xe8, 0x6c, 0x62, 0xdd, 0xff};
+constexpr std::uint8_t kExpectedPreparationCall[] = {0xe8,0xfc,0x60,0xdd,0xff};
 constexpr std::uint8_t kExpectedValidator[] = {0xb9, 0xa0, 0x05, 0x00, 0x00};
 constexpr std::uint8_t kAcceptExtension[] = {0xeb, 0x43, 0x90, 0x90, 0x90};
 volatile LONG g_state = 0; // 0=not attempted, 1=installed, -1=failed/unsupported
@@ -265,17 +265,17 @@ bool InstallWorkshopUploadSupport(const cc2x_api* api) {
 
   g_api = api;
   g_moduleBase = static_cast<std::uintptr_t>(api->module_base);
-  g_originalFileCopy = reinterpret_cast<NativeFileCopy>(api->va(0x00645590u));
-  g_originalPreparation = reinterpret_cast<NativePreparation>(api->va(0x0041ADD0u));
+  g_originalFileCopy = reinterpret_cast<NativeFileCopy>(api->va(0x00645710u));
+  g_originalPreparation = reinterpret_cast<NativePreparation>(api->va(0x0041ade0u));
   std::uint8_t replacementCopy[5]{}, replacementPreparation[5]{};
   if (!MakeRelativeCall(kCopyEntryCallVa, reinterpret_cast<const void*>(&WorkshopCopyEntry), replacementCopy) ||
-      !MakeRelativeCall(0x00644B5Fu, reinterpret_cast<const void*>(&CapturePreparation), replacementPreparation)) {
+      !MakeRelativeCall(0x00644cdfu, reinterpret_cast<const void*>(&CapturePreparation), replacementPreparation)) {
     InterlockedExchange(&g_state, -1);
     return false;
   }
 
   api->patch_begin("native_bridge.workshop_upload");
-  if (!api->patch_bytes(0x00644A02u, sizeof(kExpectedValidator),
+  if (!api->patch_bytes(0x00644b82u, sizeof(kExpectedValidator),
           kExpectedValidator, kAcceptExtension)) {
     api->patch_abort();
     InterlockedExchange(&g_state, -1);
@@ -288,7 +288,7 @@ bool InstallWorkshopUploadSupport(const cc2x_api* api) {
     Log(CC2X_LOG_WARN, "WORKSHOP_UPLOAD_SUPPORT_UNAVAILABLE", "content_copy_callsite_mismatch");
     return false;
   }
-  if (!api->patch_bytes(0x00644B5Fu, sizeof(kExpectedPreparationCall),
+  if (!api->patch_bytes(0x00644cdfu, sizeof(kExpectedPreparationCall),
           kExpectedPreparationCall, replacementPreparation)) {
     api->patch_abort();
     InterlockedExchange(&g_state, -1);

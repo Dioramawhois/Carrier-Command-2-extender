@@ -5,6 +5,8 @@
 #include "cc2x_settings.h"
 #include "cc2x_equipment.h"
 #include "cc2x_tile_sites.h"
+#include "cc2x_motion.h"
+#include "cc2x_navigation.h"
 extern "C" {
 #include "lua.h"
 }
@@ -29,6 +31,84 @@ bool Number(lua_State* L,int at,double* out){if(lua_type(L,at)!=LUA_TNUMBER)retu
 int Result(lua_State* L,bool ok,const char* reason){lua_pushboolean(L,ok);lua_pushstring(L,ok?"ok":reason);return 2;}
 void Field(lua_State* L,const char* key,std::uint64_t value){lua_pushinteger(L,static_cast<lua_Integer>(value));lua_setfield(L,-2,key);}
 bool Context(lua_State* L){return H(L)&&H(L)->InLuaContext();}
+int MotionAvailable(lua_State* L){lua_pushboolean(L,Context(L)&&H(L)->Motion().Available());return 1;}
+int MotionState(lua_State* L){
+ std::uint64_t id=0;cc2x_motion_state s{sizeof(s)};
+ if(!Context(L)||lua_gettop(L)!=1||!Integer(L,1,&id)||!H(L)->Motion().Read(static_cast<std::uint32_t>(id),&s)){
+ lua_pushnil(L);lua_pushliteral(L,"motion_state_unavailable");return 2;}
+ lua_newtable(L);Field(L,"id",s.id);Field(L,"team",s.team);Field(L,"generation",s.generation);Field(L,"mode",s.mode);Field(L,"waypoints",s.waypoints);
+ for(const auto& item: {std::pair<const char*,unsigned>{"active",CC2X_MOTION_ACTIVE},{"manual",CC2X_MOTION_MANUAL},{"engine_on",CC2X_MOTION_ENGINE},{"can_control",CC2X_MOTION_LOCAL},{"guidance_ready",CC2X_MOTION_GUIDANCE}}){
+ lua_pushboolean(L,(s.flags&item.second)!=0);lua_setfield(L,-2,item.first);}
+ for(const auto& item:{std::pair<const char*,double>{"speed_mps",s.speed},{"lever",s.lever},{"forward_power",s.forward_power},{"target_x",s.target_x},{"target_z",s.target_z},{"heading_error",s.heading_error},{"path_distance",s.path_distance},{"yaw_rate",s.yaw_rate},{"steering",s.steering}}){
+ lua_pushnumber(L,item.second);lua_setfield(L,-2,item.first);}return 1;
+}
+int MotionSet(lua_State* L){
+ std::uint64_t id=0;double power=0;
+ if(!Context(L)||lua_gettop(L)!=3||!Integer(L,1,&id)||lua_type(L,2)!=LUA_TBOOLEAN||!Number(L,3,&power))return Result(L,false,"invalid_motion_arguments");
+ return Result(L,H(L)->Motion().Set(O(L),H(L)->Generation(),static_cast<std::uint32_t>(id),lua_toboolean(L,2)!=0,power),"motion_refused");
+}
+int MotionDrive(lua_State* L){
+ std::uint64_t id=0;double power=0,forward=0;
+ if(!Context(L)||lua_gettop(L)!=3||!Integer(L,1,&id)||!Number(L,2,&power)||!Number(L,3,&forward))return Result(L,false,"invalid_motion_arguments");
+ return Result(L,H(L)->Motion().Drive(O(L),H(L)->Generation(),static_cast<std::uint32_t>(id),power,forward),"motion_refused");
+}
+int MotionContacts(lua_State* L){
+ std::uint64_t id=0;std::vector<cc2x_contact> contacts;
+ if(!Context(L)||lua_gettop(L)!=1||!Integer(L,1,&id)||!H(L)->Motion().Contacts(static_cast<std::uint32_t>(id),&contacts)){
+ lua_pushnil(L);lua_pushliteral(L,"team_contacts_unavailable");return 2;}
+ lua_newtable(L);int index=1;
+ for(const auto& c:contacts){lua_newtable(L);Field(L,"id",c.id);Field(L,"kind",c.kind);Field(L,"definition",c.definition);Field(L,"team",c.team);
+ lua_pushboolean(L,1);lua_setfield(L,-2,"detected");
+ lua_pushnumber(L,c.x);lua_setfield(L,-2,"x");lua_pushnumber(L,c.y);lua_setfield(L,-2,"y");lua_pushnumber(L,c.z);lua_setfield(L,-2,"z");lua_rawseti(L,-2,index++);}return 1;
+}
+int NavigationAvailable(lua_State* L){
+ lua_pushboolean(L,Context(L)&&lua_gettop(L)==0&&H(L)->Motion().NavigationAvailable());return 1;
+}
+int NavigationState(lua_State* L){
+ std::uint64_t id=0;cc2x_navigation_state state{sizeof(state)};
+ if(!Context(L)||lua_gettop(L)!=1||!Integer(L,1,&id)||!id||
+    !H(L)->Motion().NavigationRead(static_cast<std::uint32_t>(id),&state)){
+  lua_pushnil(L);lua_pushliteral(L,"navigation_state_unavailable");return 2;
+ }
+ lua_newtable(L);Field(L,"id",state.id);Field(L,"waypoint_id",state.waypoint_id);
+ for(const auto& item:{std::pair<const char*,unsigned>{"configured",CC2X_NAVIGATION_CONFIGURED},
+     {"active",CC2X_NAVIGATION_ACTIVE},{"ready",CC2X_NAVIGATION_READY},
+     {"blocked",CC2X_NAVIGATION_BLOCKED},{"arrived",CC2X_NAVIGATION_ARRIVED},
+     {"faulted",CC2X_NAVIGATION_FAULTED}}){
+  lua_pushboolean(L,(state.flags&item.second)!=0);lua_setfield(L,-2,item.first);
+ }
+ for(const auto& item:{std::pair<const char*,double>{"target_x",state.target_x},
+     {"target_z",state.target_z},{"distance",state.distance},
+     {"minimum_depth",state.minimum_depth},{"arrival_radius",state.arrival_radius}}){
+  lua_pushnumber(L,item.second);lua_setfield(L,-2,item.first);
+ }
+ return 1;
+}
+int NavigationSet(lua_State* L){
+ std::uint64_t id=0;
+ if(!Context(L)||lua_gettop(L)!=2||!Integer(L,1,&id)||!id||lua_type(L,2)!=LUA_TTABLE)
+  return Result(L,false,"invalid_navigation_arguments");
+ if(lua_getmetatable(L,2)){lua_pop(L,1);return Result(L,false,"invalid_navigation_arguments");}
+ cc2x_navigation_options options{sizeof(options),CC2X_NAVIGATION_SURFACE,0,25};
+ unsigned fields=0;lua_pushnil(L);
+ while(lua_next(L,2)){
+  std::string key;double value=0;
+  if(++fields>3||!Text(L,-2,&key))return Result(L,false,"invalid_navigation_arguments");
+  if(key=="minimum_depth"){
+   if(!Number(L,-1,&value)||value<0||value>1000)return Result(L,false,"invalid_navigation_arguments");
+   options.minimum_depth=value;
+  }else if(key=="arrival_radius"){
+   if(!Number(L,-1,&value)||value<1||value>150)return Result(L,false,"invalid_navigation_arguments");
+   options.arrival_radius=value;
+  }else if(key=="enabled"){
+   if(lua_type(L,-1)!=LUA_TBOOLEAN)return Result(L,false,"invalid_navigation_arguments");
+   options.flags=lua_toboolean(L,-1)?CC2X_NAVIGATION_SURFACE:0;
+  }else return Result(L,false,"invalid_navigation_arguments");
+  lua_pop(L,1);
+ }
+ return Result(L,H(L)->Motion().NavigationConfigure(O(L),H(L)->Generation(),
+    static_cast<std::uint32_t>(id),options),"navigation_refused");
+}
 int Available(lua_State* L){
  std::string name;const bool valid=lua_gettop(L)==1&&Text(L,1,&name);
  const unsigned flag=name=="dock"?CC2X_CARRIER_DOCK:name=="recovery"?CC2X_CARRIER_RECOVERY:0;
@@ -119,6 +199,10 @@ int SettingReload(lua_State* L){
 }
 void RegisterModuleExtensions(lua_State* L,Host* host,const std::string& owner){
  auto add=[&](const char* name,lua_CFunction fn){lua_pushlightuserdata(L,host);lua_pushlstring(L,owner.data(),owner.size());lua_pushcclosure(L,fn,2);lua_setglobal(L,name);};
+ add("cc2_bridge_motion_available",MotionAvailable);add("cc2_bridge_motion_state",MotionState);add("cc2_bridge_motion_set",MotionSet);add("cc2_bridge_motion_contacts",MotionContacts);
+ add("cc2_bridge_motion_drive",MotionDrive);
+ add("cc2_bridge_navigation_available",NavigationAvailable);add("cc2_bridge_navigation_state",NavigationState);
+ add("cc2_bridge_navigation_set",NavigationSet);
  add("cc2_bridge_carrier_available",Available);add("cc2_bridge_carrier_dock_request",Request);add("cc2_bridge_carrier_dock_result",DockResult);
  add("cc2_bridge_carrier_recovery_arm",Arm);add("cc2_bridge_carrier_recovery_disarm",Disarm);add("cc2_bridge_carrier_recovery_status",Status);
  add("cc2_bridge_tile_sites",TileSites);
@@ -198,4 +282,40 @@ int ReadTileSitesC(std::uint32_t id,std::uint32_t kind,std::uint32_t definition,
 extern "C" CC2X_EXPORT const cc2x_tile_sites_api* cc2x_query_tile_sites_v1(std::uint32_t version,std::uint32_t size){
  static const cc2x_tile_sites_api api{CC2X_TILE_SITES_VERSION,sizeof(api),CC2X_TILE_SITES_ID,ReadTileSitesC};
  return version==CC2X_TILE_SITES_VERSION&&size==sizeof(api)?&api:nullptr;
+}
+namespace {
+int MotionAvailableC(){auto* h=SharedHost();return h&&h->InServerContext()&&h->Motion().Available();}
+int MotionReadC(std::uint32_t id,cc2x_motion_state* out){auto* h=SharedHost();return h&&h->InServerContext()&&h->Motion().Read(id,out);}
+int MotionSetC(const char* name,std::uint64_t g,std::uint32_t id,int active,double power){
+ auto* h=SharedHost();std::string owner;return h&&h->InServerContext()&&Owner(name,&owner)&&(active==0||active==1)&&h->Motion().Set(owner,g,id,active!=0,power);
+}
+int MotionDriveC(const char* name,std::uint64_t g,std::uint32_t id,double power,double forward){
+ auto* h=SharedHost();std::string owner;return h&&h->InServerContext()&&Owner(name,&owner)&&h->Motion().Drive(owner,g,id,power,forward);
+}
+int MotionContactsC(std::uint32_t id,cc2x_contact* out,std::uint32_t capacity,std::uint32_t* count){
+ auto* h=SharedHost();if(!h||!h->InServerContext()||!count||capacity>4096||(!out&&capacity))return 0;*count=0;
+ std::vector<cc2x_contact> contacts;if(!h->Motion().Contacts(id,&contacts))return 0;*count=static_cast<std::uint32_t>(contacts.size());
+ if(capacity<contacts.size())return 0;std::copy(contacts.begin(),contacts.end(),out);return 1;
+}
+}
+extern "C" CC2X_EXPORT const cc2x_motion_api* cc2x_query_motion_v1(std::uint32_t version,std::uint32_t size){
+ static const cc2x_motion_api api{CC2X_MOTION_VERSION,sizeof(api),CC2X_MOTION_ID,MotionAvailableC,MotionReadC,MotionSetC,MotionContactsC,MotionDriveC};
+ return version==CC2X_MOTION_VERSION&&size==sizeof(api)?&api:nullptr;
+}
+namespace {
+int NavigationAvailableC(){auto* h=SharedHost();return h&&h->InServerContext()&&h->Motion().NavigationAvailable();}
+int NavigationReadC(std::uint32_t id,cc2x_navigation_state* state){
+ auto* h=SharedHost();return h&&h->InServerContext()&&h->Motion().NavigationRead(id,state);
+}
+int NavigationConfigureC(const char* name,std::uint64_t generation,std::uint32_t id,
+    const cc2x_navigation_options* options){
+ auto* h=SharedHost();std::string owner;
+ return h&&h->InServerContext()&&options&&Owner(name,&owner)&&
+    h->Motion().NavigationConfigure(owner,generation,id,*options);
+}
+}
+extern "C" CC2X_EXPORT const cc2x_navigation_api* cc2x_query_navigation_v1(std::uint32_t version,std::uint32_t size){
+ static const cc2x_navigation_api api{CC2X_NAVIGATION_VERSION,sizeof(api),CC2X_NAVIGATION_ID,
+    NavigationAvailableC,NavigationReadC,NavigationConfigureC};
+ return version==CC2X_NAVIGATION_VERSION&&size==sizeof(api)?&api:nullptr;
 }

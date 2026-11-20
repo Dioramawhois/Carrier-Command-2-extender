@@ -78,19 +78,19 @@ static const Layout LAYOUTS[] = {{
     .h_hangar_bytes = {0x8b, 0x57, 0x6c, 0x33, 0xc0},
     .h_controller = {0x0063014f, 0x00634981},
     .h_controller_bytes = {{0x8b, 0x01, 0x8b, 0x40, 0x10, 0xff, 0xd0}, {0x8b, 0x07, 0x8b, 0x40, 0x10, 0xff, 0xd0}},
-    .h_spawn = 0x00634f3d, .f_spawn = 0x0062ca30, .h_af_tick = 0x0062b8f3, .f_af_tick = 0x00628600,
+    .h_spawn = 0x006350ad, .f_spawn = 0x0062cba0, .h_af_tick = 0x0062ba63, .f_af_tick = 0x00628600,
     LAYOUT_1_5_18
 }, {
-    .build = "1.5.18-win32-r2",
-    .f_vehicle_by_id = 0x005ee7e0, .f_tile_by_id = 0x00631350, .f_tile_at = 0x00631150,
-    .f_request_landing = 0x0062b5b0, .f_waypoints_clear = 0x008549a0, .f_deque_grow = 0x00860dc0,
-    .vt_rigid_dynamic = 0x00cdd478,
-    .h_waypoints = 0x007782c4, .h_waypoints_bytes = {0xff, 0xb0, 0x50, 0x01, 0x00, 0x00},
-    .h_hangar = 0x0062af9d, .h_hangar_found = 0x0062b00c, .h_hangar_none = 0x0062afbd,
+    .build = "1.5.20-win32",
+    .f_vehicle_by_id = 0x005ee950, .f_tile_by_id = 0x006314c0, .f_tile_at = 0x006312c0,
+    .f_request_landing = 0x0062b720, .f_waypoints_clear = 0x00855170, .f_deque_grow = 0x008615b0,
+    .vt_rigid_dynamic = 0x00cdc478,
+    .h_waypoints = 0x007785b7, .h_waypoints_bytes = {0xff, 0xb0, 0x50, 0x01, 0x00, 0x00},
+    .h_hangar = 0x0062b10d, .h_hangar_found = 0x0062b17c, .h_hangar_none = 0x0062b12d,
     .h_hangar_bytes = {0x8b, 0x57, 0x6c, 0x33, 0xc0},
-    .h_controller = {0x0063025f, 0x00634a91},
+    .h_controller = {0x006303cf, 0x00634c01},
     .h_controller_bytes = {{0x8b, 0x01, 0x8b, 0x40, 0x10, 0xff, 0xd0}, {0x8b, 0x07, 0x8b, 0x40, 0x10, 0xff, 0xd0}},
-    .h_spawn = 0x0063504d, .f_spawn = 0x0062cb40, .h_af_tick = 0x0062ba03, .f_af_tick = 0x00628710,
+    .h_spawn = 0x006351bd, .f_spawn = 0x0062ccb0, .h_af_tick = 0x0062bb73, .f_af_tick = 0x00628880,
     LAYOUT_1_5_18
 }};
 static const Layout *W;
@@ -690,7 +690,7 @@ int world_init(const char *build) {
     cc2x_orders_profile(0);
     for (size_t i = 0; i < sizeof(LAYOUTS) / sizeof(LAYOUTS[0]); ++i)
         if (!strcmp(LAYOUTS[i].build, build)) W = &LAYOUTS[i];
-    if(W&&!strcmp(build,"1.5.18-win32-r2")) {
+    if(W&&!strcmp(build,"1.5.20-win32")) {
         int verified=1;
         for(size_t i=0;i<sizeof(origin_guards)/sizeof(origin_guards[0]);++i) {
             unsigned char bytes[64];SIZE_T copied=0;
