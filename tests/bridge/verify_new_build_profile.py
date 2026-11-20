@@ -1,4 +1,4 @@
-"""Static profile guard for Steam build 26277078; never executes the target."""
+"""Static profile guard for Steam build 26732430; never executes the target."""
 import hashlib
 import pathlib
 import struct
@@ -189,3 +189,13 @@ if ui_hook_source:
 assert read_va(0x005a2fc0, 5) == bytes.fromhex("558bec6aff"), "definition loader entry mismatch"
 assert read_va(0x008545e0, 6) == bytes.fromhex("558bec515356"), "definition name-map resize mismatch"
 print("PASS SHA/PE identity, lifecycle/throttle vtables, Lua ABI, World API, all 26 animation sites/targets, hangar entries, UI helpers and definition loader/name-map entry guards")
+
+# Follow actual enqueue operands rather than nearby deduplicated data tables.
+assert call_target(0x706410) == 0x565e80
+for offset, target in ((6, 0xc9685d), (0x15, 0xe1cb44), (0x38, 0xd1e118), (0x45, 0xd24600)):
+    assert struct.unpack("<I", read_va(0x565e80 + offset, 4))[0] == target
+type_function = struct.unpack("<I", read_va(0xd24600 + 4, 4))[0]
+assert read_va(type_function, 6) == bytes.fromhex("b814000000c3")
+assert call_target(0x6fd0d4) == 0x63f7e0
+assert call_target(0x6fdca2) == 0x63f7e0
+print("PASS button enqueue targets, absolute operands, type vtable and readers")

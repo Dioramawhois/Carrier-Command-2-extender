@@ -11,6 +11,9 @@
 - Recheck authenticated incoming waypoint sender operands, stock UI script
   injection, carrier motion/recovery/navigation, animation, hangar and equipment.
   Preserve existing API versions, transactional hooks and unknown-build refusal.
+- Match navigation's two absolute operands to their exact ASLR targets and
+  follow the button enqueue constructor's actual type-vtable reference. Reject
+  preferred-base and incorrect relocated operands in the native fixture.
 - Bind signed runtime updates to the new executable. Older game builds retain
   their previous SDK releases; gameplay, remote-client and dedicated acceptance
   are separate from static and fixture evidence.
